@@ -15,13 +15,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool get isInitialized => _isInitialized;
 
   final ApiService apiService = ApiService(
-    baseUrl: 'http://192.168.0.3:3000',
+    baseUrl: 'https://ekrem.onrender.com',
   );
 
   Future<void> _sendDebugLog(String msg) async {
     try {
       await http.post(
-        Uri.parse('http://192.168.0.3:3000/api/debug'),
+        Uri.parse('https://ekrem.onrender.com/api/debug'),
         body: {'log': msg},
       );
     } catch (_) {}
