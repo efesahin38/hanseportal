@@ -1,0 +1,6 @@
+node_modules/
+.env
+backend_logs.txt
+serviceAccountKey.json
+ekrempdks-firebase-adminsdk*.json
+.DS_Store
