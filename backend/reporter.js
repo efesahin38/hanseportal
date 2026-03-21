@@ -132,7 +132,7 @@ async function checkShiftReminders() {
     const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}-${String(nowLocal.getDate()).padStart(2,'0')}`;
     const currentTotalMins = nowLocal.getHours() * 60 + nowLocal.getMinutes();
 
-    console.log(`[Hatırlatıcı] Kontrol: ${todayStr}, saat: ${nowLocal.getHours()}:${String(nowLocal.getMinutes()).padStart(2,'0')}`);
+    // console.log(`[Hatırlatıcı] Kontrol: ${todayStr}, saat: ${nowLocal.getHours()}:${String(nowLocal.getMinutes()).padStart(2,'0')}`);
 
     // 1. Adım: Bugünün onaylı planlarındaki tüm atamaları al (worker_id dahil)
     const { data: assignments, error } = await supabase
@@ -142,9 +142,9 @@ async function checkShiftReminders() {
       .eq('shift_plans.status', 'approved');
 
     if (error) { console.error('[Hatırlatıcı] Atama sorgu hatası:', error.message); return; }
-    if (!assignments || assignments.length === 0) { console.log('[Hatırlatıcı] Bugün için onaylı atama bulunamadı.'); return; }
+    if (!assignments || assignments.length === 0) { return; }
 
-    console.log(`[Hatırlatıcı] ${assignments.length} atama bulundu.`);
+    // console.log(`[Hatırlatıcı] ${assignments.length} atama bulundu.`);
 
     for (const a of assignments) {
       if (!a.shift_plans) continue;
