@@ -1,3 +1,4 @@
+process.env.TZ = 'Europe/Berlin';
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const supabase = require('./supabaseClient');

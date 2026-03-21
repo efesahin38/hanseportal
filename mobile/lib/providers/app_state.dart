@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 import '../services/api_service.dart';
 
 class AppState extends ChangeNotifier with WidgetsBindingObserver {
@@ -42,10 +43,12 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _updateFcmToken(); // Uygulama öne gelince token'ı tazele
+      FlutterAppBadger.removeBadge(); // Bildirim rozetini sil
     }
   }
 
   Future<void> _initFromPrefs() async {
+    FlutterAppBadger.removeBadge(); // Uygulama ilk açıldığında rozeti sil
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString('current_user');
     if (userJson != null) {
