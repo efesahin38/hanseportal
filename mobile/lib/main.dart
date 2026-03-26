@@ -49,7 +49,7 @@ class HanseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hanse Kollektiv',
+      title: 'Hanse',
       theme: AppTheme.theme,
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
@@ -86,11 +86,11 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primary,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.business, size: 72, color: Colors.white),
+            Image.asset('assets/icon/appico.png', width: 100, height: 100),
             SizedBox(height: 24),
             Text(
               'Hanse Kollektiv GmbH',

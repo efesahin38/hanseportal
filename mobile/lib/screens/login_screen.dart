@@ -52,10 +52,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Icon(Icons.business, size: 52, color: Colors.white),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset('assets/icon/appico.png'),
+                ),
               ),
               const SizedBox(height: 20),
               const Text(
