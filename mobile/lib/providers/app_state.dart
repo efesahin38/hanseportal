@@ -1,165 +1,94 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_app_badger/flutter_app_badger.dart';
-import '../services/api_service.dart';
+import '../services/supabase_service.dart';
 
-class AppState extends ChangeNotifier with WidgetsBindingObserver {
+class AppState extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
-  bool _isLoading = false;
   bool _isInitialized = false;
+  bool _isLoading = false;
+  int _unreadNotifications = 0;
 
   Map<String, dynamic>? get currentUser => _currentUser;
-  bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
+  bool get isLoading => _isLoading;
+  int get unreadNotifications => _unreadNotifications;
 
-  final ApiService apiService = ApiService(
-    baseUrl: 'https://ekrem.onrender.com',
-  );
+  String get role => _currentUser?['role'] ?? '';
+  String get userId => _currentUser?['id'] ?? '';
+  String get companyId => _currentUser?['company_id'] ?? '';
+  String get fullName => '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim();
 
-  Future<void> _sendDebugLog(String msg) async {
-    try {
-      await http.post(
-        Uri.parse('https://ekrem.onrender.com/api/debug'),
-        body: {'log': msg},
-      );
-    } catch (_) {}
-  }
+  bool get isGeschaeftsfuehrer => role == 'geschaeftsfuehrer';
+  bool get isBetriebsleiter => role == 'betriebsleiter';
+  bool get isBereichsleiter => role == 'bereichsleiter';
+  bool get isVorarbeiter => role == 'vorarbeiter';
+  bool get isMitarbeiter => role == 'mitarbeiter';
+  bool get isBuchhaltung => role == 'buchhaltung';
+  bool get isBackoffice => role == 'backoffice';
+  bool get isSystemAdmin => role == 'system_admin';
+
+  bool get canManageCompanies => isGeschaeftsfuehrer || isSystemAdmin;
+  bool get canManageUsers => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canManageCustomers => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
+  bool get canManageOrders => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
+  bool get canPlanOperations => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin;
+  bool get canViewReports => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBuchhaltung || isSystemAdmin;
+  bool get canManageInvoices => isGeschaeftsfuehrer || isBuchhaltung || isSystemAdmin;
+  bool get canViewAllOrders => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
 
   AppState() {
-    WidgetsBinding.instance.addObserver(this);
-    _initFromPrefs();
+    _initialize();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _updateFcmToken(); // Uygulama öne gelince token'ı tazele
-      FlutterAppBadger.removeBadge(); // Bildirim rozetini sil
-    }
-  }
-
-  Future<void> _initFromPrefs() async {
-    FlutterAppBadger.removeBadge(); // Uygulama ilk açıldığında rozeti sil
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString('current_user');
-    if (userJson != null) {
-      _currentUser = Map<String, dynamic>.from(jsonDecode(userJson));
-      _initFcm(); // Giriş yapılmışsa token kontrolü yap
-    }
+  Future<void> _initialize() async {
+    try {
+      final session = SupabaseService.currentSession;
+      if (session != null) {
+        await _loadUserProfile();
+      }
+    } catch (_) {}
     _isInitialized = true;
     notifyListeners();
   }
 
-  // === PUSH BİLDİRİM SİSTEMİ ===
-  Future<void> _initFcm() async {
-    if (_currentUser == null) return;
-
-    try {
-      final messaging = FirebaseMessaging.instance;
-      
-      // İzin iste (Özellikle iOS için)
-      NotificationSettings settings = await messaging.requestPermission(
-        alert: true, badge: true, sound: true,
-      );
-
-      // Uygulama açıkken (foreground) bildirimin iOS'ta görünmesi için:
-      await messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('Ön planda bildirim geldi: ${message.notification?.title}');
-      });
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        await _sendDebugLog('Bildirim izni verildi (authorized). Token alınıyor...');
-        
-        // iOS için APNs token gelmesini bir süre retry ile bekleyelim (Race condition çözümü)
-        String? apnsToken;
-        int retries = 0;
-        while (apnsToken == null && retries < 10) { // 10 saniyeye çıkardık
-          apnsToken = await messaging.getAPNSToken();
-          if (apnsToken == null) {
-            await Future.delayed(const Duration(seconds: 1));
-            retries++;
-          }
-        }
-        await _sendDebugLog('APNs Token durumu (${retries} sn bekledi): ${apnsToken != null ? "BASARILI" : "Hala Null!!"}');
-        
-        // Token al ve kaydet
-        await _updateFcmToken();
-
-        // Token değişirse otomatik güncelle (OnTokenRefresh)
-        messaging.onTokenRefresh.listen((newToken) async {
-          await _sendDebugLog('FCM Token yenilendi, backend guncelleniyor...');
-          if (_currentUser != null) {
-            await apiService.saveFcmToken(_currentUser!['id'], newToken);
-          }
-        });
-      } else {
-        await _sendDebugLog('Kullanici bildirim iznini reddetti: ${settings.authorizationStatus}');
-      }
-    } catch (e) {
-      await _sendDebugLog('FCM Baslatma Hatasi: $e');
-    }
-  }
-
-  Future<void> _updateFcmToken() async {
-    try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      await _sendDebugLog('FCM Token durumu: ${token != null ? "Alindi" : "Null dondu"}');
-      if (token != null && _currentUser != null) {
-        await apiService.saveFcmToken(_currentUser!['id'], token);
-        await _sendDebugLog('FCM Token basariyla backend\'e iletildi.');
-      }
-    } catch (e) {
-      await _sendDebugLog('Token guncelleme hatasi: $e');
-    }
-  }
-
-  Future<void> login(String id, String pinCode, {bool rememberMe = true}) async {
+  Future<bool> signIn(String email, String password) async {
     _isLoading = true;
     notifyListeners();
     try {
-      final user = await apiService.login(id, pinCode);
-      _currentUser = user;
-      if (rememberMe) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('current_user', jsonEncode(user));
-      }
+      await SupabaseService.signIn(email, password);
+      await _loadUserProfile();
       _isLoading = false;
       notifyListeners();
-      _initFcm(); // Giriş başarılı olunca token al ve kaydet
+      return true;
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      rethrow;
+      return false;
     }
   }
 
-  Future<void> logout() async {
+  Future<void> _loadUserProfile() async {
+    _currentUser = await SupabaseService.getCurrentUserProfile();
     if (_currentUser != null) {
-      try {
-        // Çıkış yaparken backend'den bildirim token'ını sil ki bu cihaza artık o kişinin bildirimi gelmesin
-        await apiService.saveFcmToken(_currentUser!['id'], '');
-      } catch (e) {
-        print('Token temizleme hatası: $e');
-      }
+      _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
     }
-    _currentUser = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('current_user');
     notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    await SupabaseService.signOut();
+    _currentUser = null;
+    _unreadNotifications = 0;
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    await _loadUserProfile();
+  }
+
+  void decrementUnread() {
+    if (_unreadNotifications > 0) {
+      _unreadNotifications--;
+      notifyListeners();
+    }
   }
 }

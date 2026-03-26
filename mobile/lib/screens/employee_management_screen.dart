@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../services/supabase_service.dart';
 
 class EmployeeManagementScreen extends StatefulWidget {
   const EmployeeManagementScreen({Key? key}) : super(key: key);
@@ -36,19 +37,31 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
   void dispose() { _tabs.dispose(); super.dispose(); }
 
   Future<void> _addEmployee() async {
-    final id   = _addIdCtrl.text.trim();
     final name = _addNameCtrl.text.trim();
     final pin  = _addPinCtrl.text.trim();
-    if (id.isEmpty || name.isEmpty || pin.isEmpty) {
-      setState(() { _addError = 'ID, isim ve PIN zorunludur.'; _addSuccess = null; }); return;
+    if (name.isEmpty) {
+      setState(() { _addError = 'İsim zorunludur.'; _addSuccess = null; }); return;
     }
     setState(() { _isAdding = true; _addError = null; _addSuccess = null; });
     try {
-      await context.read<AppState>().apiService.addEmployee(id: id, name: name, pinCode: pin, role: 'worker');
+      final appState = context.read<AppState>();
+      // Split name into first/last
+      final parts = name.split(' ');
+      final firstName = parts.first;
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      await SupabaseService.upsertUser({
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': '${firstName.toLowerCase()}.${lastName.toLowerCase()}@hanse.de',
+        'company_id': appState.companyId,
+        'role': 'mitarbeiter',
+        if (pin.isNotEmpty) 'pin_code': pin,
+        'status': 'active',
+      });
       if (!mounted) return;
       setState(() {
         _isAdding = false;
-        _addSuccess = '✅ $name (ID: $id) sisteme eklendi!';
+        _addSuccess = '✅ $name sisteme eklendi!';
         _addIdCtrl.clear(); _addNameCtrl.clear(); _addPinCtrl.clear();
       });
     } catch (e) {
@@ -62,8 +75,9 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
     if (id.isEmpty) { setState(() => _delError = 'ID boş olamaz.'); return; }
     setState(() { _isSearching = true; _delError = null; _foundWorker = null; });
     try {
-      final worker = await context.read<AppState>().apiService.getWorkerById(id);
+      final worker = await SupabaseService.getUserById(id);
       if (!mounted) return;
+      if (worker == null) throw Exception('Bulunamadı');
       setState(() { _foundWorker = worker; _isSearching = false; });
     } catch (e) {
       if (!mounted) return;
@@ -96,7 +110,11 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
     if (confirmed != true || !mounted) return;
     setState(() => _isDeleting = true);
     try {
-      await context.read<AppState>().apiService.deleteEmployee(_foundWorker!['id']);
+      // Soft-delete: set status to inactive
+      await SupabaseService.client
+          .from('users')
+          .update({'status': 'inactive'})
+          .eq('id', _foundWorker!['id']);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('🗑️ ${_foundWorker!['name']} silindi.'),

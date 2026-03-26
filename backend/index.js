@@ -13,16 +13,13 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 } else {
   serviceAccount = require('./serviceAccountKey.json');
 }
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Global Log Middleware
 app.use((req, res, next) => {
   console.log(`[HTTP] ${req.method} ${req.url} - ${new Date().toISOString()}`);
   next();
@@ -30,17 +27,36 @@ app.use((req, res, next) => {
 
 app.post('/api/debug', (req, res) => {
   console.log('[FLUTTER-DEBUG]', req.body.log);
-  res.json({ok: true});
+  res.json({ ok: true });
 });
 
-// Otomatik mail sistemi (cron)
 reporter.startCronJobs();
+
+// ============================================================
+// YARDIMCI: FCM Push Bildirimi Gönder
+// ============================================================
+async function sendFcmToUsers(userIds, title, body) {
+  try {
+    const { data: users } = await supabase.from('users').select('fcm_token').in('id', userIds);
+    const tokens = (users || []).map(u => u.fcm_token).filter(t => t && t.length > 0);
+    if (tokens.length === 0) return;
+    const result = await admin.messaging().sendEachForMulticast({
+      notification: { title, body },
+      android: { priority: 'high', notification: { sound: 'default', channelId: 'high_importance_channel' } },
+      apns: { payload: { aps: { sound: 'default', badge: 1, contentAvailable: true } } },
+      tokens,
+    });
+    console.log(`[FCM] ${result.successCount} başarı, ${result.failureCount} hata`);
+  } catch (e) {
+    console.error('[FCM] Hata:', e.message);
+  }
+}
 
 // ============================================================
 // AUTH
 // ============================================================
 
-// POST /api/auth/login
+// POST /api/auth/login – Email + PIN veya Email + Password
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { id, pin_code } = req.body;
@@ -48,51 +64,32 @@ app.post('/api/auth/login', async (req, res) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, role, company_id, email')
+      .select('id, first_name, last_name, role, company_id, email, department_id, status')
       .eq('id', id)
       .eq('pin_code', pin_code)
+      .eq('status', 'active')
       .single();
 
-    if (error || !user) return res.status(401).json({ error: 'Hatalı ID veya PIN. Lütfen tekrar deneyin.' });
-
+    if (error || !user) return res.status(401).json({ error: 'Hatalı ID veya PIN.' });
     res.json({ user });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
-// POST /api/users/:id/fcm-token - Firebase token kaydet / sil
+// POST /api/users/:id/fcm-token
 app.post('/api/users/:id/fcm-token', async (req, res) => {
   try {
     const { id } = req.params;
     const { fcm_token } = req.body;
-    
-    console.log(`[FCM-TOKEN] Gelen token kaydetme isteği - User: ${id}, Token: ${fcm_token ? fcm_token.substring(0, 15) + '...' : 'NULL'}`);
-
     if (!fcm_token || fcm_token.trim() === '') {
-      // Çıkış yaparken token'ı silmek için
       await supabase.from('users').update({ fcm_token: null }).eq('id', id);
-      console.log(`[FCM-TOKEN] User ${id} token'ı silindi.`);
       return res.json({ message: 'Token silindi.' });
     }
-
-    // Aynı cihazdan (token'dan) başka biri giriş yapmışsa, önce eski sahibinden bu token'ı sil ki karışmasın
     await supabase.from('users').update({ fcm_token: null }).eq('fcm_token', fcm_token);
-
-    // Sonra yeni giriş yapan kişiye kaydet
-    const { error } = await supabase.from('users').update({ fcm_token }).eq('id', id);
-
-    if (error) {
-      console.error(`[FCM-TOKEN] Kayıt hatası (User ${id}):`, error.message);
-      return res.status(500).json({ error: error.message });
-    }
-    
-    console.log(`[FCM-TOKEN] Kayıt BAŞARILI (User ${id})`);
-
+    await supabase.from('users').update({ fcm_token }).eq('id', id);
     res.json({ message: 'Token kaydedildi.' });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
@@ -100,8 +97,6 @@ app.post('/api/users/:id/fcm-token', async (req, res) => {
 // ============================================================
 // COMPANIES
 // ============================================================
-
-// GET /api/companies - Tüm şirketler (admin görür)
 app.get('/api/companies', async (req, res) => {
   try {
     const { data, error } = await supabase.from('companies').select('*').order('name');
@@ -113,377 +108,20 @@ app.get('/api/companies', async (req, res) => {
 });
 
 // ============================================================
-// WORKERS
+// USERS / PERSONEL (YENİ ŞEMA)
 // ============================================================
 
-// GET /api/workers?date=YYYY-MM-DD
-// O gün başka bir onaylı/bekleyen vardiyada olan çalışanları işaretle
-app.get('/api/workers', async (req, res) => {
+// GET /api/users – Tüm personel listesi
+app.get('/api/users', async (req, res) => {
   try {
-    const { date } = req.query;
-
-    // Tüm çalışanları al
-    const { data: workers, error } = await supabase
-      .from('users')
-      .select('id, name, role')
-      .eq('role', 'worker')
-      .order('name');
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    // O gün zaten atanmış çalışanları bul
-    let busyWorkerIds = [];
-    if (date) {
-      const { data: busyAssignments } = await supabase
-        .from('shift_assignments')
-        .select('worker_id, shift_plans!inner(work_date, status)')
-        .eq('shift_plans.work_date', date)
-        .in('shift_plans.status', ['pending', 'approved']);
-
-      if (busyAssignments) {
-        busyWorkerIds = busyAssignments.map(a => a.worker_id);
-      }
-    }
-
-    const enriched = workers.map(w => ({
-      ...w,
-      is_busy: busyWorkerIds.includes(w.id)
-    }));
-
-    res.json(enriched);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// ============================================================
-// SHIFT PLANS
-// ============================================================
-
-// POST /api/shift-plans - Yeni plan oluştur (yönetici)
-app.post('/api/shift-plans', async (req, res) => {
-  try {
-    const { company_id, created_by, work_date, start_time, end_time, assignments } = req.body;
-    // assignments: [{ worker_id, worker_name, role_in_shift }]
-
-    if (!company_id || !created_by || !work_date || !start_time || !end_time) {
-      return res.status(400).json({ error: 'Tüm alanlar zorunludur.' });
-    }
-
-    if (!assignments || !assignments.length) {
-      return res.status(400).json({ error: 'En az bir çalışan (lider) seçilmelidir.' });
-    }
-
-    // === ÖZELLİK 3: Manager sadece kendi şirketine plan oluşturabilir ===
-    const { data: creator } = await supabase.from('users').select('role, company_id').eq('id', created_by).single();
-    if (creator && creator.role === 'manager') {
-      if (creator.company_id !== company_id) {
-        return res.status(403).json({ error: 'Yalnızca kendi şirketiniz için plan oluşturabilirsiniz.' });
-      }
-    }
-
-    const leaderCount = assignments.filter(a => a.role_in_shift === 'leader').length;
-    if (leaderCount === 0) return res.status(400).json({ error: 'Her planda en az 1 lider olmalıdır.' });
-    if (leaderCount > 1) return res.status(400).json({ error: 'Bir planda yalnızca 1 lider olabilir.' });
-
-    // Çakışma kontrolü (Aynı gün başka onaylı/bekleyen vardiyada mı?)
-    const workerIds = assignments.map(a => a.worker_id);
-    const { data: conflictCheck } = await supabase
-      .from('shift_assignments')
-      .select('worker_id, shift_plans!inner(work_date, status)')
-      .eq('shift_plans.work_date', work_date)
-      .in('shift_plans.status', ['pending', 'approved'])
-      .in('worker_id', workerIds);
-
-    if (conflictCheck && conflictCheck.length > 0) {
-      const conflictIds = conflictCheck.map(c => c.worker_id);
-      const conflictNames = assignments.filter(a => conflictIds.includes(a.worker_id)).map(a => a.worker_name);
-      return res.status(400).json({ error: `${conflictNames.join(', ')} kişi(ler) bu tarihte zaten başka bir vardiyada. Lütfen başka bir çalışan seçin.` });
-    }
-
-    // === ÖZELLİK 4: Super Admin onay beklemez ===
-    let initialStatus = 'pending';
-    if (creator && creator.role === 'super_admin') {
-      initialStatus = 'approved';
-    }
-
-    // Plan oluştur
-    const { data: plan, error: planError } = await supabase
-      .from('shift_plans')
-      .insert([{ company_id, created_by, work_date, start_time, end_time, status: initialStatus }])
-      .select()
-      .single();
-
-    if (planError) return res.status(500).json({ error: planError.message });
-
-    // Atamaları ekle
-    const assignmentRows = assignments.map(a => ({
-      shift_plan_id: plan.id,
-      worker_id: a.worker_id,
-      worker_name: a.worker_name,
-      role_in_shift: a.role_in_shift
-    }));
-
-    const { error: assignError } = await supabase.from('shift_assignments').insert(assignmentRows);
-    if (assignError) return res.status(500).json({ error: assignError.message });
-
-    // Eğer anında onaylandıysa bildirim gönder
-    if (initialStatus === 'approved') {
-      try {
-        console.log(`[FCM] Bildirim gönderilecek worker ID'leri: ${workerIds.join(', ')}`);
-        const { data: workersWithTokens, error: tokenErr } = await supabase
-          .from('users')
-          .select('id, fcm_token')
-          .in('id', workerIds);
-        
-        if (tokenErr) console.error('[FCM] Token sorgulama hatası:', tokenErr.message);
-        console.log(`[FCM] Token sorgusu döndü:`, JSON.stringify(workersWithTokens));
-
-        const tokens = (workersWithTokens || []).map(u => u.fcm_token).filter(t => t);
-        console.log(`[FCM] Gönderilecek geçerli token sayısı: ${tokens.length}`);
-        if (tokens.length > 0) {
-          const result = await admin.messaging().sendEachForMulticast({
-            notification: {
-              title: '📅 Yeni İş Atandı!',
-              body: `Ekrem bey size iş ekledi. Uygulamadan detaylara bakabilirsiniz.`
-            },
-            android: {
-              priority: 'high',
-              notification: { sound: 'default', channelId: 'high_importance_channel' }
-            },
-            apns: {
-              payload: {
-                aps: { sound: 'default', badge: 1, contentAvailable: true }
-              }
-            },
-            tokens: tokens
-          });
-          console.log(`[FCM] Gönderim sonucu: ${result.successCount} başarı, ${result.failureCount} hata`);
-          if (result.failureCount > 0) result.responses.forEach((r, i) => { if (!r.success) console.error(`[FCM] Token ${i} hatası:`, r.error?.message); });
-        }
-      } catch (fcmErr) {
-        console.error('FCM Error on auto-approve:', fcmErr);
-      }
-    }
-
-    res.json({ 
-      message: initialStatus === 'approved' ? 'Vardiya planı oluşturuldu ve otomatik onaylandı.' : 'Vardiya planı oluşturuldu. Ekrem onayı bekleniyor.', 
-      plan 
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// GET /api/shift-plans?company_id=X&status=pending
-app.get('/api/shift-plans', async (req, res) => {
-  try {
-    const { company_id, status, created_by } = req.query;
-
-    let query = supabase
-      .from('shift_plans')
-      .select(`
-        id, company_id, work_date, start_time, end_time, status, rejection_note, created_at, created_by,
-        companies(name),
-        shift_assignments(worker_id, worker_name, role_in_shift, shift_status, actual_start, actual_end, exit_note)
-      `)
-      .order('work_date', { ascending: true })
-      .order('start_time', { ascending: true });
-
+    const { company_id, role, status } = req.query;
+    let query = supabase.from('users').select(
+      'id, first_name, last_name, email, phone, role, status, company_id, department_id, employee_number, position_title'
+    );
     if (company_id) query = query.eq('company_id', company_id);
-    if (status) query = query.eq('status', status);
-    if (created_by) query = query.eq('created_by', created_by);
-
-    const { data, error } = await query;
-    if (error) return res.status(500).json({ error: error.message });
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// PATCH /api/shift-plans/:id/approve - Ekrem onaylar
-app.patch('/api/shift-plans/:id/approve', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { approved_by } = req.body;
-
-    // Sadece super_admin onaylayabilir
-    const { data: approver } = await supabase.from('users').select('role').eq('id', approved_by).single();
-    if (!approver || approver.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Yalnızca Süper Admin onay verebilir.' });
-    }
-
-    const { data: updatedPlan, error } = await supabase
-      .from('shift_plans')
-      .update({ status: 'approved' })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    // === PUSH BİLDİRİM GÖNDER ===
-    try {
-      // Bu plana ait çalışanları ve fcm_token'larını al
-      const { data: assignments } = await supabase
-        .from('shift_assignments')
-        .select(`
-          worker_id,
-          users:worker_id (fcm_token)
-        `)
-        .eq('shift_plan_id', id);
-
-      if (assignments && assignments.length > 0) {
-        const tokens = assignments
-          .map(a => a.users?.fcm_token)
-          .filter(t => t && t.length > 0);
-
-        if (tokens.length > 0) {
-          const message = {
-            notification: {
-              title: '📅 Yeni Vardiya Onaylandı!',
-              body: `${updatedPlan.work_date} tarihindeki vardiyanız onaylandı. Detaylar için uygulamaya bakın.`
-            },
-            android: {
-              priority: 'high',
-              notification: { sound: 'default', channelId: 'high_importance_channel' }
-            },
-            apns: {
-              payload: {
-                aps: { sound: 'default', badge: 1, contentAvailable: true }
-              }
-            },
-            tokens: tokens
-          };
-
-          const response = await admin.messaging().sendEachForMulticast(message);
-          console.log(`[FCM] ${response.successCount} mesaj başarıyla gönderildi.`);
-        }
-      }
-    } catch (fcmErr) {
-      console.error('FCM Error:', fcmErr);
-      // Hata olsa bile ana işlem (onay) tamamlandığı için devam ediyoruz
-    }
-
-    res.json({ message: 'Vardiya planı onaylandı!', plan: data });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// PATCH /api/shift-plans/:id/reject - Ekrem reddeder
-app.patch('/api/shift-plans/:id/reject', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { rejected_by, rejection_note } = req.body;
-
-    const { data: rejecter } = await supabase.from('users').select('role').eq('id', rejected_by).single();
-    if (!rejecter || rejecter.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Yalnızca Süper Admin reddedebilir.' });
-    }
-
-    const { data, error } = await supabase
-      .from('shift_plans')
-      .update({ status: 'rejected', rejection_note: rejection_note || 'Açıklama girilmedi.' })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Vardiya planı reddedildi.', plan: data });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-
-// DELETE /api/shift-plans/:id
-app.delete('/api/shift-plans/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { deleted_by } = req.body;
-    const { data: user } = await supabase.from('users').select('role').eq('id', deleted_by).single();
-    if (!user || !['super_admin', 'manager'].includes(user.role)) {
-      return res.status(403).json({ error: 'Yetkiniz yok.' });
-    }
-
-    // Bildirim için önce işçileri al
-    const { data: assignments } = await supabase
-      .from('shift_assignments')
-      .select('users:worker_id (fcm_token)')
-      .eq('shift_plan_id', id);
-
-    const { error } = await supabase.from('shift_plans').delete().eq('id', id);
-    if (error) return res.status(500).json({ error: error.message });
-
-    // Bildirimleri gönder
-    if (assignments && assignments.length > 0) {
-      const tokens = assignments.map(a => a.users?.fcm_token).filter(t => t);
-      if (tokens.length > 0) {
-        try {
-          await admin.messaging().sendEachForMulticast({
-            notification: {
-              title: '🚫 Plan Silindi',
-              body: 'Ekrem bey plan sildi.'
-            },
-            android: {
-              priority: 'high',
-              notification: { sound: 'default', channelId: 'high_importance_channel' }
-            },
-            apns: {
-              payload: {
-                aps: { sound: 'default', badge: 1, contentAvailable: true }
-              }
-            },
-            tokens: tokens
-          });
-          console.log(`[FCM] Silme bildirimi ${tokens.length} kişiye gönderildi.`);
-        } catch (fcmErr) {
-          console.error('[FCM] Silme bildirimi hatası:', fcmErr.message);
-        }
-      }
-    }
-
-    res.json({ message: 'Vardiya planı silindi.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// PATCH /api/shift-plans/:id/edit
-app.patch('/api/shift-plans/:id/edit', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { work_date, start_time, end_time, notes } = req.body;
-    const updates = { status: 'pending' };
-    if (work_date) updates.work_date = work_date;
-    if (start_time) updates.start_time = start_time;
-    if (end_time) updates.end_time = end_time;
-    if (notes !== undefined) updates.notes = notes;
-    const { data, error } = await supabase.from('shift_plans').update(updates).eq('id', id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Plan güncellendi, tekrar onay bekleniyor.', plan: data });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// GET /api/companies/:company_id/plans
-app.get('/api/companies/:company_id/plans', async (req, res) => {
-  try {
-    const { company_id } = req.params;
-    const { from_date, to_date } = req.query;
-    let query = supabase.from('shift_plans')
-      .select('id, company_id, work_date, start_time, end_time, status, rejection_note, notes, created_at, created_by, companies(name), shift_assignments(worker_id, worker_name, role_in_shift, shift_status, actual_start, actual_end, total_hours, exit_note)')
-      .eq('company_id', company_id)
-      .order('work_date', { ascending: false });
-    if (from_date) query = query.gte('work_date', from_date);
-    if (to_date) query = query.lte('work_date', to_date);
-    const { data, error } = await query;
+    if (role) query = query.eq('role', role);
+    if (status) query = query.eq('status', status); else query = query.eq('status', 'active');
+    const { data, error } = await query.order('last_name');
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err) {
@@ -491,327 +129,368 @@ app.get('/api/companies/:company_id/plans', async (req, res) => {
   }
 });
 
-// GET /api/workers/stats/:worker_id
-app.get('/api/workers/stats/:worker_id', async (req, res) => {
+// GET /api/users/:id
+app.get('/api/users/:id', async (req, res) => {
   try {
-    const { worker_id } = req.params;
-    const { data: summaries } = await supabase.from('monthly_summaries')
-      .select('report_year, report_month, total_hours, total_sessions')
-      .eq('employee_id', worker_id).order('report_year', { ascending: false });
-    const totalHours = (summaries || []).reduce((s, r) => s + parseFloat(r.total_hours || 0), 0);
-    const totalShifts = (summaries || []).reduce((s, r) => s + (r.total_sessions || 0), 0);
-    res.json({ monthly_summaries: summaries || [], total_hours: totalHours.toFixed(2), total_shifts: totalShifts });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-// ============================================================
-// WORKER - KENDİ VARDİYALARI
-// ============================================================
-
-// GET /api/my-shifts/:worker_id
-app.get('/api/my-shifts/:worker_id', async (req, res) => {
-  try {
-    const { worker_id } = req.params;
-
-    const { data, error } = await supabase
-      .from('shift_assignments')
-      .select(`
-        id, role_in_shift, shift_status, actual_start, actual_end,
-        shift_plans!inner(id, work_date, start_time, end_time, status, company_id, companies(name))
-      `)
-      .eq('worker_id', worker_id)
-      .in('shift_plans.status', ['approved'])
-      .order('shift_plans(work_date)', { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    // Flatten for easier frontend use
-    const shifts = data.map(a => ({
-      assignment_id: a.id,
-      role_in_shift: a.role_in_shift,
-      shift_status: a.shift_status,
-      actual_start: a.actual_start,
-      actual_end: a.actual_end,
-      plan_id: a.shift_plans.id,
-      work_date: a.shift_plans.work_date,
-      start_time: a.shift_plans.start_time,
-      end_time: a.shift_plans.end_time,
-      company_id: a.shift_plans.company_id,
-      company_name: a.shift_plans.companies?.name
-    }));
-
-    res.json(shifts);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// POST /api/shifts/:assignment_id/start - Mesai başlat
-app.post('/api/shifts/:assignment_id/start', async (req, res) => {
-  try {
-    const { assignment_id } = req.params;
-    const { worker_id } = req.body;
-
-    // Güvenlik: Bu atama bu çalışana mı ait?
-    const { data: assignment } = await supabase
-      .from('shift_assignments')
-      .select('worker_id, shift_status, shift_plans!inner(status)')
-      .eq('id', assignment_id)
-      .single();
-
-    if (!assignment) return res.status(404).json({ error: 'Vardiya bulunamadı.' });
-    if (assignment.worker_id !== worker_id) return res.status(403).json({ error: 'Bu vardiya size ait değil.' });
-    if (assignment.shift_plans.status !== 'approved') return res.status(400).json({ error: 'Bu vardiya henüz onaylanmamış.' });
-    if (assignment.shift_status !== 'assigned') return res.status(400).json({ error: 'Vardiya zaten başlatılmış veya tamamlandı.' });
-
-    const { data, error } = await supabase
-      .from('shift_assignments')
-      .update({ shift_status: 'active', actual_start: new Date().toISOString() })
-      .eq('id', assignment_id)
-      .select()
-      .single();
-
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Mesai başlatıldı!', assignment: data });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// POST /api/shifts/:assignment_id/end - Mesai bitir
-app.post('/api/shifts/:assignment_id/end', async (req, res) => {
-  try {
-    const { assignment_id } = req.params;
-    const { worker_id, exit_note } = req.body; // === ÖZELLİK 1: exit_note isteğe bağlı ===
-
-    const { data: assignment } = await supabase
-      .from('shift_assignments')
-      .select('worker_id, shift_status, actual_start, shift_plans!inner(work_date, end_time)')
-      .eq('id', assignment_id)
-      .single();
-
-    if (!assignment) return res.status(404).json({ error: 'Vardiya bulunamadı.' });
-    if (assignment.worker_id !== worker_id) return res.status(403).json({ error: 'Bu vardiya size ait değil.' });
-    if (assignment.shift_status !== 'active') return res.status(400).json({ error: 'Aktif bir mesai bulunamadı.' });
-
-    const endTime = new Date();
-    const startTime = new Date(assignment.actual_start);
-    const totalHours = parseFloat(((endTime - startTime) / (1000 * 60 * 60)).toFixed(4));
-
-    // Planlanan bitiş saatini hesapla (aynı iş günündeki saat)
-    const workDate = assignment.shift_plans.work_date; // YYYY-MM-DD
-    const plannedEndStr = `${workDate}T${assignment.shift_plans.end_time}`;
-    const plannedEnd = new Date(plannedEndStr);
-    const diffMinutes = (endTime - plannedEnd) / (1000 * 60); // pozitif = geç, negatif = erken
-    const THRESHOLD = 5; // 5 dakikadan fazla erken/geç ise not gerekli
-
-    // Not gerekli mi?
-    let noteRequired = Math.abs(diffMinutes) > THRESHOLD;
-    let savedNote = null;
-    if (exit_note && exit_note.trim()) {
-      savedNote = exit_note.trim();
-    } else if (noteRequired) {
-      // Frontend'den not gelmemişse (güvenlik için backend kontrolü)
-      const direction = diffMinutes < 0 ? 'erken' : 'geç';
-      savedNote = `[${Math.abs(Math.round(diffMinutes))} dk ${direction} çıkıldı - açıklama girilmedi]`;
-    }
-
-    const updateData = { shift_status: 'completed', actual_end: endTime.toISOString(), total_hours: totalHours };
-    if (savedNote) updateData.exit_note = savedNote;
-
-    const { data, error } = await supabase
-      .from('shift_assignments')
-      .update(updateData)
-      .eq('id', assignment_id)
-      .select()
-      .single();
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    // Aylık özet güncelle
-    try {
-      const { data: workerInfo } = await supabase.from('users').select('name').eq('id', worker_id).single();
-      const workerName = workerInfo?.name || 'Bilinmiyor';
-      const year = endTime.getFullYear();
-      const month = endTime.getMonth() + 1;
-
-      const { data: summary } = await supabase
-        .from('monthly_summaries')
-        .select('*')
-        .eq('employee_id', worker_id)
-        .eq('report_year', year)
-        .eq('report_month', month)
-        .maybeSingle();
-
-      if (summary) {
-        await supabase.from('monthly_summaries').update({
-          total_hours: parseFloat(summary.total_hours || 0) + totalHours,
-          total_sessions: (summary.total_sessions || 0) + 1
-        }).eq('id', summary.id);
-      } else {
-        await supabase.from('monthly_summaries').insert([{
-          employee_id: worker_id,
-          employee_name: workerName,
-          report_year: year,
-          report_month: month,
-          total_hours: totalHours,
-          total_sessions: 1
-        }]);
-      }
-    } catch (summaryErr) {
-      console.error('Monthly summary error:', summaryErr);
-    }
-
-    res.json({
-      message: 'Mesai tamamlandı!',
-      total_hours: totalHours,
-      assignment: data,
-      note_required: noteRequired,
-      diff_minutes: Math.round(diffMinutes)
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// === ÖZELLİK 2: PATCH /api/shifts/:assignment_id/adjust - Geriye dönük saat düzenleme ===
-app.patch('/api/shifts/:assignment_id/adjust', async (req, res) => {
-  try {
-    const { assignment_id } = req.params;
-    const { adjusted_by, actual_start, actual_end } = req.body;
-
-    if (!adjusted_by) return res.status(400).json({ error: 'adjusted_by zorunludur.' });
-    if (!actual_start && !actual_end) return res.status(400).json({ error: 'En az bir saat girilmelidir.' });
-
-    // Sadece super_admin ve manager düzenleyebilir
-    const { data: adjuster } = await supabase.from('users').select('role').eq('id', adjusted_by).single();
-    if (!adjuster || !['super_admin', 'manager'].includes(adjuster.role)) {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
-
-    const { data: current } = await supabase
-      .from('shift_assignments')
-      .select('actual_start, actual_end, shift_status')
-      .eq('id', assignment_id)
-      .single();
-
-    if (!current) return res.status(404).json({ error: 'Atama bulunamadı.' });
-
-    const newStart = actual_start ? new Date(actual_start) : new Date(current.actual_start);
-    const newEnd   = actual_end   ? new Date(actual_end)   : new Date(current.actual_end);
-
-    if (newEnd <= newStart) return res.status(400).json({ error: 'Bitiş saati başlangıçtan sonra olmalıdır.' });
-
-    const totalHours = parseFloat(((newEnd - newStart) / (1000 * 60 * 60)).toFixed(4));
-
-    const updateFields = { total_hours: totalHours };
-    if (actual_start) updateFields.actual_start = newStart.toISOString();
-    if (actual_end)   updateFields.actual_end   = newEnd.toISOString();
-    // Tamamlanmış sayılsın
-    if (current.shift_status !== 'completed') updateFields.shift_status = 'completed';
-
-    const { data, error } = await supabase
-      .from('shift_assignments')
-      .update(updateFields)
-      .eq('id', assignment_id)
-      .select()
-      .single();
-
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Saat güncellendi.', assignment: data, total_hours: totalHours });
-  } catch (err) {
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
-});
-
-// ============================================================
-// ADMIN TEST ENDPOINTS (Manuel Rapor Tetikleme)
-// ============================================================
-app.get('/api/admin/trigger-daily', async (req, res) => {
-  await reporter.sendDailyReport();
-  res.json({ message: 'Günlük Rapor Maili Tetiklendi!' });
-});
-
-app.get('/api/admin/trigger-monthly', async (req, res) => {
-  await reporter.sendMonthlyReport();
-  res.json({ message: 'Aylık Rapor Maili Tetiklendi!' });
-});
-
-// ============================================================
-const PORT = 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Sunucu ${PORT} portunda çalışıyor.`);
-});
-
-// ============================================================
-// ADMIN - ELEMAN YÖNETİMİ
-// ============================================================
-
-// GET /api/admin/workers/:id - ID ile çalışan sorgula (silme doğrulaması için)
-app.get('/api/admin/workers/:id', async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('users').select('id, name, role, company_id').eq('id', req.params.id).single();
-    if (error || !data) return res.status(404).json({ error: 'Çalışan bulunamadı.' });
+    const { data, error } = await supabase.from('users').select('*').eq('id', req.params.id).single();
+    if (error || !data) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
     res.json(data);
   } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
 });
 
-// POST /api/admin/workers - Yeni çalışan ekle (sadece Ekrem)
-app.post('/api/admin/workers', async (req, res) => {
+// POST /api/users – Yeni personel ekle
+app.post('/api/users', async (req, res) => {
   try {
-    const { id, name, pin_code, role = 'worker', company_id } = req.body;
-    if (!id || !name || !pin_code) return res.status(400).json({ error: 'ID, isim ve PIN zorunludur.' });
-    const { data: existing } = await supabase.from('users').select('id').eq('id', id).single();
-    if (existing) return res.status(400).json({ error: 'Bu ID zaten kullanımda.' });
-    const insertData = { id, name, pin_code, role };
-    if (company_id) insertData.company_id = company_id;
-    const { data, error } = await supabase.from('users').insert(insertData).select().single();
+    const { first_name, last_name, email, phone, role, company_id, department_id, position_title, pin_code, employee_number } = req.body;
+    if (!first_name || !last_name || !email || !company_id) {
+      return res.status(400).json({ error: 'Ad, soyad, e-posta ve şirket zorunludur.' });
+    }
+    const validRoles = ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'vorarbeiter', 'mitarbeiter', 'buchhaltung', 'backoffice', 'system_admin'];
+    const userRole = validRoles.includes(role) ? role : 'mitarbeiter';
+
+    const { data, error } = await supabase.from('users').insert({
+      first_name, last_name, email, phone,
+      role: userRole, company_id, department_id, position_title, pin_code, employee_number,
+      status: 'active',
+    }).select().single();
+
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ message: 'Çalışan eklendi.', user: data });
   } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
 });
 
-// DELETE /api/admin/workers/:id - Çalışan sil (Supabase cascade ile tüm kayıtları siler)
-app.delete('/api/admin/workers/:id', async (req, res) => {
+// PATCH /api/users/:id – Güncelle
+app.patch('/api/users/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { data: user } = await supabase.from('users').select('role').eq('id', id).single();
-    if (!user) return res.status(404).json({ error: 'Çalışan bulunamadı.' });
-    if (user.role === 'super_admin') return res.status(403).json({ error: 'Süper Admin silinemez.' });
-    const { error } = await supabase.from('users').delete().eq('id', id);
+    const allowed = ['first_name', 'last_name', 'email', 'phone', 'role', 'status', 'department_id', 'position_title', 'pin_code', 'employee_number', 'weekly_hours', 'employment_type', 'notes'];
+    const updates = {};
+    for (const k of allowed) { if (req.body[k] !== undefined) updates[k] = req.body[k]; }
+    const { data, error } = await supabase.from('users').update(updates).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Çalışan silindi.' });
+    res.json({ message: 'Güncellendi.', user: data });
   } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
 });
 
-// GET /api/today/activity - Günlük takip (kim nerede çalışıyor)
+// PATCH /api/users/:id/deactivate – Pasife al (silme yerine)
+app.patch('/api/users/:id/deactivate', async (req, res) => {
+  try {
+    const { data: user } = await supabase.from('users').select('role').eq('id', req.params.id).single();
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    if (user.role === 'geschaeftsfuehrer' || user.role === 'system_admin') {
+      return res.status(403).json({ error: 'Bu rol pasife alınamaz.' });
+    }
+    await supabase.from('users').update({ status: 'inactive' }).eq('id', req.params.id);
+    res.json({ message: 'Kullanıcı pasife alındı.' });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// ============================================================
+// OPERATION PLANS – YENİ ŞEMA
+// ============================================================
+
+// GET /api/operation-plans?date=YYYY-MM-DD&order_id=...
+app.get('/api/operation-plans', async (req, res) => {
+  try {
+    const { date, order_id, company_id } = req.query;
+    let query = supabase.from('operation_plans').select(`
+      *,
+      order:orders(id, title, order_number, site_address, customer:customers(id, name)),
+      site_supervisor:users!operation_plans_site_supervisor_id_fkey(id, first_name, last_name),
+      operation_plan_personnel(user_id, is_supervisor, users(id, first_name, last_name, role))
+    `);
+    if (order_id) query = query.eq('order_id', order_id);
+    if (date) query = query.eq('plan_date', date);
+    const { data, error } = await query.order('plan_date').order('start_time');
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// POST /api/operation-plans – Yeni plan oluştur
+app.post('/api/operation-plans', async (req, res) => {
+  try {
+    const { order_id, plan_date, start_time, end_time, site_supervisor_id, planned_by, site_instructions, equipment_notes, material_notes, notes } = req.body;
+    if (!order_id || !plan_date || !start_time) {
+      return res.status(400).json({ error: 'İş, tarih ve başlangıç saati zorunludur.' });
+    }
+
+    const { data: plan, error } = await supabase.from('operation_plans').insert({
+      order_id, plan_date, start_time, end_time, site_supervisor_id, planned_by,
+      site_instructions, equipment_notes, material_notes, notes, status: 'draft',
+    }).select().single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json({ message: 'Plan oluşturuldu.', plan });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// POST /api/operation-plans/:id/assign – Personel ata + FCM bildirim
+app.post('/api/operation-plans/:id/assign', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_ids, assigned_by, send_notification = true } = req.body;
+    if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+      return res.status(400).json({ error: 'En az bir personel seçilmelidir.' });
+    }
+
+    // Çakışma kontrolü
+    const { data: plan } = await supabase.from('operation_plans').select('plan_date').eq('id', id).single();
+    if (plan) {
+      const { data: conflicts } = await supabase
+        .from('operation_plan_personnel')
+        .select('user_id, operation_plans!inner(plan_date)')
+        .eq('operation_plans.plan_date', plan.plan_date)
+        .in('user_id', user_ids)
+        .neq('operation_plan_id', id);
+
+      if (conflicts && conflicts.length > 0) {
+        const conflictIds = [...new Set(conflicts.map(c => c.user_id))];
+        const { data: conflictUsers } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .in('id', conflictIds);
+        const names = (conflictUsers || []).map(u => `${u.first_name} ${u.last_name}`).join(', ');
+        return res.status(409).json({
+          error: `${names} aynı tarihte başka bir plana atanmış.`,
+          conflict_user_ids: conflictIds
+        });
+      }
+    }
+
+    // Mevcut atamaları temizle
+    await supabase.from('operation_plan_personnel').delete().eq('operation_plan_id', id);
+
+    // Yeni atamaları ekle
+    const rows = user_ids.map(uid => ({ operation_plan_id: id, user_id: uid, assigned_by }));
+    const { error } = await supabase.from('operation_plan_personnel').insert(rows);
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Planı "sent" durumuna güncelle (trigger notifications + calendar)
+    await supabase.from('operation_plans').update({ status: 'sent', notification_sent: true, notification_sent_at: new Date().toISOString() }).eq('id', id);
+
+    // FCM push bildirim
+    if (send_notification) {
+      const { data: orderInfo } = await supabase
+        .from('operation_plans')
+        .select('plan_date, start_time, order:orders(title)')
+        .eq('id', id)
+        .single();
+
+      const title = '📋 Yeni Görev Atandı!';
+      const body = orderInfo
+        ? `${orderInfo.order?.title} – ${orderInfo.plan_date} ${orderInfo.start_time || ''}`
+        : 'Yeni göreviniz var. Detaylar için uygulamaya bakın.';
+
+      await sendFcmToUsers(user_ids, title, body);
+    }
+
+    res.json({ message: 'Personel atandı ve bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// PATCH /api/operation-plans/:id – Güncelle
+app.patch('/api/operation-plans/:id', async (req, res) => {
+  try {
+    const allowed = ['plan_date', 'start_time', 'end_time', 'site_supervisor_id', 'site_instructions', 'equipment_notes', 'material_notes', 'notes', 'status'];
+    const updates = {};
+    for (const k of allowed) { if (req.body[k] !== undefined) updates[k] = req.body[k]; }
+    const { data, error } = await supabase.from('operation_plans').update(updates).eq('id', req.params.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Güncelleme bildirimi gönder (eğer plan zaten sent ise)
+    if (data.notification_sent) {
+      const { data: personnel } = await supabase
+        .from('operation_plan_personnel')
+        .select('user_id')
+        .eq('operation_plan_id', req.params.id);
+      if (personnel && personnel.length > 0) {
+        await sendFcmToUsers(personnel.map(p => p.user_id), '🔄 Plan Güncellendi', 'Görev planınız güncellendi. Detaylara bakın.');
+      }
+    }
+
+    res.json({ message: 'Plan güncellendi.', plan: data });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// ============================================================
+// WORK SESSIONS – YENİ ŞEMA (mobil saha)
+// ============================================================
+
+// POST /api/work-sessions/start
+app.post('/api/work-sessions/start', async (req, res) => {
+  try {
+    const { order_id, user_id, operation_plan_id, minimum_hours, latitude, longitude } = req.body;
+    if (!order_id || !user_id) return res.status(400).json({ error: 'İş ve kullanıcı ID zorunludur.' });
+
+    // Zaten aktif seans var mı?
+    const { data: existing } = await supabase.from('work_sessions').select('id').eq('user_id', user_id).eq('status', 'started').maybeSingle();
+    if (existing) return res.status(409).json({ error: 'Zaten aktif bir çalışma seansınız var.' });
+
+    const { data, error } = await supabase.from('work_sessions').insert({
+      order_id, user_id, operation_plan_id,
+      actual_start: new Date().toISOString(),
+      minimum_hours: minimum_hours || null,
+      status: 'started',
+      start_latitude: latitude,
+      start_longitude: longitude,
+    }).select().single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Çalışma başlatıldı!', session: data });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// POST /api/work-sessions/:id/end
+app.post('/api/work-sessions/:id/end', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note, latitude, longitude } = req.body;
+
+    const { data: session } = await supabase.from('work_sessions').select('*').eq('id', id).single();
+    if (!session) return res.status(404).json({ error: 'Seans bulunamadı.' });
+    if (session.status !== 'started') return res.status(400).json({ error: 'Aktif seans bulunamadı.' });
+
+    const { data, error } = await supabase.from('work_sessions').update({
+      actual_end: new Date().toISOString(),
+      note,
+      end_latitude: latitude,
+      end_longitude: longitude,
+    }).eq('id', id).select().single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Çalışma tamamlandı!', session: data });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// GET /api/work-sessions/active/:user_id
+app.get('/api/work-sessions/active/:user_id', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('work_sessions')
+      .select('*, order:orders(id, title, order_number, site_address)')
+      .eq('user_id', req.params.user_id).eq('status', 'started').maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// GET /api/work-sessions/my/:user_id – Personelin görevleri
+app.get('/api/work-sessions/my/:user_id', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('operation_plan_personnel')
+      .select(`
+        operation_plan_id, is_supervisor,
+        operation_plans(id, plan_date, start_time, end_time, status, site_instructions, order:orders(id, title, order_number, site_address, customer:customers(id, name)))
+      `)
+      .eq('user_id', req.params.user_id)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// PATCH /api/work-sessions/:id/adjust – Manuel süre düzeltme (yetkili)
+app.patch('/api/work-sessions/:id/adjust', async (req, res) => {
+  try {
+    const { adjusted_by, actual_start, actual_end, adjustment_reason } = req.body;
+    if (!adjusted_by) return res.status(400).json({ error: 'adjusted_by zorunludur.' });
+
+    const { data: adjuster } = await supabase.from('users').select('role').eq('id', adjusted_by).single();
+    if (!adjuster || !['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'system_admin'].includes(adjuster.role)) {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
+
+    const updates = { is_manually_adjusted: true, adjusted_by, adjustment_reason };
+    if (actual_start) updates.actual_start = actual_start;
+    if (actual_end) updates.actual_end = actual_end;
+
+    const { data, error } = await supabase.from('work_sessions').update(updates).eq('id', req.params.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Süre güncellendi.', session: data });
+  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// ============================================================
+// DAILY TRACKER – YENİ ŞEMA
+// ============================================================
 app.get('/api/today/activity', async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
-      .from('shift_assignments')
+      .from('operation_plan_personnel')
       .select(`
-        worker_id, worker_name, role_in_shift, shift_status, actual_start, actual_end, exit_note,
-        shift_plans!inner(work_date, start_time, end_time, status, company_id, companies(name))
+        user_id, is_supervisor,
+        users(id, first_name, last_name, role),
+        operation_plans!inner(
+          id, plan_date, start_time, end_time, status, site_instructions,
+          order:orders(id, title, site_address, customer:customers(id, name))
+        )
       `)
-      .eq('shift_plans.work_date', date)
-      .eq('shift_plans.status', 'approved');
+      .eq('operation_plans.plan_date', date)
+      .in('operation_plans.status', ['sent', 'confirmed']);
+
     if (error) return res.status(500).json({ error: error.message });
-    const rows = (data || []).map(a => ({
-      worker_id:    a.worker_id,
-      worker_name:  a.worker_name,
-      role_in_shift: a.role_in_shift,
-      shift_status: a.shift_status,
-      actual_start: a.actual_start,
-      actual_end:   a.actual_end,
-      exit_note:    a.exit_note,
-      plan_start:   a.shift_plans?.start_time,
-      plan_end:     a.shift_plans?.end_time,
-      company_id:   a.shift_plans?.company_id,
-      company_name: a.shift_plans?.companies?.name,
+
+    // İlgili work_sessions al
+    const planIds = (data || []).map(d => d.operation_plans?.id).filter(Boolean);
+    const { data: sessions } = await supabase.from('work_sessions')
+      .select('user_id, status, actual_start, actual_end')
+      .in('operation_plan_id', planIds);
+
+    const sessionMap = {};
+    (sessions || []).forEach(s => { sessionMap[s.user_id] = s; });
+
+    const result = (data || []).map(d => ({
+      user_id: d.user_id,
+      user_name: `${d.users?.first_name || ''} ${d.users?.last_name || ''}`.trim(),
+      role: d.users?.role,
+      is_supervisor: d.is_supervisor,
+      plan: d.operation_plans,
+      session: sessionMap[d.user_id] || null,
     }));
-    res.json(rows);
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// ============================================================
+// ADMIN - TEST ENDPOINTS
+// ============================================================
+app.get('/api/admin/trigger-daily', async (req, res) => {
+  await reporter.sendDailyReport();
+  res.json({ message: 'Günlük Rapor Tetiklendi!' });
+});
+
+app.get('/api/admin/trigger-monthly', async (req, res) => {
+  await reporter.sendMonthlyReport();
+  res.json({ message: 'Aylık Rapor Tetiklendi!' });
+});
+
+// ============================================================
+// EXTRA WORKS – FCM bildirim ile
+// ============================================================
+app.post('/api/extra-works/:id/approve', async (req, res) => {
+  try {
+    const { approved_by } = req.body;
+    const { data: approver } = await supabase.from('users').select('role').eq('id', approved_by).single();
+    if (!approver || !['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'system_admin'].includes(approver.role)) {
+      return res.status(403).json({ error: 'Yetkiniz yok.' });
+    }
+    const { data, error } = await supabase.from('extra_works')
+      .update({ status: 'approved', approved_by, approved_at: new Date().toISOString() })
+      .eq('id', req.params.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Ek iş onaylandı.', extra_work: data });
   } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+});
+
+// ============================================================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[SERVER] ${PORT} portunda çalışıyor.`);
 });

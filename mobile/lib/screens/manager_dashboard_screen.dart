@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../services/supabase_service.dart';
 import 'login_screen.dart';
-import 'shift_plan_create_screen.dart';
 
 String _safeTime(String? time) {
   if (time == null || time.length < 5) return time ?? '--:--';
@@ -26,12 +26,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
   Future<void> _loadPlans() async {
     setState(() => _isLoading = true);
-    final appState = context.read<AppState>();
     try {
-      final plans = await appState.apiService.getShiftPlans(
-        companyId: appState.currentUser?['company_id'],
-        createdBy: appState.currentUser?['id'],
-      );
+      final plans = await SupabaseService.getOperationPlans();
       setState(() { _plans = plans; _isLoading = false; });
     } catch (e) {
       setState(() => _isLoading = false);
@@ -76,20 +72,17 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await context.read<AppState>().logout();
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
+              await context.read<AppState>().signOut();
+              if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
             },
           )
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF16A34A),
-        onPressed: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftPlanCreateScreen()));
-          _loadPlans();
-        },
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Yeni Vardiya Planı', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        onPressed: _loadPlans,
+        icon: const Icon(Icons.refresh, color: Colors.white),
+        label: const Text('Yenile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: _isLoading
         ? const Center(child: CircularProgressIndicator(color: Color(0xFF16A34A)))

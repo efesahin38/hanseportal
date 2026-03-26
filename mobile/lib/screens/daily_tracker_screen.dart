@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
+import '../services/supabase_service.dart';
 
 class DailyTrackerScreen extends StatefulWidget {
-  const DailyTrackerScreen({Key? key}) : super(key: key);
+  const DailyTrackerScreen({super.key});
   @override
   State<DailyTrackerScreen> createState() => _DailyTrackerScreenState();
 }
@@ -22,9 +21,49 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      final data = await context.read<AppState>().apiService.getTodayActivity(date: _fmtISO(_selectedDate));
+      final dateStr = _fmtISO(_selectedDate);
+      // Yeni şema: operation_plan_personnel + operation_plans
+      final data = await SupabaseService.client
+          .from('operation_plan_personnel')
+          .select('''
+            user_id, is_supervisor,
+            users(id, first_name, last_name, role),
+            operation_plans!inner(
+              id, plan_date, start_time, end_time, status, site_instructions,
+              order:orders(id, title, site_address, customer:customers(id, name)),
+              company:orders(company:companies(name))
+            )
+          ''')
+          .eq('operation_plans.plan_date', dateStr)
+          .inFilter('operation_plans.status', ['sent', 'confirmed']);
+
+      // Work session durumlarını al
+      final planIds = (data as List).map((d) => d['operation_plans']?['id']).where((id) => id != null).toSet().toList();
+      Map<String, dynamic> sessionMap = {};
+      if (planIds.isNotEmpty) {
+        final sessions = await SupabaseService.client
+            .from('work_sessions')
+            .select('user_id, operation_plan_id, status, actual_start, actual_end, actual_duration_h, note')
+            .inFilter('operation_plan_id', planIds);
+        for (final s in (sessions as List)) {
+          final key = '${s['operation_plan_id']}_${s['user_id']}';
+          sessionMap[key] = s;
+        }
+      }
+
+      // Zenginleştirilmiş aktivite listesi
+      final enriched = data.map((row) {
+        final planId = row['operation_plans']?['id'];
+        final userId = row['user_id'];
+        final session = sessionMap['${planId}_$userId'];
+        return {
+          ...Map<String, dynamic>.from(row),
+          'session': session,
+        };
+      }).toList();
+
       if (!mounted) return;
-      setState(() { _activity = data; _isLoading = false; });
+      setState(() { _activity = enriched; _isLoading = false; });
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -49,17 +88,17 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Group by company
-    final Map<String, List<dynamic>> byCompany = {};
+    final Map<String, List<dynamic>> byJob = {};
     for (final row in _activity) {
-      final company = row['company_name'] ?? row['company_id'] ?? 'Bilinmiyor';
-      byCompany.putIfAbsent(company, () => []).add(row);
+      final plan = row['operation_plans'];
+      final order = plan?['order'];
+      final jobKey = order?['title'] ?? 'Bilinmeyen İş';
+      byJob.putIfAbsent(jobKey, () => []).add(row);
     }
-
-    final activeCount    = _activity.where((r) => r['shift_status'] == 'active').length;
-    final completedCount = _activity.where((r) => r['shift_status'] == 'completed').length;
-    final assignedCount  = _activity.where((r) => r['shift_status'] == 'assigned').length;
-    final totalCount     = _activity.length;
+    final sessionStarted  = _activity.where((r) => r['session']?['status'] == 'started').length;
+    final sessionDone     = _activity.where((r) => r['session']?['status'] == 'completed').length;
+    final sessionWaiting  = _activity.where((r) => r['session'] == null).length;
+    final totalCount      = _activity.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
@@ -84,11 +123,11 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
               children: [
                 // Stats row
                 Row(children: [
-                  _statChip(activeCount.toString(), 'Sahada', Colors.green),
+                  _statChip(sessionStarted.toString(), 'Sahada', Colors.green),
                   const SizedBox(width: 8),
-                  _statChip(completedCount.toString(), 'Bitti', Colors.grey),
+                  _statChip(sessionDone.toString(), 'Bitti', Colors.grey),
                   const SizedBox(width: 8),
-                  _statChip(assignedCount.toString(), 'Bekliyor', Colors.blue),
+                  _statChip(sessionWaiting.toString(), 'Bekliyor', Colors.blue),
                   const SizedBox(width: 8),
                   _statChip(totalCount.toString(), 'Toplam', const Color(0xFF4F46E5)),
                 ]),
@@ -114,8 +153,8 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                   ],
                 )),
 
-                // Group by company
-                ...byCompany.entries.map((entry) => Column(
+                // Group by job
+                ...byJob.entries.map((entry) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Company header
@@ -134,25 +173,28 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                         Text('${entry.value.length} kişi', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       ]),
                     ),
-                    // Workers in this company
+                    // Workers in this job
                     ...entry.value.map((row) {
-                      final status = row['shift_status'] ?? 'assigned';
-                      final isLeader = row['role_in_shift'] == 'leader';
+                      final user = row['users'];
+                      final plan = row['operation_plans'];
+                      final sess = row['session'];
+                      final isSupervisor = row['is_supervisor'] == true;
+                      final sessStatus = sess?['status'] as String? ?? 'waiting';
                       Color statusColor;
-                      String statusLabel;
                       IconData statusIcon;
-                      switch(status) {
-                        case 'active': statusColor = Colors.green; statusLabel = 'SAHADA'; statusIcon = Icons.radio_button_checked; break;
-                        case 'completed': statusColor = Colors.grey; statusLabel = 'BİTTİ'; statusIcon = Icons.check_circle_outline; break;
-                        default: statusColor = Colors.blue; statusLabel = 'BEKLİYOR'; statusIcon = Icons.schedule;
+                      switch(sessStatus) {
+                        case 'started': statusColor = Colors.green; statusIcon = Icons.radio_button_checked; break;
+                        case 'completed': statusColor = Colors.grey; statusIcon = Icons.check_circle_outline; break;
+                        default: statusColor = Colors.blue; statusIcon = Icons.schedule;
                       }
+                      final fullName = '${user?['first_name'] ?? ''} ${user?['last_name'] ?? ''}'.trim();
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
-                          border: status == 'active' ? Border.all(color: Colors.green.shade200, width: 1) : null,
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                          border: sessStatus == 'started' ? Border.all(color: Colors.green.shade200, width: 1) : null,
                         ),
                         child: Column(
                           children: [
@@ -162,53 +204,34 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 20,
-                                    backgroundColor: isLeader ? Colors.amber.shade100 : const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                                    backgroundColor: isSupervisor ? Colors.amber.shade100 : const Color(0xFF4F46E5).withOpacity(0.08),
                                     child: Text(
-                                      (row['worker_name'] as String? ?? '?').substring(0, 1),
-                                      style: TextStyle(fontWeight: FontWeight.bold, color: isLeader ? Colors.amber.shade800 : const Color(0xFF4F46E5)),
+                                      fullName.isNotEmpty ? fullName[0] : '?',
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: isSupervisor ? Colors.amber.shade800 : const Color(0xFF4F46E5)),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Text(row['worker_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                            const SizedBox(width: 6),
-                                            Text('#${row['worker_id'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                                            if (isLeader) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(4)),
-                                                child: const Text('LİDER', style: TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold)),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Planlanan: ${(row['plan_start'] ?? '').toString().substring(0,5)} - ${(row['plan_end'] ?? '').toString().substring(0,5)}',
-                                              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Row(children: [
+                                      Expanded(child: Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), overflow: TextOverflow.ellipsis)),
+                                      if (isSupervisor) Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(4)),
+                                        child: const Text('SORUMLU', style: TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ]),
+                                    if (plan != null) Text(
+                                      '${(plan['start_time'] ?? '--:--').toString().substring(0, 5)} – ${(plan['end_time'] ?? '--:--').toString().substring(0, 5)}',
+                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                     ),
-                                  ),
-                                  _statusBadge(status, statusColor, statusIcon),
+                                  ])),
+                                  _statusBadge(sessStatus, statusColor, statusIcon),
                                 ],
                               ),
                             ),
-                            
-                            // Gerçekleşen bilgiler (Eğer varsa)
-                            if (row['actual_start'] != null || row['actual_end'] != null)
+
+                            // Gerçekleşen bilgiler
+                            if (sess != null && (sess['actual_start'] != null || sess['actual_end'] != null))
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -216,58 +239,16 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                                   color: Colors.blue.shade50.withValues(alpha: 0.5),
                                   borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.bolt, size: 14, color: Color(0xFF4F46E5)),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Gerçekleşen: ${row['actual_start'] != null ? DateTime.parse(row['actual_start']).toLocal().toString().substring(11, 16) : '?'} - ${row['actual_end'] != null ? DateTime.parse(row['actual_end']).toLocal().toString().substring(11, 16) : 'Devam Ediyor'}',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
-                                        ),
-                                      ],
-                                    ),
-                                    // Gecikme/Erken bitirme uyarıları
-                                    Builder(builder: (ctx) {
-                                      final List<Widget> alerts = [];
-                                      if (row['actual_start'] != null && row['plan_start'] != null) {
-                                        final act = DateTime.parse(row['actual_start']).toLocal();
-                                        final planTimeParts = (row['plan_start'] as String).split(':');
-                                        final plan = DateTime(act.year, act.month, act.day, int.parse(planTimeParts[0]), int.parse(planTimeParts[1]));
-                                        final diff = act.difference(plan).inMinutes;
-                                        if (diff > 5) alerts.add(_miniAlert('⚠️ $diff dk geç başladı', Colors.red));
-                                        else if (diff < -5) alerts.add(_miniAlert('🚀 ${diff.abs()} dk erken başladı', Colors.green));
-                                      }
-                                      if (row['actual_end'] != null && row['plan_end'] != null) {
-                                        final act = DateTime.parse(row['actual_end']).toLocal();
-                                        final planTimeParts = (row['plan_end'] as String).split(':');
-                                        final plan = DateTime(act.year, act.month, act.day, int.parse(planTimeParts[0]), int.parse(planTimeParts[1]));
-                                        final diff = plan.difference(act).inMinutes;
-                                        if (diff > 5) alerts.add(_miniAlert('⚠️ $diff dk erken bitirdi', Colors.orange));
-                                        else if (diff < -5) alerts.add(_miniAlert('➕ ${diff.abs()} dk fazla çalıştı', Colors.blue));
-                                      }
-                                      if (alerts.isEmpty) return const SizedBox.shrink();
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 6, left: 20),
-                                        child: Wrap(spacing: 6, runSpacing: 4, children: alerts),
-                                      );
-                                    }),
-                                    if (row['exit_note'] != null && (row['exit_note'] as String).isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 8, left: 20),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                          child: Text(
-                                            '📝 Not: ${row['exit_note']}',
-                                            style: TextStyle(color: Colors.orange.shade900, fontSize: 11, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                child: Row(children: [
+                                  const Icon(Icons.bolt, size: 14, color: Color(0xFF4F46E5)),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text(
+                                    'Gerçekleşen: ${sess['actual_start'] != null ? DateTime.parse(sess['actual_start']).toLocal().toString().substring(11, 16) : '?'} – ${sess['actual_end'] != null ? DateTime.parse(sess['actual_end']).toLocal().toString().substring(11, 16) : 'Devam ediyor'}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
+                                  )),
+                                  if (sess['actual_duration_h'] != null)
+                                    Text('${double.tryParse(sess['actual_duration_h'].toString())?.toStringAsFixed(1) ?? '?'} s', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                ]),
                               ),
                           ],
                         ),
