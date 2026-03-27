@@ -9,5 +9,6 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder');
+const supabaseAdmin = createClient(supabaseUrl || 'https://placeholder.supabase.co', process.env.SUPABASE_SERVICE_KEY || 'placeholder');
 
-module.exports = supabase;
+module.exports = { supabase, supabaseAdmin };

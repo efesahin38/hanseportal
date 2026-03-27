@@ -1,7 +1,7 @@
 process.env.TZ = 'Europe/Berlin';
 const express = require('express');
 const cors = require('cors');
-const supabase = require('./supabaseClient');
+const { supabase, supabaseAdmin } = require('./supabaseClient');
 const reporter = require('./reporter');
 const admin = require('firebase-admin');
 require('dotenv').config();
@@ -138,25 +138,52 @@ app.get('/api/users/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
 });
 
-// POST /api/users – Yeni personel ekle
+// POST /api/users – Yeni personel ekle (Güvenli Supabase Auth Bağlantılı)
 app.post('/api/users', async (req, res) => {
   try {
-    const { first_name, last_name, email, phone, role, company_id, department_id, position_title, pin_code, employee_number } = req.body;
+    const { first_name, last_name, email, phone, role, company_id, department_id, position_title, pin_code, employee_number, password } = req.body;
     if (!first_name || !last_name || !email || !company_id) {
       return res.status(400).json({ error: 'Ad, soyad, e-posta ve şirket zorunludur.' });
     }
     const validRoles = ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'vorarbeiter', 'mitarbeiter', 'buchhaltung', 'backoffice', 'system_admin'];
     const userRole = validRoles.includes(role) ? role : 'mitarbeiter';
+    
+    // 1. Supabase Auth'ta kullanıcıyı yarat
+    const defaultPassword = password || '111111';
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: defaultPassword,
+      email_confirm: true
+    });
 
+    if (authError) {
+      if (!authError.message.includes('already exists')) {
+        return res.status(400).json({ error: 'Güvenlik hesabı oluşturulamadı: ' + authError.message });
+      }
+    }
+
+    // Zaten varsa (veya az önce oluşturduysak) Auth ID'yi al
+    let finalAuthId = authData?.user?.id;
+    if (!finalAuthId) {
+       const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+       const existingUser = existingUsers?.users?.find(u => u.email === email);
+       if (existingUser) finalAuthId = existingUser.id;
+    }
+
+    // 2. Public users tablosuna ekle
     const { data, error } = await supabase.from('users').insert({
+      auth_id: finalAuthId,
       first_name, last_name, email, phone,
       role: userRole, company_id, department_id, position_title, pin_code, employee_number,
       status: 'active',
     }).select().single();
 
     if (error) return res.status(500).json({ error: error.message });
-    res.status(201).json({ message: 'Çalışan eklendi.', user: data });
-  } catch (err) { res.status(500).json({ error: 'Sunucu hatası' }); }
+    res.status(201).json({ message: 'Çalışan başarıyla oluşturuldu.', user: data });
+  } catch (err) { 
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' }); 
+  }
 });
 
 // PATCH /api/users/:id – Güncelle

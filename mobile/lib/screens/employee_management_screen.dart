@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../config/env.dart';
 
 class EmployeeManagementScreen extends StatefulWidget {
   const EmployeeManagementScreen({Key? key}) : super(key: key);
@@ -15,6 +18,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
   // ADD fields
   final _addIdCtrl   = TextEditingController();
   final _addNameCtrl = TextEditingController();
+  final _addPassCtrl = TextEditingController(); // YENİ ŞİFRE ALANI
   final _addPinCtrl  = TextEditingController();
   bool _isAdding = false;
   String? _addError;
@@ -38,31 +42,43 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
 
   Future<void> _addEmployee() async {
     final name = _addNameCtrl.text.trim();
+    final pass = _addPassCtrl.text.trim();
     final pin  = _addPinCtrl.text.trim();
-    if (name.isEmpty) {
-      setState(() { _addError = 'İsim zorunludur.'; _addSuccess = null; }); return;
+    if (name.isEmpty || pass.isEmpty) {
+      setState(() { _addError = 'İsim ve Şifre zorunludur.'; _addSuccess = null; }); return;
     }
     setState(() { _isAdding = true; _addError = null; _addSuccess = null; });
     try {
       final appState = context.read<AppState>();
-      // Split name into first/last
       final parts = name.split(' ');
       final firstName = parts.first;
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-      await SupabaseService.upsertUser({
-        'first_name': firstName,
-        'last_name': lastName,
-        'email': '${firstName.toLowerCase()}.${lastName.toLowerCase()}@hanse.de',
-        'company_id': appState.companyId,
-        'role': 'mitarbeiter',
-        if (pin.isNotEmpty) 'pin_code': pin,
-        'status': 'active',
-      });
+      
+      final response = await http.post(
+        Uri.parse('${Env.backendUrl}/api/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'email': '${firstName.toLowerCase()}.${lastName.toLowerCase()}@hanse.de',
+          'company_id': appState.companyId,
+          'role': 'mitarbeiter',
+          'password': pass,
+          'pin_code': pin.isNotEmpty ? pin : null,
+          'employee_number': _addIdCtrl.text.trim().isNotEmpty ? _addIdCtrl.text.trim() : null,
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        final errBody = jsonDecode(response.body);
+        throw Exception(errBody['error'] ?? 'Kayıt sırasında hata oluştu.');
+      }
+
       if (!mounted) return;
       setState(() {
         _isAdding = false;
         _addSuccess = '✅ $name sisteme eklendi!';
-        _addIdCtrl.clear(); _addNameCtrl.clear(); _addPinCtrl.clear();
+        _addIdCtrl.clear(); _addNameCtrl.clear(); _addPinCtrl.clear(); _addPassCtrl.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -164,6 +180,8 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
       _field(controller: _addIdCtrl, label: 'Çalışan ID', hint: 'Örn: 1041', icon: Icons.badge),
       const SizedBox(height: 14),
       _field(controller: _addNameCtrl, label: 'Ad Soyad', hint: 'Örn: Ahmet Yılmaz', icon: Icons.person),
+      const SizedBox(height: 14),
+      _field(controller: _addPassCtrl, label: 'Giriş Şifresi', hint: 'Örn: ahmet123 (Uygulama Girişi)', icon: Icons.password),
       const SizedBox(height: 14),
       _field(controller: _addPinCtrl, label: 'PIN Şifre', hint: 'Örn: 1234', icon: Icons.lock, isPin: true),
       const SizedBox(height: 20),
