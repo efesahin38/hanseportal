@@ -81,126 +81,126 @@ INSERT INTO departments (company_id, name, code) VALUES
 -- ============================================================
 
 -- Geschäftsführer (Patron) – 1 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000001', 'Mehmet', 'Yıldırım', 'mehmet.yildirim@hanse-kollektiv.de', '+49 170 1234567',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
-  'geschaeftsfuehrer', 'Geschäftsführer', 'active', 'Vollzeit', '0001');
+  'geschaeftsfuehrer', 'Geschäftsführer', 'active', 'Vollzeit', '0001', '1111');
 
 -- Betriebsleiter (Operasyon Müdürü) – 2 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000002', 'Klaus', 'Bauer', 'k.bauer@hanse-kollektiv.de', '+49 171 2345678',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'betriebsleiter', 'Betriebsleiter Reinigung', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000001', '0002'),
+  'bbbbbbbb-0000-0000-0000-000000000001', '0002', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000003', 'Thomas', 'Müller', 't.mueller@hanse-kollektiv.de', '+49 171 3456789',
   'aaaaaaaa-0000-0000-0000-000000000003',
   'betriebsleiter', 'Betriebsleiter Rail', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000001', '0003');
+  'bbbbbbbb-0000-0000-0000-000000000001', '0003', '1111');
 
 -- Bereichsleiter (Bölüm Sorumlusu) – 3 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000004', 'Sandra', 'Hoffmann', 's.hoffmann@hanse-service.de', '+49 172 4567890',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'bereichsleiter', 'Bereichsleiter Gebäudereinigung', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000002', '0004'),
+  'bbbbbbbb-0000-0000-0000-000000000002', '0004', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000005', 'Fatma', 'Yılmaz', 'f.yilmaz@hanse-service.de', '+49 172 5678901',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'bereichsleiter', 'Bereichsleiter Hotelservice', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000002', '0005'),
+  'bbbbbbbb-0000-0000-0000-000000000002', '0005', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000006', 'Peter', 'Schmidt', 'p.schmidt@hanse-rail.de', '+49 172 6789012',
   'aaaaaaaa-0000-0000-0000-000000000003',
   'bereichsleiter', 'Bereichsleiter Gleisbausicherung', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000003', '0006');
+  'bbbbbbbb-0000-0000-0000-000000000003', '0006', '1111');
 
 -- Vorarbeiter (Ustabaşı / Saha Sorumlusu) – 3 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000007', 'Hasan', 'Demir', 'h.demir@hanse-service.de', '+49 176 7890123',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'vorarbeiter', 'Vorarbeiter Reinigung', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000004', '0007'),
+  'bbbbbbbb-0000-0000-0000-000000000004', '0007', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000008', 'İbrahim', 'Kaya', 'i.kaya@hanse-service.de', '+49 176 8901234',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'vorarbeiter', 'Vorarbeiter Hotel', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000005', '0008'),
+  'bbbbbbbb-0000-0000-0000-000000000005', '0008', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000009', 'Markus', 'Weber', 'm.weber@hanse-rail.de', '+49 176 9012345',
   'aaaaaaaa-0000-0000-0000-000000000003',
   'vorarbeiter', 'Vorarbeiter Rail', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000006', '0009');
+  'bbbbbbbb-0000-0000-0000-000000000006', '0009', '1111');
 
 -- Mitarbeiter (Saha Çalışanı) – 4 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000010', 'Ali', 'Çelik', 'a.celik@hanse-service.de', '+49 177 0123456',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'mitarbeiter', 'Reinigungskraft', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000007', '1010'),
+  'bbbbbbbb-0000-0000-0000-000000000007', '1010', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000011', 'Ayşe', 'Arslan', 'a.arslan@hanse-service.de', '+49 177 1234567',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'mitarbeiter', 'Reinigungskraft', 'active', 'Teilzeit',
-  'bbbbbbbb-0000-0000-0000-000000000007', '1011'),
+  'bbbbbbbb-0000-0000-0000-000000000007', '1011', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000012', 'Mehmet', 'Kurt', 'm.kurt@hanse-service.de', '+49 177 2345678',
   'aaaaaaaa-0000-0000-0000-000000000002',
   'mitarbeiter', 'Hoteldiener', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000008', '1012'),
+  'bbbbbbbb-0000-0000-0000-000000000008', '1012', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000013', 'Sabine', 'Becker', 's.becker@hanse-rail.de', '+49 177 3456789',
   'aaaaaaaa-0000-0000-0000-000000000003',
   'mitarbeiter', 'Sicherungsposten', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000009', '1013');
+  'bbbbbbbb-0000-0000-0000-000000000009', '1013', '1111');
 
 -- Buchhaltung (Muhasebe) – 3 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000014', 'Gisela', 'Koch', 'g.koch@hanse-kollektiv.de', '+49 178 4567890',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'buchhaltung', 'Leiterin Buchhaltung', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000001', '1414'),
+  'bbbbbbbb-0000-0000-0000-000000000001', '1414', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000015', 'Ursula', 'Braun', 'u.braun@hanse-kollektiv.de', '+49 178 5678901',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'buchhaltung', 'Buchhalter', 'active', 'Teilzeit',
-  'bbbbbbbb-0000-0000-0000-000000000014', '1515'),
+  'bbbbbbbb-0000-0000-0000-000000000014', '1515', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000016', 'Emre', 'Şahin', 'e.sahin@hanse-kollektiv.de', '+49 178 6789012',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'buchhaltung', 'Buchhalter', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000014', '1616');
+  'bbbbbbbb-0000-0000-0000-000000000014', '1616', '1111');
 
 -- Backoffice (Büro / Verwaltung) – 3 kişi
-INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code)
+INSERT INTO users (id, first_name, last_name, email, phone, company_id, role, position_title, status, employment_type, manager_id, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000017', 'Martina', 'Schulz', 'm.schulz@hanse-kollektiv.de', '+49 179 7890123',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'backoffice', 'Verwaltungsleiterin', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000001', '1717'),
+  'bbbbbbbb-0000-0000-0000-000000000001', '1717', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000018', 'Lisa', 'Wagner', 'l.wagner@hanse-kollektiv.de', '+49 179 8901234',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'backoffice', 'Sachbearbeiterin', 'active', 'Teilzeit',
-  'bbbbbbbb-0000-0000-0000-000000000017', '1818'),
+  'bbbbbbbb-0000-0000-0000-000000000017', '1818', '1111'),
 
 ('bbbbbbbb-0000-0000-0000-000000000019', 'Zeynep', 'Öztürk', 'z.ozturk@hanse-kollektiv.de', '+49 179 9012345',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
   'backoffice', 'Sachbearbeiterin', 'active', 'Vollzeit',
-  'bbbbbbbb-0000-0000-0000-000000000017', '1919');
+  'bbbbbbbb-0000-0000-0000-000000000017', '1919', '1111');
 
 -- System Admin – 1 kişi
-INSERT INTO users (id, first_name, last_name, email, company_id, role, position_title, status, employment_type, pin_code)
+INSERT INTO users (id, first_name, last_name, email, company_id, role, position_title, status, employment_type, pin_code, password)
 VALUES
 ('bbbbbbbb-0000-0000-0000-000000000020', 'Admin', 'System', 'admin@hanse-kollektiv.de',
   (SELECT id FROM companies WHERE short_name = 'Hanse Kollektiv'),
-  'system_admin', 'IT / System Administrator', 'active', 'Vollzeit', '9999');
+  'system_admin', 'IT / System Administrator', 'active', 'Vollzeit', '9999', '1111');
 
 -- ============================================================
 -- 4. PERSONEL – HİZMET ALANI YETKİNLİKLERİ
@@ -653,3 +653,31 @@ VALUES
 -- Ön Fatura     : 2 (biri faturalandı, biri incelemede)
 -- Bildirim      : 5
 -- ============================================================
+-- ============================================================
+-- 3. TEST PERSONELLERİ (20 ADET ÇALIŞAN/LİDER)
+-- Tüm şifreler "1"
+-- ============================================================
+DELETE FROM users WHERE email LIKE '%@test.com';
+
+INSERT INTO users (id, first_name, last_name, email, password, company_id, department_id, role, position_title, status) VALUES
+
+('cccccccc-0000-0000-0000-000000000001', 'Test1', 'Personeli', 'test1@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='HS' LIMIT 1), 'mitarbeiter', 'Hotel Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000002', 'Test2', 'Personeli', 'test2@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='GBS' LIMIT 1), 'mitarbeiter', 'Ray Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000003', 'Test3', 'Personeli', 'test3@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='BO' LIMIT 1), 'mitarbeiter', 'İnşaat Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000004', 'Test4', 'Personeli', 'test4@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='GR' LIMIT 1), 'mitarbeiter', 'Temizlik Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000005', 'Test5', 'Personeli', 'test5@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='HS' LIMIT 1), 'vorarbeiter', 'Hotel Servisi İş Lideri', 'active'),
+('cccccccc-0000-0000-0000-000000000006', 'Test6', 'Personeli', 'test6@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='GBS' LIMIT 1), 'mitarbeiter', 'Ray Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000007', 'Test7', 'Personeli', 'test7@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='BO' LIMIT 1), 'mitarbeiter', 'İnşaat Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000008', 'Test8', 'Personeli', 'test8@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='GR' LIMIT 1), 'mitarbeiter', 'Temizlik Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000009', 'Test9', 'Personeli', 'test9@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='HS' LIMIT 1), 'mitarbeiter', 'Hotel Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000010', 'Test10', 'Personeli', 'test10@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='GBS' LIMIT 1), 'vorarbeiter', 'Ray Servisi İş Lideri', 'active'),
+('cccccccc-0000-0000-0000-000000000011', 'Test11', 'Personeli', 'test11@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='BO' LIMIT 1), 'mitarbeiter', 'İnşaat Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000012', 'Test12', 'Personeli', 'test12@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='GR' LIMIT 1), 'mitarbeiter', 'Temizlik Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000013', 'Test13', 'Personeli', 'test13@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='HS' LIMIT 1), 'mitarbeiter', 'Hotel Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000014', 'Test14', 'Personeli', 'test14@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='GBS' LIMIT 1), 'mitarbeiter', 'Ray Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000015', 'Test15', 'Personeli', 'test15@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='BO' LIMIT 1), 'vorarbeiter', 'İnşaat Servisi İş Lideri', 'active'),
+('cccccccc-0000-0000-0000-000000000016', 'Test16', 'Personeli', 'test16@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='GR' LIMIT 1), 'mitarbeiter', 'Temizlik Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000017', 'Test17', 'Personeli', 'test17@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='HS' LIMIT 1), 'mitarbeiter', 'Hotel Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000018', 'Test18', 'Personeli', 'test18@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='GBS' LIMIT 1), 'mitarbeiter', 'Ray Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000019', 'Test19', 'Personeli', 'test19@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000003', (SELECT id FROM departments WHERE code='BO' LIMIT 1), 'mitarbeiter', 'İnşaat Servisi Çalışanı', 'active'),
+('cccccccc-0000-0000-0000-000000000020', 'Test20', 'Personeli', 'test20@test.com', '1', 'aaaaaaaa-0000-0000-0000-000000000002', (SELECT id FROM departments WHERE code='GR' LIMIT 1), 'vorarbeiter', 'Temizlik İş Lideri', 'active');

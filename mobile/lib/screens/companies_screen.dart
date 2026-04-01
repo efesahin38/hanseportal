@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'company_form_screen.dart';
@@ -46,87 +47,89 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
               label: const Text('Yeni Şirket', style: TextStyle(fontFamily: 'Inter')),
             )
           : null,
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: _companies.isEmpty
-                  ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.apartment_outlined, size: 56, color: AppTheme.textSub),
-                      SizedBox(height: 12),
-                      Text('Şirket bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                    ]))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _companies.length,
-                      itemBuilder: (_, i) {
-                        final c = _companies[i];
-                        final status = c['status'] ?? 'active';
-                        final relation = c['relation_type'] ?? 'subsidiary';
-                        return Card(
-                          child: Theme(
-                            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                            child: ExpansionTile(
-                              leading: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: (relation == 'parent' ? AppTheme.primary : AppTheme.accent).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  relation == 'parent' ? Icons.account_balance : Icons.apartment,
-                                  color: relation == 'parent' ? AppTheme.primary : AppTheme.accent,
-                                  size: 22,
-                                ),
-                              ),
-                              title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                              subtitle: Row(
-                                children: [
-                                  Text(c['company_type'] ?? '', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.statusColor(status).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(AppTheme.statusLabel(status),
-                                      style: TextStyle(fontSize: 10, color: AppTheme.statusColor(status), fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+      body: WebContentWrapper(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: _companies.isEmpty
+                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.apartment_outlined, size: 56, color: AppTheme.textSub),
+                        SizedBox(height: 12),
+                        Text('Şirket bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      ]))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _companies.length,
+                        itemBuilder: (_, i) {
+                          final c = _companies[i];
+                          final status = c['status'] ?? 'active';
+                          final relation = c['relation_type'] ?? 'subsidiary';
+                          return Card(
+                            child: Theme(
+                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                leading: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: (relation == 'parent' ? AppTheme.primary : AppTheme.accent).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
+                                  child: Icon(
+                                    relation == 'parent' ? Icons.account_balance : Icons.apartment,
+                                    color: relation == 'parent' ? AppTheme.primary : AppTheme.accent,
+                                    size: 22,
+                                  ),
+                                ),
+                                title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
+                                subtitle: Row(
+                                  children: [
+                                    Text(c['company_type'] ?? '', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.statusColor(status).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(AppTheme.statusLabel(status),
+                                        style: TextStyle(fontSize: 10, color: AppTheme.statusColor(status), fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                                    ),
+                                  ],
+                                ),
+                                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                children: [
+                                  _DetailRow(icon: Icons.location_on_outlined, label: 'Adres', value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
+                                  _DetailRow(icon: Icons.phone_outlined, label: 'Telefon', value: c['phone']),
+                                  _DetailRow(icon: Icons.email_outlined, label: 'E-posta', value: c['email']),
+                                  _DetailRow(icon: Icons.receipt_outlined, label: 'Vergi No', value: c['tax_number']),
+                                  _DetailRow(icon: Icons.account_balance_outlined, label: 'IBAN', value: c['iban']),
+                                  _DetailRow(icon: Icons.business_center_outlined, label: 'Hizmet Alanı', value: c['service_description']),
+                                  if (canCreate)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Row(
+                                        children: [
+                                          TextButton.icon(
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(builder: (_) => CompanyFormScreen(company: c)),
+                                            ).then((ok) { if (ok == true) _load(); }),
+                                            icon: const Icon(Icons.edit_outlined, size: 16),
+                                            label: const Text('Düzenle', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                 ],
                               ),
-                              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              children: [
-                                _DetailRow(icon: Icons.location_on_outlined, label: 'Adres', value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
-                                _DetailRow(icon: Icons.phone_outlined, label: 'Telefon', value: c['phone']),
-                                _DetailRow(icon: Icons.email_outlined, label: 'E-posta', value: c['email']),
-                                _DetailRow(icon: Icons.receipt_outlined, label: 'Vergi No', value: c['tax_number']),
-                                _DetailRow(icon: Icons.account_balance_outlined, label: 'IBAN', value: c['iban']),
-                                _DetailRow(icon: Icons.business_center_outlined, label: 'Hizmet Alanı', value: c['service_description']),
-                                if (canCreate)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Row(
-                                      children: [
-                                        TextButton.icon(
-                                          onPressed: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (_) => CompanyFormScreen(company: c)),
-                                          ).then((ok) { if (ok == true) _load(); }),
-                                          icon: const Icon(Icons.edit_outlined, size: 16),
-                                          label: const Text('Düzenle', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
                             ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
+                          );
+                        },
+                      ),
+              ),
+      ),
     );
   }
 

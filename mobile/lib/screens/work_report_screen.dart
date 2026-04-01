@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/pdf_service.dart';
 
 /// İş Sonu Raporlama ekranı (Bölüm 12)
 class WorkReportScreen extends StatefulWidget {
@@ -76,6 +78,13 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
         totalExtra += (s['extra_hours'] as num?)?.toDouble() ?? 0;
       }
 
+      // Bölüm 10.4: Minimum fatura süresi kuralı
+      final minHours = (_order?['minimum_billable_hours'] as num?)?.toDouble() ?? 4.0;
+      if (totalBillable < minHours && totalBillable > 0) {
+        // Eğer fiili/billable yetersizse, minimuma tamamla (Esas Süre ayrımı)
+        totalBillable = minHours; 
+      }
+
       final data = {
         'order_id': widget.orderId,
         if (_report != null) 'id': _report!['id'],
@@ -112,6 +121,29 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
     }
   }
 
+  Future<void> _exportPdf(Map<String, dynamic>? order, bool isFinalized) async {
+    if (order == null) return;
+    setState(() => _saving = true);
+    try {
+      final sessions = await SupabaseService.getWorkSessionsForOrder(widget.orderId);
+      final bytes = await PdfService.buildWorkReportPdf(
+        order: order,
+        report: _report,
+        sessions: sessions,
+        extraWorks: _extraWorks,
+      );
+      final orderNum = order['order_number'] ?? 'rapor';
+      await PdfService.sharePdf(bytes, 'is_sonu_raporu_$orderNum.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('PDF hatası: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   void dispose() {
     _summaryNote.dispose();
@@ -133,6 +165,12 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
       appBar: AppBar(
         title: const Text('İş Sonu Raporu'),
         actions: [
+          // PDF Export
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'PDF Oluştur & Paylaş',
+            onPressed: _saving ? null : () => _exportPdf(o, isFinalized),
+          ),
           if (!isFinalized)
             TextButton.icon(
               onPressed: _saving ? null : () => _save(finalize: true),
@@ -141,130 +179,202 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Finalized banner
-          if (isFinalized)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.success.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+      body: WebContentWrapper(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Finalized banner
+            if (isFinalized)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.verified, color: AppTheme.success),
+                  const SizedBox(width: 8),
+                  const Text('Bu rapor finalize edilmiştir', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                ]),
               ),
-              child: Row(children: [
-                const Icon(Icons.verified, color: AppTheme.success),
-                const SizedBox(width: 8),
-                const Text('Bu rapor finalize edilmiştir', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
-              ]),
-            ),
-
-          // İş Özeti
-          if (o != null) _infoCard('İş Özeti', [
-            _stat('İş Numarası', o['order_number'] ?? ''),
-            _stat('Müşteri', o['customer']?['name'] ?? ''),
-            _stat('Durum', AppTheme.statusLabel(o['status'] ?? '')),
-            _stat('Saha Adresi', o['site_address'] ?? ''),
-          ]),
-          const SizedBox(height: 12),
-
-          // Çalışma Süre Özeti
-          FutureBuilder(
-            future: SupabaseService.client
-                .from('work_sessions')
-                .select('actual_duration_h, billable_hours, extra_hours, user_id, actual_start, actual_end')
-                .eq('order_id', widget.orderId),
-            builder: (ctx, snap) {
-              if (!snap.hasData) return const SizedBox();
-              final sessions = snap.data as List;
-              double totalActual = 0, totalBillable = 0, totalExtra = 0;
-              for (final s in sessions) {
-                totalActual += (s['actual_duration_h'] as num?)?.toDouble() ?? 0;
-                totalBillable += (s['billable_hours'] as num?)?.toDouble() ?? 0;
-                totalExtra += (s['extra_hours'] as num?)?.toDouble() ?? 0;
-              }
-              return _infoCard('Çalışma Süre Özeti', [
-                _stat('Toplam Fiili Süre', '${totalActual.toStringAsFixed(1)} saat'),
-                _stat('Faturalanabilir Süre', '${totalBillable.toStringAsFixed(1)} saat'),
-                _stat('Fazla Mesai', '${totalExtra.toStringAsFixed(1)} saat'),
-                _stat('Seans Sayısı', '${sessions.length}'),
-              ]);
-            },
-          ),
-          const SizedBox(height: 12),
-
-          // Ek İşler
-          _infoCard('Ek İşler (${_extraWorks.length})', [
-            if (_extraWorks.isEmpty)
-              const Text('Ek iş yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'))
-            else
-              ..._extraWorks.map((ew) => _extraWorkRow(ew)),
-          ]),
-          const SizedBox(height: 12),
-
-          // Maliyet / Gelir
-          _infoCard('Tahmini Maliyet & Gelir', [
-            TextFormField(
-              controller: _totalRevenue,
-              enabled: !isFinalized,
-              decoration: const InputDecoration(labelText: 'Tahmini Gelir (€)', prefixText: '€ '),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: TextFormField(
-                controller: _laborCost,
-                enabled: !isFinalized,
-                decoration: const InputDecoration(labelText: 'İşçilik Maliyeti (€)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              )),
-              const SizedBox(width: 10),
-              Expanded(child: TextFormField(
-                controller: _materialCost,
-                enabled: !isFinalized,
-                decoration: const InputDecoration(labelText: 'Malzeme Maliyeti (€)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              )),
+  
+            // İş Özeti
+            if (o != null) _infoCard('İş Özeti', [
+              _stat('İş Numarası', o['order_number'] ?? ''),
+              _stat('Müşteri', o['customer']?['name'] ?? ''),
+              _stat('Durum', AppTheme.statusLabel(o['status'] ?? '')),
+              _stat('Saha Adresi', o['site_address'] ?? ''),
             ]),
-          ]),
-          const SizedBox(height: 12),
-
-          // Notlar
-          _infoCard('Notlar & Değerlendirme', [
-            TextFormField(
-              controller: _summaryNote,
-              enabled: !isFinalized,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Genel Özet Notu'),
+            const SizedBox(height: 12),
+  
+            // Çalışma Süre Özeti (Sadece Muhasebe ve Yönetim görebilir)
+            if (context.read<AppState>().isBuchhaltung || context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isSystemAdmin)
+              FutureBuilder(
+                future: SupabaseService.client
+                    .from('work_sessions')
+                    .select('''
+                      *,
+                      user:users!work_sessions_user_id_fkey(first_name, last_name)
+                    ''')
+                    .eq('order_id', widget.orderId),
+                builder: (ctx, snap) {
+                  if (!snap.hasData) return const SizedBox();
+                  final sessions = snap.data as List;
+                  double totalActual = 0, totalBillable = 0, totalExtra = 0;
+                  
+                  for (final s in sessions) {
+                    totalActual += (s['actual_duration_h'] as num?)?.toDouble() ?? 0;
+                    // Onaylanmış saat varsa onu kullan, yoksa ham saat (billable_hours)
+                    final sBillable = (s['approved_billable_hours'] as num?)?.toDouble() ?? (s['billable_hours'] as num?)?.toDouble() ?? 0;
+                    totalBillable += sBillable;
+                    totalExtra += (s['extra_hours'] as num?)?.toDouble() ?? 0;
+                  }
+                  
+                  final minH = (_order?['minimum_billable_hours'] as num?)?.toDouble() ?? 4.0;
+                  final displayBillable = totalBillable < minH && totalBillable > 0 ? minH : totalBillable;
+  
+                  return Column(
+                    children: [
+                      _infoCard('Çalışma Süre Özeti (Onaylı)', [
+                        _stat('Fiili Çalışma Süresi', '${totalActual.toStringAsFixed(1)} saat'),
+                        _stat('Esas (Hizmet) Süresi', '${displayBillable.toStringAsFixed(1)} saat', isBold: true),
+                        if (totalBillable < minH && totalBillable > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text('⚠️ Not: Minimum $minH saat kuralı uygulandı', style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontFamily: 'Inter')),
+                          ),
+                        const Divider(),
+                        _stat('Fazla Mesai', '${totalExtra.toStringAsFixed(1)} saat'),
+                        _stat('Seans Sayısı', '${sessions.length}'),
+                      ]),
+                      const SizedBox(height: 12),
+                      _infoCard('Personel Çalışma Detayı', [
+                        ...sessions.map((s) {
+                          final u = s['user'];
+                          final hrs = (s['approved_billable_hours'] as num?)?.toDouble() ?? (s['billable_hours'] as num?)?.toDouble() ?? 0;
+                          final isApproved = s['approval_status'] == 'approved';
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 13, fontFamily: 'Inter')),
+                                Row(
+                                  children: [
+                                    Text('${hrs.toStringAsFixed(1)} sa', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      isApproved ? Icons.check_circle : Icons.pending,
+                                      size: 14,
+                                      color: isApproved ? AppTheme.success : AppTheme.warning,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ]),
+                      const SizedBox(height: 12),
+                    ],
+                  );
+                },
+              ),
+  
+            // Ek İşler
+            _infoCard('Ek İşler (${_extraWorks.length})', [
+              if (_extraWorks.isEmpty)
+                const Text('Ek iş yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'))
+              else
+                ..._extraWorks.map((ew) => _extraWorkRow(ew)),
+            ]),
+            const SizedBox(height: 12),
+  
+            // Maliyet / Gelir - Sadece yetkili personeller görebilir
+            if (context.read<AppState>().isBuchhaltung || context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isBetriebsleiter || context.read<AppState>().isSystemAdmin)
+              _infoCard('Tahmini Maliyet & Gelir (Yönetici Özeti)', [
+                TextFormField(
+                  controller: _totalRevenue,
+                  enabled: !isFinalized,
+                  decoration: const InputDecoration(labelText: 'Tahmini Gelir (€)', prefixText: '€ '),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: TextFormField(
+                    controller: _laborCost,
+                    enabled: !isFinalized,
+                    decoration: const InputDecoration(labelText: 'İşçilik Maliyeti (€)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextFormField(
+                    controller: _materialCost,
+                    enabled: !isFinalized,
+                    decoration: const InputDecoration(labelText: 'Malzeme Maliyeti (€)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  )),
+                ]),
+              ]),
+            if (context.read<AppState>().isBuchhaltung || context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isBetriebsleiter || context.read<AppState>().isSystemAdmin)
+              const SizedBox(height: 12),
+  
+            // Notlar
+            _infoCard('Notlar & Değerlendirme', [
+              TextFormField(
+                controller: _summaryNote,
+                enabled: !isFinalized,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Genel Özet Notu'),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _qualityNote,
+                enabled: !isFinalized,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Kalite Notu'),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _customerFeedback,
+                enabled: !isFinalized,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Müşteri Geri Bildirimi'),
+              ),
+            ]),
+  
+            const SizedBox(height: 24),
+            if (!isFinalized) ...[
+              ElevatedButton(
+                onPressed: _saving ? null : () => _save(),
+                child: _saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Taslak Olarak Kaydet', style: TextStyle(fontFamily: 'Inter')),
+              ),
+              const SizedBox(height: 16),
+            ],
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isFinalized ? AppTheme.primary : Colors.white,
+                foregroundColor: isFinalized ? Colors.white : AppTheme.primary,
+                side: isFinalized ? null : const BorderSide(color: AppTheme.primary),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _saving ? null : () => _exportPdf(o, isFinalized),
+              icon: Icon(Icons.picture_as_pdf, color: isFinalized ? Colors.white : AppTheme.primary),
+              label: Text('PDF 📄 ile Paylaş', style: TextStyle(
+                color: isFinalized ? Colors.white : AppTheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Inter',
+              )),
             ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _qualityNote,
-              enabled: !isFinalized,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Kalite Notu'),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _customerFeedback,
-              enabled: !isFinalized,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Müşteri Geri Bildirimi'),
-            ),
-          ]),
-
-          const SizedBox(height: 24),
-          if (!isFinalized)
-            ElevatedButton(
-              onPressed: _saving ? null : () => _save(),
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Taslak Olarak Kaydet'),
-            ),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -286,11 +396,11 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
     ),
   );
 
-  Widget _stat(String label, String value) => Padding(
+  Widget _stat(String label, String value, {bool isBold = false}) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Row(children: [
-      SizedBox(width: 120, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'))),
-      Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontFamily: 'Inter', fontWeight: FontWeight.w500))),
+      SizedBox(width: 140, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'))),
+      Expanded(child: Text(value, style: TextStyle(fontSize: 13, fontFamily: 'Inter', fontWeight: isBold ? FontWeight.bold : FontWeight.w500))),
     ]),
   );
 

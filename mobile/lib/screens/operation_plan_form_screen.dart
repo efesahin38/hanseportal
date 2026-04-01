@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 
@@ -8,7 +9,8 @@ import '../services/supabase_service.dart';
 class OperationPlanFormScreen extends StatefulWidget {
   final String orderId;
   final String? planId; // null = yeni
-  const OperationPlanFormScreen({super.key, required this.orderId, this.planId});
+  final DateTime? initialDate; // Planlama ekranından başlatıldığında tarih
+  const OperationPlanFormScreen({super.key, required this.orderId, this.planId, this.initialDate});
 
   @override
   State<OperationPlanFormScreen> createState() => _OperationPlanFormScreenState();
@@ -20,7 +22,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   final _equipmentNotes = TextEditingController();
   final _materialNotes = TextEditingController();
   final _notes = TextEditingController();
-  final _estDuration = TextEditingController();
 
   DateTime _planDate = DateTime.now();
   TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 0);
@@ -28,25 +29,59 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   String? _supervisorId;
   List<String> _selectedPersonnelIds = [];
   bool _saving = false;
+  bool _loadingPersonnel = true;
+  String _selectedFilter = 'Tümü'; // Yeni filtre
+  String _orderTitle = 'İş'; 
 
   List<Map<String, dynamic>> _personnel = [];
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialDate != null) {
+      _planDate = widget.initialDate!;
+    }
     _loadData();
+    _loadOrderTitle();
     if (widget.planId != null) _loadPlan();
+  }
+
+  Future<void> _loadOrderTitle() async {
+    try {
+      final order = await SupabaseService.getOrder(widget.orderId);
+      if (order != null && mounted) {
+        setState(() => _orderTitle = order['title'] ?? 'İş');
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadData() async {
     final appState = context.read<AppState>();
     try {
-      final users = await SupabaseService.getUsers(
-        companyId: appState.companyId,
-        status: 'active',
-      );
-      if (mounted) setState(() => _personnel = users);
-    } catch (_) {}
+      // Tüm departmanları çekiyoruz
+      var query = SupabaseService.client
+          .from('users')
+          .select('*, department:departments(name)')
+          .eq('status', 'active');
+          
+      if (!appState.isGeschaeftsfuehrer && !appState.isSystemAdmin) {
+        query = query.eq('company_id', appState.companyId);
+      }
+
+      final users = await query;
+      
+      final assignableUsers = (users as List).where((u) {
+        final r = u['role'] ?? '';
+        return r == 'mitarbeiter' || r == 'vorarbeiter';
+      }).cast<Map<String, dynamic>>().toList();
+
+      if (mounted) setState(() {
+        _personnel = assignableUsers;
+        _loadingPersonnel = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingPersonnel = false);
+    }
   }
 
   Future<void> _loadPlan() async {
@@ -72,7 +107,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           _equipmentNotes.text = data['equipment_notes'] ?? '';
           _materialNotes.text = data['material_notes'] ?? '';
           _notes.text = data['notes'] ?? '';
-          _estDuration.text = data['estimated_duration_h']?.toString() ?? '';
           final pp = data['operation_plan_personnel'] as List? ?? [];
           _selectedPersonnelIds = pp.map((e) => e['user_id'] as String).toList();
         });
@@ -110,13 +144,21 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}:00'
           : null;
 
+      double? calculatedDur;
+      if (_endTime != null) {
+        int hDiff = _endTime!.hour - _startTime.hour;
+        int mDiff = _endTime!.minute - _startTime.minute;
+        calculatedDur = hDiff + (mDiff / 60.0);
+        if (calculatedDur < 0) calculatedDur += 24.0;
+      }
+
       final planData = {
         if (widget.planId != null) 'id': widget.planId,
         'order_id': widget.orderId,
         'plan_date': _planDate.toIso8601String().split('T')[0],
         'start_time': startStr,
         if (endStr != null) 'end_time': endStr,
-        if (_estDuration.text.isNotEmpty) 'estimated_duration_h': double.tryParse(_estDuration.text),
+        if (calculatedDur != null) 'estimated_duration_h': calculatedDur,
         if (_supervisorId != null) 'site_supervisor_id': _supervisorId,
         'planned_by': appState.userId,
         'site_instructions': _siteInstructions.text.trim(),
@@ -130,13 +172,39 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         final newPlanId = result['id'] as String;
         if (_selectedPersonnelIds.isNotEmpty) {
           await SupabaseService.assignPersonnelToPlan(newPlanId, _selectedPersonnelIds, appState.userId);
+          
+          // Bildirim Gönder (Yeni Atama)
+          for (var uid in _selectedPersonnelIds) {
+            await SupabaseService.sendTaskNotification(
+              recipientId: uid,
+              title: 'Yeni Görev Atandı',
+              body: '$_orderTitle için yeni bir operasyon planı oluşturuldu.',
+              orderId: widget.orderId,
+              operationPlanId: newPlanId,
+              notificationType: 'task_assignment',
+              sentBy: appState.userId,
+            );
+          }
         }
       } else {
         await SupabaseService.client.from('operation_plans').update(planData).eq('id', widget.planId!);
-        // Remove old assignments and re-insert
+        // Old assignments are removed/re-inserted if needed, but the UI logic handles it
         await SupabaseService.client.from('operation_plan_personnel').delete().eq('operation_plan_id', widget.planId!);
         if (_selectedPersonnelIds.isNotEmpty) {
           await SupabaseService.assignPersonnelToPlan(widget.planId!, _selectedPersonnelIds, appState.userId);
+          
+          // Bildirim Gönder (Güncelleme)
+          for (var uid in _selectedPersonnelIds) {
+            await SupabaseService.sendTaskNotification(
+              recipientId: uid,
+              title: 'Görev Güncellendi',
+              body: '$_orderTitle operasyon planında değişiklik yapıldı.',
+              orderId: widget.orderId,
+              operationPlanId: widget.planId,
+              notificationType: 'task_update',
+              sentBy: appState.userId,
+            );
+          }
         }
       }
 
@@ -155,7 +223,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
     _equipmentNotes.dispose();
     _materialNotes.dispose();
     _notes.dispose();
-    _estDuration.dispose();
     super.dispose();
   }
 
@@ -163,158 +230,235 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.planId == null ? 'Yeni Operasyon Planı' : 'Planı Düzenle')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _section('Tarih & Saat'),
-            // Tarih
-            GestureDetector(
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppTheme.border),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
-                  const SizedBox(width: 10),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Plan Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                    Text(
-                      '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
-                    ),
+      body: WebContentWrapper(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _section('Tarih & Saat'),
+              // Tarih
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppTheme.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
+                    const SizedBox(width: 10),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Plan Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(
+                        '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                      ),
+                    ]),
                   ]),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _timeTile('Başlangıç Saati *', _startTime.format(context), () => _pickTime(true))),
-              const SizedBox(width: 12),
-              Expanded(child: _timeTile('Bitiş Saati', _endTime?.format(context) ?? 'Seçiniz', () => _pickTime(false))),
-            ]),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _estDuration,
-              decoration: const InputDecoration(labelText: 'Tahmini Süre (saat)', hintText: 'Ör: 4.5'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 20),
-
-            // Personel Atama
-            _section('Personel Atama'),
-            if (_personnel.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text('Personel yükleniyor...', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-              )
-            else
-              ..._personnel.map((user) {
-                final id = user['id'] as String;
-                final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
-                final role = AppTheme.roleLabel(user['role'] ?? '');
-                final selected = _selectedPersonnelIds.contains(id);
-                return CheckboxListTile(
-                  value: selected,
-                  onChanged: (v) {
-                    setState(() {
-                      if (v == true) {
-                        _selectedPersonnelIds.add(id);
-                      } else {
-                        _selectedPersonnelIds.remove(id);
-                        if (_supervisorId == id) _supervisorId = null;
-                      }
-                    });
-                  },
-                  title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
-                  subtitle: Text(role, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                  secondary: selected && _selectedPersonnelIds.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () => setState(() => _supervisorId = _supervisorId == id ? null : id),
-                          child: Icon(
-                            Icons.star,
-                            color: _supervisorId == id ? AppTheme.warning : AppTheme.border,
-                            size: 22,
-                          ),
-                        )
-                      : null,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  dense: true,
-                );
-              }),
-            if (_selectedPersonnelIds.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8, top: 4),
-                child: Text(
-                  '⭐ Yıldıza tıklayarak saha sorumlusunu belirleyin',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'),
                 ),
               ),
-            const SizedBox(height: 16),
-
-            // Saha Sorumlusu Özet
-            if (_supervisorId != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: _timeTile('Başlangıç Saati *', _startTime.format(context), () => _pickTime(true))),
+                const SizedBox(width: 12),
+                Expanded(child: _timeTile('Bitiş Saati', _endTime?.format(context) ?? 'Seçiniz', () => _pickTime(false))),
+              ]),
+              const SizedBox(height: 20),
+  
+              // Personel Atama
+              _section('Personel Atama'),
+  
+              // Filtre Barı
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: ['Tümü', 'Temizlik', 'Hotel Servisi', 'Ray Servisi', 'İnşaat Servisi'].map((filter) {
+                    final isSelected = _selectedFilter == filter;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(filter, style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected ? Colors.white : AppTheme.textMain,
+                        )),
+                        selected: isSelected,
+                        selectedColor: AppTheme.primary,
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.border),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedFilter = filter);
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
                 ),
-                child: Row(children: [
-                  const Icon(Icons.star, color: AppTheme.warning, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(
-                    'Saha Sorumlusu: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
-                    style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500),
-                  )),
-                ]),
               ),
+  
+              if (_loadingPersonnel)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text('Personel listesi yükleniyor...', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                )
+              else if (_personnel.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error.withOpacity(0.05),
+                    border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Atanabilecek hiçbir "Çalışan" veya "İş Lideri" bulunamadı.\n(Lütfen ana menüdeki Personeller ekranından Yeni Personel ekleyin)',
+                    style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13, height: 1.4),
+                  ),
+                )
+              else
+                Builder(
+                  builder: (context) {
+                    final filteredPersonnel = _personnel.where((user) {
+                      if (_selectedFilter == 'Tümü') return true;
+                      final posTitle = (user['position_title'] ?? '').toString().toLowerCase();
+                      final depName = (user['department']?['name'] ?? '').toString().toLowerCase();
+                      final filterLower = _selectedFilter.toLowerCase().replaceAll(' servisi', '').replaceAll(' servis', '');
+                      return posTitle.contains(filterLower) || depName.contains(filterLower);
+                    }).toList();
+  
+                    if (filteredPersonnel.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Text('Bu departmanda personel bulunamadı.', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      );
+                    }
+  
+                    return Column(
+                      children: filteredPersonnel.map((user) {
+                        final id = user['id'] as String;
+                        final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                        final role = user['position_title'] ?? AppTheme.roleLabel(user['role'] ?? '');
+                        final selected = _selectedPersonnelIds.contains(id);
+                        return CheckboxListTile(
+                          value: selected,
+                          onChanged: (v) {
+                            setState(() {
+                              if (v == true) {
+                                _selectedPersonnelIds.add(id);
+                              } else {
+                                _selectedPersonnelIds.remove(id);
+                                if (_supervisorId == id) _supervisorId = null;
+                              }
+                            });
+                          },
+                          title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                          subtitle: Text(role, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                          secondary: selected && _selectedPersonnelIds.isNotEmpty
+                              ? GestureDetector(
+                                  onTap: () => setState(() => _supervisorId = _supervisorId == id ? null : id),
+                                  child: Icon(
+                                    Icons.star,
+                                    color: _supervisorId == id ? AppTheme.warning : AppTheme.border,
+                                    size: 22,
+                                  ),
+                                )
+                              : null,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          dense: true,
+                        );
+                      }).toList(),
+                    );
+                  }
+                ),
+              if (_selectedPersonnelIds.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8, top: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.star, color: AppTheme.warning, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'İlgili personelin yanındaki yıldıza tıklayarak bu işin Saha Sorumlusunu (İş Lideri) atayabilirsiniz.',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textMain, fontWeight: FontWeight.w500, fontFamily: 'Inter'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 16),
-            ],
-
-            // Talimatlar
-            _section('Saha Talimatları & Notlar'),
-            TextFormField(
-              controller: _siteInstructions,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Saha Talimatları',
-                hintText: 'Giriş bilgisi, özel kurallar, dikkat edilmesi gerekenler...',
+  
+              // Saha Sorumlusu Özet
+              if (_supervisorId != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.star, color: AppTheme.warning, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      'Saha Sorumlusu: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
+                      style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500),
+                    )),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+              ],
+  
+              // Talimatlar
+              _section('Saha Talimatları & Notlar'),
+              TextFormField(
+                controller: _siteInstructions,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Saha Talimatları',
+                  hintText: 'Giriş bilgisi, özel kurallar, dikkat edilmesi gerekenler...',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _equipmentNotes,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Ekipman / Araç Notları', hintText: 'Gerekli ekipmanlar...'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _materialNotes,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Malzeme Notları', hintText: 'Götürülmesi gereken malzemeler...'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _notes,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'İç Notlar'),
-            ),
-            const SizedBox(height: 28),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(widget.planId == null ? 'Planı Oluştur' : 'Güncelle'),
-            ),
-            const SizedBox(height: 28),
-          ],
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _equipmentNotes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Ekipman / Araç Notları', hintText: 'Gerekli ekipmanlar...'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _materialNotes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Malzeme Notları', hintText: 'Götürülmesi gereken malzemeler...'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notes,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'İç Notlar'),
+              ),
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(widget.planId == null ? 'Planı Oluştur' : 'Güncelle'),
+              ),
+              const SizedBox(height: 28),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'personnel_form_screen.dart';
@@ -39,8 +40,10 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
+      final departmentId = appState.isBereichsleiter ? appState.departmentId : null;
       final data = await SupabaseService.getUsers(
-        companyId: appState.isGeschaeftsfuehrer ? null : appState.companyId,
+        companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
+        departmentId: departmentId,
         role: _roleFilter,
         status: 'active',
       );
@@ -75,7 +78,9 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
               label: const Text('Yeni Personel', style: TextStyle(fontFamily: 'Inter')),
             )
           : null,
-      body: Column(
+      body: WebContentWrapper(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           Container(
             color: Colors.white,
@@ -166,6 +171,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                       ),
           ),
         ],
+      ),
       ),
     );
   }

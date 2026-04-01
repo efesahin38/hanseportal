@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 
@@ -24,6 +25,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
 
   DateTime _workDate = DateTime.now();
   bool? _isBillable; // null = değerlendirmede
+  String _approvalStatus = 'recorded';
   bool _saving = false;
 
   Future<void> _pickDate() async {
@@ -52,7 +54,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
         if (_laborCost.text.isNotEmpty) 'estimated_labor_cost': double.tryParse(_laborCost.text),
         'notes': _notes.text.trim(),
         'recorded_by': appState.userId,
-        'status': 'recorded',
+        'status': _approvalStatus,
       });
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -76,98 +78,92 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
     return Scaffold(
       appBar: AppBar(title: const Text('Ek İş Kayıt')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _section('Ek İş Bilgisi'),
-            _textField('Ek İş Başlığı *', _title, required: true),
-            _textField('Açıklama', _description, maxLines: 3),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppTheme.border),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
-                  const SizedBox(width: 10),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('İş Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                    Text(
-                      '${_workDate.day.toString().padLeft(2, '0')}.${_workDate.month.toString().padLeft(2, '0')}.${_workDate.year}',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
-                    ),
+      body: WebContentWrapper(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _section('Ek İş Bilgisi'),
+              _textField('Ek İş Başlığı *', _title, required: true),
+              _textField('Açıklama', _description, maxLines: 3),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppTheme.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
+                    const SizedBox(width: 10),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('İş Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(
+                        '${_workDate.day.toString().padLeft(2, '0')}.${_workDate.month.toString().padLeft(2, '0')}.${_workDate.year}',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                      ),
+                    ]),
                   ]),
-                ]),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _durationH,
-              decoration: const InputDecoration(labelText: 'Ek İş Süresi (saat)', hintText: 'Ör: 2.5'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 20),
-            _section('Faturalanabilirlik'),
-            Card(
-              child: Column(children: [
-                RadioListTile<bool?>(
-                  title: const Text('Faturalanabilir', style: TextStyle(fontFamily: 'Inter')),
-                  subtitle: const Text('Müşteriye yansıtılacak', style: TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                  value: true,
-                  groupValue: _isBillable,
-                  onChanged: (v) => setState(() => _isBillable = v),
-                ),
-                RadioListTile<bool?>(
-                  title: const Text('Faturalanamaz', style: TextStyle(fontFamily: 'Inter')),
-                  subtitle: const Text('Sadece iç maliyet', style: TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                  value: false,
-                  groupValue: _isBillable,
-                  onChanged: (v) => setState(() => _isBillable = v),
-                ),
-                RadioListTile<bool?>(
-                  title: const Text('Değerlendirmede', style: TextStyle(fontFamily: 'Inter')),
-                  subtitle: const Text('Henüz karar verilmedi', style: TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                  value: null,
-                  groupValue: _isBillable,
-                  onChanged: (v) => setState(() => _isBillable = v),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 20),
-            _section('Tahmini Maliyet (isteğe bağlı)'),
-            Row(children: [
-              Expanded(child: TextFormField(
-                controller: _materialCost,
-                decoration: const InputDecoration(labelText: 'Malzeme Maliyeti (€)'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _durationH,
+                decoration: const InputDecoration(labelText: 'Ek İş Süresi (saat)', hintText: 'Ör: 2.5'),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: TextFormField(
-                controller: _laborCost,
-                decoration: const InputDecoration(labelText: 'İşçilik Maliyeti (€)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              )),
-            ]),
-            const SizedBox(height: 16),
-            _textField('Notlar', _notes, maxLines: 3),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Ek İşi Kaydet'),
-            ),
-            const SizedBox(height: 24),
-          ],
+              ),
+              
+              // Onay Durumu ve Maliyet sadece yönetici/adminlere görünür
+              if (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) ...[
+                const SizedBox(height: 20),
+                _section('Onay Durumu'),
+                DropdownButtonFormField<String>(
+                  value: _approvalStatus,
+                  decoration: const InputDecoration(labelText: 'İşlem Durumu'),
+                  items: const [
+                    DropdownMenuItem(value: 'recorded', child: Text('Kaydedildi (Taslak)', style: TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'pending_customer', child: Text('Müşteri Onayı Bekliyor', style: TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'approved', child: Text('Onaylandı / İşleme Hazır', style: TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'rejected', child: Text('Reddedildi', style: TextStyle(fontFamily: 'Inter'))),
+                  ],
+                  onChanged: (v) => setState(() => _approvalStatus = v!),
+                ),
+                const SizedBox(height: 20),
+                _section('Maliyet Bilgileri (Yönetici Özel)'),
+                Row(children: [
+                  Expanded(child: TextFormField(
+                    controller: _materialCost,
+                    decoration: const InputDecoration(labelText: 'Malzeme Maliyeti (€)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  )),
+                  const SizedBox(width: 12),
+                  Expanded(child: TextFormField(
+                    controller: _laborCost,
+                    decoration: const InputDecoration(labelText: 'İşçilik Maliyeti (€)'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  )),
+                ]),
+              ],
+              const SizedBox(height: 16),
+              _section('Ek Bilgiler'),
+              _textField('Notlar', _notes, maxLines: 3),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Ek İşi Kaydet'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

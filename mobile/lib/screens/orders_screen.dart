@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'order_detail_screen.dart';
 import 'order_form_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  final String? departmentId;
+  final String? initialStatus;
+  const OrdersScreen({super.key, this.departmentId, this.initialStatus});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -26,12 +29,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialStatus != null) {
+      _statusFilter = widget.initialStatus;
+    }
     _load();
   }
 
   Future<void> _load() async {
+    final appState = context.read<AppState>();
     try {
-      final data = await SupabaseService.getOrders(status: _statusFilter?.isNotEmpty == true ? _statusFilter : null);
+      // Yalnızca tüm SIPARIŞLERI görme yetkisi olmayan yetkililer için (ör: alan yöneticileri) filtrele
+      final depId = widget.departmentId ?? (!appState.canViewAllOrders ? appState.departmentId : null);
+      
+      final data = await SupabaseService.getOrders(
+        status: _statusFilter?.isNotEmpty == true ? _statusFilter : null,
+        departmentId: depId,
+      );
       if (mounted) setState(() { _orders = data; _applyFilter(); _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -56,14 +69,25 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final canCreate = context.watch<AppState>().canManageOrders;
 
     return Scaffold(
+      appBar: Navigator.canPop(context)
+          ? AppBar(
+              title: Text(_getTitle(), style: const TextStyle(fontFamily: 'Inter', fontSize: 18)),
+              leading: const BackButton(),
+              elevation: 0,
+              backgroundColor: Colors.white,
+              foregroundColor: AppTheme.textMain,
+            )
+          : null,
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderFormScreen())).then((_) => _load()),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(initialDepartmentId: widget.departmentId))).then((_) => _load()),
               icon: const Icon(Icons.add),
               label: const Text('Yeni İş', style: TextStyle(fontFamily: 'Inter')),
             )
           : null,
-      body: Column(
+      body: WebContentWrapper(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           // ── Arama & Filtre ───────────────────────────────
           Container(
@@ -138,19 +162,71 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         child: ListView.builder(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _filtered.length,
-                          itemBuilder: (_, i) => _OrderListTile(
-                            order: _filtered[i],
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: _filtered[i]['id'])),
-                            ).then((_) => _load()),
-                          ),
+                          itemBuilder: (_, i) {
+                            final order = _filtered[i];
+                            return Dismissible(
+                              key: Key(order['id']),
+                              direction: canCreate ? DismissDirection.horizontal : DismissDirection.none,
+                              background: Container(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.only(left: 20),
+                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                              ),
+                              secondaryBackground: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                              ),
+                              confirmDismiss: (dir) async {
+                                return await showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('İşi Sil?'),
+                                    content: const Text('Bu işi ve bağlı olan tüm plan/raporları silmek istediğinize emin misiniz?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                    ],
+                                  ),
+                                );
+                              },
+                              onDismissed: (dir) async {
+                                final orderId = order['id'];
+                                try {
+                                  await SupabaseService.deleteOrder(orderId);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İş başarıyla silindi')));
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                }
+                                _load();
+                              },
+                              child: _OrderListTile(
+                                order: order,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order['id'])),
+                                ).then((_) => _load()),
+                              ),
+                            );
+                          },
                         ),
                       ),
           ),
         ],
       ),
-    );
+    ),
+  );
+}
+
+  String _getTitle() {
+    if (widget.departmentId == 'dddddddd-1111-1111-1111-111111111111') return 'Temizlik İşleri';
+    if (widget.departmentId == 'dddddddd-2222-2222-2222-222222222222') return 'Ray Servis İşleri';
+    if (widget.departmentId == 'dddddddd-3333-3333-3333-333333333333') return 'Otel Servis İşleri';
+    if (widget.departmentId == 'dddddddd-4444-4444-4444-444444444444') return 'Personel İşleri';
+    if (widget.departmentId == 'dddddddd-5555-5555-5555-555555555555') return 'Yönetim / Diğer';
+    return 'Tüm İşler';
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
 
 class AppState extends ChangeNotifier {
@@ -15,6 +16,7 @@ class AppState extends ChangeNotifier {
   String get role => _currentUser?['role'] ?? '';
   String get userId => _currentUser?['id'] ?? '';
   String get companyId => _currentUser?['company_id'] ?? '';
+  String get departmentId => _currentUser?['department_id'] ?? '';
   String get fullName => '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim();
 
   bool get isGeschaeftsfuehrer => role == 'geschaeftsfuehrer';
@@ -27,13 +29,21 @@ class AppState extends ChangeNotifier {
   bool get isSystemAdmin => role == 'system_admin';
 
   bool get canManageCompanies => isGeschaeftsfuehrer || isSystemAdmin;
-  bool get canManageUsers => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canManageUsers => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin || isBackoffice;
   bool get canManageCustomers => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
   bool get canManageOrders => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
   bool get canPlanOperations => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin;
-  bool get canViewReports => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBuchhaltung || isSystemAdmin;
-  bool get canManageInvoices => isGeschaeftsfuehrer || isBuchhaltung || isSystemAdmin;
+  bool get canViewReports => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
+  bool get canManageInvoices => isGeschaeftsfuehrer || isBuchhaltung || isBetriebsleiter || isSystemAdmin;
   bool get canViewAllOrders => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canManageDocuments => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isBuchhaltung || isSystemAdmin;
+  bool get canManageArchive => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
+  bool get canManageRoles => isGeschaeftsfuehrer || isSystemAdmin;
+  
+  bool get canSeeFinancialDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
+  bool get canSeeFullCustomerDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
+  bool get canViewAllPersonnel => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canViewAllDepartments => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
 
   AppState() {
     _initialize();
@@ -41,33 +51,68 @@ class AppState extends ChangeNotifier {
 
   Future<void> _initialize() async {
     try {
-      final session = SupabaseService.currentSession;
-      if (session != null) {
-        await _loadUserProfile();
+      final prefs = await SharedPreferences.getInstance();
+      final savedUserId = prefs.getString('custom_user_id');
+      final stayLoggedIn = prefs.getBool('stay_logged_in') ?? false;
+      
+      if (stayLoggedIn && savedUserId != null && savedUserId.isNotEmpty) {
+        final profile = await SupabaseService.getUserProfileById(savedUserId);
+        if (profile != null) {
+          _currentUser = profile;
+          _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
+        } else {
+          await prefs.remove('custom_user_id');
+          await prefs.remove('stay_logged_in');
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[AppState.initialize] Error: $e');
+    }
     _isInitialized = true;
     notifyListeners();
   }
 
-  Future<bool> signIn(String email, String password) async {
+  /// Custom login: Returns null on success, error message on failure
+  Future<String?> signIn(String email, String password, {bool rememberMe = false}) async {
     _isLoading = true;
     notifyListeners();
     try {
-      await SupabaseService.signIn(email, password);
-      await _loadUserProfile();
+      debugPrint('[AUTH] Signing in with: $email (Remember: $rememberMe)');
+      final user = await SupabaseService.signIn(email, password);
+      if (user == null) {
+        debugPrint('[AUTH] Failed: User not found or password incorrect.');
+        _isLoading = false;
+        notifyListeners();
+        return 'E-posta veya şifre hatalı.';
+      }
+      
+      debugPrint('[AUTH] Success! User ID: ${user['id']}');
+      _currentUser = user;
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (rememberMe) {
+        await prefs.setString('custom_user_id', user['id']);
+        await prefs.setBool('stay_logged_in', true);
+      } else {
+        await prefs.remove('custom_user_id');
+        await prefs.remove('stay_logged_in');
+      }
+      
+      _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
       _isLoading = false;
       notifyListeners();
-      return true;
+      return null;
     } catch (e) {
+      debugPrint('[AUTH] Error during signIn: $e');
       _isLoading = false;
       notifyListeners();
-      return false;
+      return 'Bağlantı hatası: ${e.toString()}';
     }
   }
 
   Future<void> _loadUserProfile() async {
-    _currentUser = await SupabaseService.getCurrentUserProfile();
+    if (userId.isEmpty) return;
+    _currentUser = await SupabaseService.getUserProfileById(userId);
     if (_currentUser != null) {
       _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
     }
@@ -75,7 +120,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    await SupabaseService.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('custom_user_id');
+    await prefs.remove('stay_logged_in');
     _currentUser = null;
     _unreadNotifications = 0;
     notifyListeners();

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 
 // Tüm sekme ekranları
@@ -13,9 +15,15 @@ import 'planning_screen.dart';
 import 'calendar_screen.dart';
 import 'notifications_screen.dart';
 import 'reports_screen.dart';
+import 'documents_screen.dart';
+import 'archive_screen.dart';
+import 'role_management_screen.dart';
+import 'work_session_approval_screen.dart';
+import 'accounting_overview_screen.dart';
 
 /// Yönetim rollerinin ana kabuk ekranı.
-/// Rolle birlikte hangi menü maddeleri göründüğü kontrol edilir.
+/// Web'de: sabit sol sidebar + içerik alanı.
+/// Mobilde: drawer + AppBar (eski davranış).
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -38,10 +46,18 @@ class _MainShellState extends State<MainShell> {
         _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Takvim', screen: const CalendarScreen()),
       if (appState.canManageUsers)
         _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Personel', screen: const PersonnelScreen()),
-      if (appState.canManageCompanies)
-        _NavItem(icon: Icons.apartment_outlined, activeIcon: Icons.apartment, label: 'Şirketler', screen: const CompaniesScreen()),
+      if (appState.canManageDocuments)
+        _NavItem(icon: Icons.folder_outlined, activeIcon: Icons.folder, label: 'Belgeler', screen: const DocumentsScreen()),
       if (appState.canViewReports)
         _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Raporlar', screen: const ReportsScreen()),
+      if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer || appState.isSystemAdmin)
+        _NavItem(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Muhasebe', screen: const AccountingOverviewScreen()),
+      if (appState.canPlanOperations)
+        _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: 'Mesai Onay', screen: const WorkSessionApprovalScreen()),
+      if (appState.canManageArchive)
+        _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: 'Arşiv', screen: const ArchiveScreen()),
+      if (appState.canManageRoles)
+        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: 'Yetki', screen: const RoleManagementScreen()),
     ];
   }
 
@@ -54,18 +70,21 @@ class _MainShellState extends State<MainShell> {
       _selectedIndex = 0;
     }
 
+    // ── WEB LAYOUT ─────────────────────────────────────────
+    if (kIsWeb && WebUtils.isWide(context)) {
+      return _WebLayout(
+        items: items,
+        selectedIndex: _selectedIndex,
+        onSelect: (i) => setState(() => _selectedIndex = i),
+        appState: appState,
+      );
+    }
+
+    // ── MOBİL LAYOUT (değişmedi) ────────────────────────────
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.business, size: 18),
-            const SizedBox(width: 8),
-            Text(items[_selectedIndex].label),
-          ],
-        ),
+        title: Text(items[_selectedIndex].label),
         actions: [
-          // Bildirimler
           Stack(
             children: [
               IconButton(
@@ -95,53 +114,432 @@ class _MainShellState extends State<MainShell> {
                 ),
             ],
           ),
-          // Profil & Çıkış
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              child: Text(
-                appState.fullName.isNotEmpty ? appState.fullName[0].toUpperCase() : 'U',
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ),
-            onSelected: (v) async {
-              if (v == 'logout') await context.read<AppState>().signOut();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(appState.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(AppTheme.roleLabel(appState.role), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'logout', child: Row(
-                children: [Icon(Icons.logout, size: 18), SizedBox(width: 8), Text('Çıkış Yap')],
-              )),
-            ],
-          ),
           const SizedBox(width: 8),
         ],
       ),
+      drawer: _buildDrawer(context, items, appState),
       body: IndexedStack(
         index: _selectedIndex,
         children: items.map((e) => e.screen).toList(),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-        backgroundColor: Colors.white,
-        elevation: 8,
-        destinations: items.map((e) => NavigationDestination(
-          icon: Icon(e.icon),
-          selectedIcon: Icon(e.activeIcon),
-          label: e.label,
-        )).toList(),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context, List<_NavItem> items, AppState appState) {
+    return Drawer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppTheme.primary, AppTheme.secondary],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset('assets/icon/hanse.png', width: 44, height: 44, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Hanse Kollektiv',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(appState.fullName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter'), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(AppTheme.roleLabel(appState.role), style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final isSelected = _selectedIndex == index;
+                return ListTile(
+                  leading: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppTheme.primary : AppTheme.textSub),
+                  title: Text(item.label, style: TextStyle(color: isSelected ? AppTheme.primary : AppTheme.textMain, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+                  selected: isSelected,
+                  selectedTileColor: AppTheme.primary.withOpacity(0.1),
+                  onTap: () {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppTheme.error),
+            title: const Text('Çıkış Yap', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+            onTap: () async {
+              Navigator.pop(context);
+              await context.read<AppState>().signOut();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Web Layout Widget ──────────────────────────────────────────────────────────
+class _WebLayout extends StatelessWidget {
+  final List<_NavItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final AppState appState;
+
+  const _WebLayout({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.appState,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.bg,
+      body: Row(
+        children: [
+          // ── Sol Sidebar ────────────────────────────────────
+          _WebSidebar(
+            items: items,
+            selectedIndex: selectedIndex,
+            onSelect: onSelect,
+            appState: appState,
+          ),
+          // ── İçerik Alanı ──────────────────────────────────
+          Expanded(
+            child: Column(
+              children: [
+                // Top bar
+                _WebTopBar(
+                  title: items[selectedIndex].label,
+                  appState: appState,
+                ),
+                // Page content
+                Expanded(
+                  child: IndexedStack(
+                    index: selectedIndex,
+                    children: items.map((e) => e.screen).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebSidebar extends StatelessWidget {
+  final List<_NavItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final AppState appState;
+
+  const _WebSidebar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.appState,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: WebUtils.sidebarWidth,
+      decoration: BoxDecoration(
+        color: AppTheme.primary,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Logo / Başlık
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(3),
+                        child: Image.asset('assets/icon/hanse.png', width: 36, height: 36, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Hanse', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          Text('Kollektiv', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // User info
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        child: const Icon(Icons.person, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              appState.fullName,
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              AppTheme.roleLabel(appState.role),
+                              style: const TextStyle(color: Colors.white60, fontSize: 10, fontFamily: 'Inter'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Nav items
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final isSelected = selectedIndex == index;
+                return _SidebarNavItem(
+                  item: item,
+                  isSelected: isSelected,
+                  onTap: () => onSelect(index),
+                );
+              },
+            ),
+          ),
+
+          // Çıkış
+          Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.logout, color: Colors.white70, size: 18),
+              ),
+              title: const Text(
+                'Çıkış Yap',
+                style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
+              ),
+              onTap: () async {
+                await context.read<AppState>().signOut();
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarNavItem extends StatelessWidget {
+  final _NavItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SidebarNavItem({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.white.withOpacity(0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: isSelected
+                  ? Border.all(color: Colors.white.withOpacity(0.2))
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isSelected ? item.activeIcon : item.icon,
+                  color: isSelected ? Colors.white : Colors.white60,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WebTopBar extends StatelessWidget {
+  final String title;
+  final AppState appState;
+
+  const _WebTopBar({required this.title, required this.appState});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: AppTheme.divider),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textMain,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const Spacer(),
+          // Bildirimler
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: AppTheme.textMain),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                ),
+              ),
+              if (appState.unreadNotifications > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.error,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '${appState.unreadNotifications}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

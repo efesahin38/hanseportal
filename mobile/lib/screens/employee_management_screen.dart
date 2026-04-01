@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
-import '../config/env.dart';
 
 class EmployeeManagementScreen extends StatefulWidget {
   const EmployeeManagementScreen({Key? key}) : super(key: key);
@@ -54,25 +51,17 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
       final firstName = parts.first;
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       
-      final response = await http.post(
-        Uri.parse('${Env.backendUrl}/api/users'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'first_name': firstName,
-          'last_name': lastName,
-          'email': '${firstName.toLowerCase()}.${lastName.toLowerCase()}@hanse.de',
-          'company_id': appState.companyId,
-          'role': 'mitarbeiter',
-          'password': pass,
-          'pin_code': pin.isNotEmpty ? pin : null,
-          'employee_number': _addIdCtrl.text.trim().isNotEmpty ? _addIdCtrl.text.trim() : null,
-        }),
-      );
-
-      if (response.statusCode != 201) {
-        final errBody = jsonDecode(response.body);
-        throw Exception(errBody['error'] ?? 'Kayıt sırasında hata oluştu.');
-      }
+      await SupabaseService.client.from('users').insert({
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': '${firstName.toLowerCase()}.${lastName.toLowerCase()}@hanse.de',
+        'company_id': appState.companyId,
+        'role': 'mitarbeiter',
+        'password': pass,
+        if (pin.isNotEmpty) 'pin_code': pin,
+        if (_addIdCtrl.text.trim().isNotEmpty) 'employee_number': _addIdCtrl.text.trim(),
+        'status': 'active',
+      });
 
       if (!mounted) return;
       setState(() {

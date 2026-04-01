@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_state.dart';
 import 'company_form_screen.dart';
 
 class CompanyDetailScreen extends StatefulWidget {
@@ -104,29 +106,31 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Vergi & Hukuki
-                        _SectionCard(
-                          title: 'Vergi & Hukuki Bilgiler',
-                          icon: Icons.gavel_outlined,
-                          children: [
-                            _InfoRow('Vergi No', _company!['tax_number']),
-                            _InfoRow('USt-IdNr.', _company!['vat_number']),
-                            _InfoRow('Handelsregister', _company!['trade_register_number']),
-                            _InfoRow('Amtsgericht', _company!['trade_register_court']),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
+                        if (context.read<AppState>().canSeeFinancialDetails) ...[
+                          _SectionCard(
+                            title: 'Vergi & Hukuki Bilgiler (Hassas)',
+                            icon: Icons.gavel_outlined,
+                            children: [
+                              _InfoRow('Vergi No', _company!['tax_number']),
+                              _InfoRow('USt-IdNr.', _company!['vat_number']),
+                              _InfoRow('Handelsregister', _company!['trade_register_number']),
+                              _InfoRow('Amtsgericht', _company!['trade_register_court']),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
-                        // Banka
-                        _SectionCard(
-                          title: 'Banka Bilgileri',
-                          icon: Icons.account_balance_outlined,
-                          children: [
-                            _InfoRow('Banka', _company!['bank_name']),
-                            _InfoRow('IBAN', _company!['iban']),
-                            _InfoRow('BIC', _company!['bic']),
-                          ],
-                        ),
+                        if (context.read<AppState>().canSeeFinancialDetails) ...[
+                          _SectionCard(
+                            title: 'Banka Bilgileri (Hassas)',
+                            icon: Icons.account_balance_outlined,
+                            children: [
+                              _InfoRow('Banka', _company!['bank_name']),
+                              _InfoRow('IBAN', _company!['iban']),
+                              _InfoRow('BIC', _company!['bic']),
+                            ],
+                          ),
+                        ],
 
                         if (_company!['notes'] != null && (_company!['notes'] as String).isNotEmpty) ...[
                           const SizedBox(height: 12),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -12,13 +13,18 @@ import 'providers/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/field_worker_shell.dart';
+import 'screens/documents_screen.dart';
+import 'screens/archive_screen.dart';
+import 'screens/role_management_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  if (!kIsWeb) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   // Firebase
   try {
@@ -27,10 +33,8 @@ void main() async {
 
   // Supabase
   await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL',
-        defaultValue: 'https://YOUR_PROJECT.supabase.co'),
-    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY',
-        defaultValue: 'YOUR_ANON_KEY'),
+    url: 'https://qlfdbkrmjzggoaxbnvij.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZmRia3JtanpnZ29heGJudmlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDg0MDYsImV4cCI6MjA4OTQyNDQwNn0.7Z_bcVZRY2d5WyqXSTMv6_0JXtro7UmFd_hLP_aGPE8',
   );
 
   runApp(
@@ -90,7 +94,10 @@ class _SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/icon/appico.png', width: 100, height: 100),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset('assets/icon/hanse.png', width: 100, height: 100, fit: BoxFit.cover),
+            ),
             SizedBox(height: 24),
             Text(
               'Hanse Kollektiv GmbH',

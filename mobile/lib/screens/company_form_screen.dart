@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 
 /// Şirket Oluşturma / Düzenleme Formu (Bölüm 1)
@@ -123,100 +124,102 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
     final isEdit = widget.company != null;
     return Scaffold(
       appBar: AppBar(title: Text(isEdit ? 'Şirketi Düzenle' : 'Yeni Şirket')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _section('Temel Bilgiler'),
-            _field('Ticari Unvan *', _name, required: true),
-            _field('Kısa İsim / Sistem Adı', _shortName),
-            Row(children: [
-              Expanded(child: DropdownButtonFormField<String>(
-                value: _companyType,
-                decoration: const InputDecoration(labelText: 'Şirket Türü'),
-                items: _companyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontFamily: 'Inter')))).toList(),
-                onChanged: (v) => setState(() => _companyType = v!),
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: DropdownButtonFormField<String>(
-                value: _status,
-                decoration: const InputDecoration(labelText: 'Durum'),
-                items: const [
-                  DropdownMenuItem(value: 'active', child: Text('Aktif', style: TextStyle(fontFamily: 'Inter'))),
-                  DropdownMenuItem(value: 'inactive', child: Text('Pasif', style: TextStyle(fontFamily: 'Inter'))),
+      body: WebContentWrapper(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _section('Temel Bilgiler'),
+              _field('Ticari Unvan *', _name, required: true),
+              _field('Kısa İsim / Sistem Adı', _shortName),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<String>(
+                  value: _companyType,
+                  decoration: const InputDecoration(labelText: 'Şirket Türü'),
+                  items: _companyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontFamily: 'Inter')))).toList(),
+                  onChanged: (v) => setState(() => _companyType = v!),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: DropdownButtonFormField<String>(
+                  value: _status,
+                  decoration: const InputDecoration(labelText: 'Durum'),
+                  items: const [
+                    DropdownMenuItem(value: 'active', child: Text('Aktif', style: TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'inactive', child: Text('Pasif', style: TextStyle(fontFamily: 'Inter'))),
+                  ],
+                  onChanged: (v) => setState(() => _status = v!),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _relationshipType,
+                decoration: const InputDecoration(labelText: 'Grup İlişkisi'),
+                items: [
+                  const DropdownMenuItem(value: 'parent', child: Text('Ana Şirket', style: TextStyle(fontFamily: 'Inter'))),
+                  const DropdownMenuItem(value: 'subsidiary', child: Text('Bağlı Şirket', style: TextStyle(fontFamily: 'Inter'))),
+                  const DropdownMenuItem(value: 'affiliate', child: Text('İlişkili Şirket', style: TextStyle(fontFamily: 'Inter'))),
                 ],
-                onChanged: (v) => setState(() => _status = v!),
-              )),
-            ]),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _relationshipType,
-              decoration: const InputDecoration(labelText: 'Grup İlişkisi'),
-              items: [
-                const DropdownMenuItem(value: 'parent', child: Text('Ana Şirket', style: TextStyle(fontFamily: 'Inter'))),
-                const DropdownMenuItem(value: 'subsidiary', child: Text('Bağlı Şirket', style: TextStyle(fontFamily: 'Inter'))),
-                const DropdownMenuItem(value: 'affiliate', child: Text('İlişkili Şirket', style: TextStyle(fontFamily: 'Inter'))),
-              ],
-              onChanged: (v) => setState(() => _relationshipType = v!),
-            ),
-            const SizedBox(height: 20),
-
-            _section('Adres'),
-            _field('Adres', _address, maxLines: 2),
-            Row(children: [
-              Expanded(flex: 2, child: Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: TextFormField(controller: _postalCode, decoration: const InputDecoration(labelText: 'PLZ')),
-              )),
-              const SizedBox(width: 12),
-              Expanded(flex: 3, child: Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: TextFormField(controller: _city, decoration: const InputDecoration(labelText: 'Şehir')),
-              )),
-            ]),
-            const SizedBox(height: 8),
-
-            _section('İletişim'),
-            Row(children: [
-              Expanded(child: _field('Telefon', _phone)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('E-posta', _email)),
-            ]),
-            _field('Web Sitesi', _website),
-            const SizedBox(height: 8),
-
-            _section('Vergi & Hukuki Bilgiler'),
-            Row(children: [
-              Expanded(child: _field('Vergi No', _taxNumber)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('USt-IdNr.', _vatNumber)),
-            ]),
-            Row(children: [
-              Expanded(child: _field('Ticaret Tescil No', _tradeRegNumber)),
-              const SizedBox(width: 12),
-              Expanded(child: _field('Tescil Mahkemesi', _tradeRegCourt)),
-            ]),
-            const SizedBox(height: 8),
-
-            _section('Banka Bilgileri'),
-            _field('Banka Adı', _bankName),
-            _field('IBAN', _iban),
-            _field('BIC / SWIFT', _bic),
-            const SizedBox(height: 8),
-
-            _section('Faaliyet & Notlar'),
-            _field('Hizmet Açıklaması', _serviceDesc, maxLines: 3),
-            _field('Notlar', _notes, maxLines: 3),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(isEdit ? 'Kaydet' : 'Şirket Oluştur'),
-            ),
-            const SizedBox(height: 24),
-          ],
+                onChanged: (v) => setState(() => _relationshipType = v!),
+              ),
+              const SizedBox(height: 20),
+  
+              _section('Adres'),
+              _field('Adres', _address, maxLines: 2),
+              Row(children: [
+                Expanded(flex: 2, child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: TextFormField(controller: _postalCode, decoration: const InputDecoration(labelText: 'PLZ')),
+                )),
+                const SizedBox(width: 12),
+                Expanded(flex: 3, child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: TextFormField(controller: _city, decoration: const InputDecoration(labelText: 'Şehir')),
+                )),
+              ]),
+              const SizedBox(height: 8),
+  
+              _section('İletişim'),
+              Row(children: [
+                Expanded(child: _field('Telefon', _phone)),
+                const SizedBox(width: 12),
+                Expanded(child: _field('E-posta', _email)),
+              ]),
+              _field('Web Sitesi', _website),
+              const SizedBox(height: 8),
+  
+              _section('Vergi & Hukuki Bilgiler'),
+              Row(children: [
+                Expanded(child: _field('Vergi No', _taxNumber)),
+                const SizedBox(width: 12),
+                Expanded(child: _field('USt-IdNr.', _vatNumber)),
+              ]),
+              Row(children: [
+                Expanded(child: _field('Ticaret Tescil No', _tradeRegNumber)),
+                const SizedBox(width: 12),
+                Expanded(child: _field('Tescil Mahkemesi', _tradeRegCourt)),
+              ]),
+              const SizedBox(height: 8),
+  
+              _section('Banka Bilgileri'),
+              _field('Banka Adı', _bankName),
+              _field('IBAN', _iban),
+              _field('BIC / SWIFT', _bic),
+              const SizedBox(height: 8),
+  
+              _section('Faaliyet & Notlar'),
+              _field('Hizmet Açıklaması', _serviceDesc, maxLines: 3),
+              _field('Notlar', _notes, maxLines: 3),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(isEdit ? 'Kaydet' : 'Şirket Oluştur'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

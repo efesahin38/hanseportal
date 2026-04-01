@@ -328,6 +328,8 @@ CREATE TABLE orders (
   recurring_info       TEXT,
   -- Ek
   notes                TEXT,
+  material_notes       TEXT,
+  minimum_billable_hours NUMERIC(6,2),
   -- Meta
   created_by           UUID REFERENCES users(id),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),

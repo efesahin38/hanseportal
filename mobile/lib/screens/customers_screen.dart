@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'customer_detail_screen.dart';
@@ -60,7 +61,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
               label: const Text('Yeni Müşteri', style: TextStyle(fontFamily: 'Inter')),
             )
           : null,
-      body: Column(
+      body: WebContentWrapper(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           Container(
             color: Colors.white,
@@ -175,6 +178,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       ),
           ),
         ],
+      ),
       ),
     );
   }

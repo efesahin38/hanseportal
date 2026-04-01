@@ -52,5 +52,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Bu uygulama saha raporları için fotoğraf çekmek üzere kamerayı kullanır.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Bu uygulama saha raporlarına fotoğraf eklemek için galerinizi kullanır.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bu uygulama video kaydı sırasında mikrofonu kullanır.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

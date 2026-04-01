@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'orders_screen.dart';
-import 'planning_screen.dart';
+import 'reports_screen.dart';
+import 'invoice_draft_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,6 +19,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, int> _stats = {};
   List<Map<String, dynamic>> _recentOrders = [];
+  List<Map<String, dynamic>> _pendingDrafts = [];
   bool _loading = true;
 
   @override
@@ -27,12 +31,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      final stats = await SupabaseService.getDashboardStats(appState.companyId);
-      final orders = await SupabaseService.getOrders();
+      final departmentId = !appState.canViewAllOrders ? appState.departmentId : null;
+
+      final stats = await SupabaseService.getDashboardStats(
+        appState.companyId,
+        departmentId: departmentId,
+      );
+
+      final orders = await SupabaseService.getOrders(
+        departmentId: departmentId,
+      );
+
+      List<Map<String, dynamic>> drafts = [];
+      if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) {
+        drafts = await SupabaseService.getInvoiceDrafts();
+      }
+
       if (mounted) {
         setState(() {
           _stats = stats;
           _recentOrders = orders.take(5).toList();
+          _pendingDrafts = drafts.take(3).toList();
           _loading = false;
         });
       }
@@ -45,129 +64,341 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: CustomScrollView(
-        slivers: [
-          // ── Karşılama Başlığı ────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              decoration: AppTheme.gradientBox(),
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Merhaba, ${appState.fullName.split(' ').first} 👋',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Inter',
-                    ),
+    return Scaffold(
+      body: WebContentWrapper(
+        padding: EdgeInsets.zero,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // ── Premium Header ─────────────────────────────
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(20, kIsWeb ? 24 : 60, 20, 30),
+                  decoration: AppTheme.gradientBox().copyWith(
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    AppTheme.roleLabel(appState.role),
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Inter'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── İstatistik Kartları ──────────────────────────
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -16),
-              child: _loading
-                  ? const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _StatCard(
-                            label: 'Aktif İşler',
-                            value: '${_stats['activeOrders'] ?? 0}',
-                            icon: Icons.work,
-                            color: AppTheme.primary,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen())),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Merhaba, ${appState.fullName.split(' ').first} 👋',
+                                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Hanse Kollektiv Digital Management',
+                                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                              ),
+                            ],
                           ),
-                          _StatCard(
-                            label: 'Bugünkü Planlar',
-                            value: '${_stats['todayPlans'] ?? 0}',
-                            icon: Icons.calendar_today,
-                            color: AppTheme.accent,
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlanningScreen())),
-                          ),
-                          _StatCard(
-                            label: 'Aktif Personel',
-                            value: '${_stats['activePersonnel'] ?? 0}',
-                            icon: Icons.people,
-                            color: AppTheme.success,
-                          ),
-                          _StatCard(
-                            label: 'Bekleyen Taslak',
-                            value: '${_stats['pendingDrafts'] ?? 0}',
-                            icon: Icons.receipt_long,
-                            color: AppTheme.warning,
+                          CircleAvatar(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.person, color: Colors.white),
                           ),
                         ],
                       ),
-                    ),
-            ),
-          ),
-
-          // ── Son İşler ────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Son İşler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                  TextButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen())),
-                    child: const Text('Tümü', style: TextStyle(fontFamily: 'Inter')),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          if (_recentOrders.isEmpty && !_loading)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(Icons.work_off_outlined, size: 48, color: AppTheme.textSub),
-                      SizedBox(height: 12),
-                      Text('Henüz iş kaydı bulunmuyor', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      const SizedBox(height: 24),
+                      // Quick Stats Row
+                      Row(
+                        children: [
+                          _QuickStat(label: 'Aktif İş', value: '${_stats['activeOrders'] ?? 0}'),
+                          const SizedBox(width: 12),
+                          _QuickStat(label: 'Bugün', value: '${_stats['todayPlans'] ?? 0}'),
+                          const SizedBox(width: 12),
+                          _QuickStat(label: 'Bekleyen', value: '${_stats['pendingDrafts'] ?? 0}'),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
+
+              // ── Departman Klasörleri (Folders) ──────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Departman Klasörleri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        crossAxisCount: WebUtils.gridColumns(context, mobile: 2, tablet: 3, desktop: 5),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.1,
+                        children: [
+                          if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-1111-1111-1111-111111111111')
+                            _FolderCard(
+                              title: 'Temizlik',
+                              subtitle: 'Gebäudereinigung',
+                              icon: Icons.cleaning_services_outlined,
+                              color: const Color(0xFF3B82F6),
+                              manager: 'Sandra',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersScreen(departmentId: 'dddddddd-1111-1111-1111-111111111111', initialStatus: (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) ? 'completed' : null))).then((_) => _load()),
+                            ),
+                          if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-2222-2222-2222-222222222222')
+                            _FolderCard(
+                              title: 'Ray Servis',
+                              subtitle: 'Gleisbausicherung',
+                              icon: Icons.railway_alert_outlined,
+                              color: const Color(0xFFEF4444),
+                              manager: 'Peter',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersScreen(departmentId: 'dddddddd-2222-2222-2222-222222222222', initialStatus: (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) ? 'completed' : null))).then((_) => _load()),
+                            ),
+                          if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-3333-3333-3333-333333333333')
+                            _FolderCard(
+                              title: 'Otel Servis',
+                              subtitle: 'Hotelservice',
+                              icon: Icons.hotel_outlined,
+                              color: const Color(0xFFF59E0B),
+                              manager: 'Fatma',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersScreen(departmentId: 'dddddddd-3333-3333-3333-333333333333', initialStatus: (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) ? 'completed' : null))).then((_) => _load()),
+                            ),
+                          if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-4444-4444-4444-444444444444')
+                            _FolderCard(
+                              title: 'Personel',
+                              subtitle: 'Überlassung',
+                              icon: Icons.people_outline,
+                              color: const Color(0xFF10B981),
+                              manager: 'Klaus',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersScreen(departmentId: 'dddddddd-4444-4444-4444-444444444444', initialStatus: (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) ? 'completed' : null))).then((_) => _load()),
+                            ),
+                          if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-5555-5555-5555-555555555555')
+                            _FolderCard(
+                              title: 'Yönetim',
+                              subtitle: 'Verwaltung',
+                              icon: Icons.admin_panel_settings_outlined,
+                              color: const Color(0xFF6366F1),
+                              manager: 'Martina',
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrdersScreen(departmentId: 'dddddddd-5555-5555-5555-555555555555', initialStatus: (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) ? 'completed' : null))).then((_) => _load()),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Bekleyen Taslak Faturalar ───────────────────
+              if ((appState.isBuchhaltung || appState.isGeschaeftsfuehrer) && _pendingDrafts.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Bekleyen Taslak Faturalar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                            TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen())), child: const Text('Tümü')),
+                          ],
+                        ),
+                        ..._pendingDrafts.map((d) {
+                          final order = d['order'];
+                          final workReportsData = order != null ? order['work_reports'] : null;
+                          final workReport = (workReportsData is List && workReportsData.isNotEmpty)
+                              ? workReportsData[0]
+                              : (workReportsData is Map<String, dynamic> ? workReportsData : null);
+                          
+                          double revenue = double.tryParse(d['total_amount']?.toString() ?? '0') ?? 0;
+                          if (revenue == 0 && workReport != null) {
+                            revenue = double.tryParse(workReport['total_revenue']?.toString() ?? '0') ?? 0;
+                          }
+
+                          double laborCost = 0;
+                          double materialCost = 0;
+                          if (workReport != null) {
+                            laborCost = double.tryParse(workReport['estimated_labor_cost']?.toString() ?? '0') ?? 0;
+                            materialCost = double.tryParse(workReport['estimated_material_cost']?.toString() ?? '0') ?? 0;
+                          }
+
+                          final profit = revenue - (laborCost + materialCost);
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.receipt_long, color: AppTheme.warning, size: 20),
+                              title: Text(d['draft_number'] ?? 'Taslak', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Inter')),
+                              subtitle: Text(d['customer']?['name'] ?? '', style: const TextStyle(fontSize: 11)),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text('€ ${revenue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
+                                  Text('€ ${profit.toStringAsFixed(2)}', 
+                                    style: TextStyle(fontWeight: FontWeight.bold, color: profit >= 0 ? AppTheme.success : AppTheme.error, fontSize: 13)),
+                                ],
+                              ),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InvoiceDraftDetailScreen(draftId: d['id']))),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Son Hareketler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                      TextButton(onPressed: () {}, child: const Text('Tümü')),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (_loading)
+                const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())))
+              else if (_recentOrders.isEmpty)
+                const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: Text('Henüz aktivite yok'))))
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _ActivityItem(order: _recentOrders[i]),
+                    childCount: _recentOrders.length,
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _QuickStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: AppTheme.glassBox(),
+        child: Column(
+          children: [
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String manager;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _FolderCard({required this.title, required this.subtitle, required this.manager, required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppTheme.divider),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const Spacer(),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textMain)),
+            Text(subtitle, style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.person_pin, size: 12, color: AppTheme.textSub),
+                const SizedBox(width: 4),
+                Text(manager, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSub)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityItem extends StatelessWidget {
+  final Map<String, dynamic> order;
+  const _ActivityItem({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = order['status'] ?? '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 12, height: 12,
+            decoration: BoxDecoration(color: AppTheme.statusColor(status), shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(order['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text(order['customer']?['name'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+              ],
+            ),
+          ),
+          if (status == 'completed' && (context.read<AppState>().isBuchhaltung || context.read<AppState>().isGeschaeftsfuehrer))
+            TextButton(
+              onPressed: () async {
+                try {
+                  await SupabaseService.markOrderAsInvoiced(order['id'], context.read<AppState>().userId);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Faturalandırıldı ve geçmişe eklendi.')));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen()));
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                }
+              },
+              style: TextButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
+              child: const Text('Faturalandır', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
             )
           else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) => _OrderCard(order: _recentOrders[i]),
-                childCount: _recentOrders.length,
-              ),
-            ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            Text(AppTheme.statusLabel(status), style: TextStyle(fontSize: 11, color: AppTheme.statusColor(status), fontWeight: FontWeight.bold)),
         ],
       ),
     );

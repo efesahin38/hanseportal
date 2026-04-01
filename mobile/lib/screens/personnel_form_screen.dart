@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
+import '../providers/app_state.dart';
 
 /// Yeni personel / mevcut personel düzenleme formu
 class PersonnelFormScreen extends StatefulWidget {
@@ -21,6 +24,10 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   final _pin = TextEditingController();
   final _employeeNumber = TextEditingController();
   final _weeklyHours = TextEditingController();
+  final _monthlyHours = TextEditingController();
+
+  DateTime? _birthDate;
+  DateTime? _entryDate;
 
   String _role = 'mitarbeiter';
   String _employmentType = 'Vollzeit';
@@ -45,18 +52,19 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   @override
   void initState() {
     super.initState();
+    _companyId = context.read<AppState>().currentUser?['company_id'];
     _loadCompanies();
     if (widget.userId != null) _loadUser();
   }
 
   Future<void> _loadCompanies() async {
-    final data = await SupabaseService.getCompanies(status: 'active');
-    if (mounted) setState(() => _companies = data);
+    // Şirket sabitlendiği için doğrudan bölümleri yükleyebiliriz
+    _loadDepartments();
   }
 
   Future<void> _loadDepartments() async {
     if (_companyId == null) return;
-    final data = await SupabaseService.getDepartments(_companyId!);
+    final data = await SupabaseService.getDepartments(companyId: _companyId!);
     if (mounted) setState(() { _departments = data; _departmentId = null; });
   }
 
@@ -72,6 +80,9 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         _pin.text = data['pin_code'] ?? '';
         _employeeNumber.text = data['employee_number'] ?? '';
         _weeklyHours.text = data['weekly_hours']?.toString() ?? '';
+        _monthlyHours.text = data['monthly_hours']?.toString() ?? '';
+        if (data['birth_date'] != null) _birthDate = DateTime.tryParse(data['birth_date']);
+        if (data['entry_date'] != null) _entryDate = DateTime.tryParse(data['entry_date']);
         _role = data['role'] ?? 'mitarbeiter';
         _employmentType = data['employment_type'] ?? 'Vollzeit';
         _companyId = data['company_id'];
@@ -83,10 +94,6 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_companyId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen bir şirket seçin')));
-      return;
-    }
     setState(() => _saving = true);
     try {
       await SupabaseService.upsertUser({
@@ -99,6 +106,9 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'pin_code': _pin.text.trim(),
         'employee_number': _employeeNumber.text.trim().isEmpty ? null : _employeeNumber.text.trim(),
         'weekly_hours': double.tryParse(_weeklyHours.text),
+        'monthly_hours': double.tryParse(_monthlyHours.text),
+        'birth_date': _birthDate?.toIso8601String().split('T')[0],
+        'entry_date': _entryDate?.toIso8601String().split('T')[0],
         'role': _role,
         'employment_type': _employmentType,
         'company_id': _companyId,
@@ -118,83 +128,105 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.userId == null ? 'Yeni Personel' : 'Personel Düzenle')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _section('Kimlik Bilgileri'),
-            Row(children: [
-              Expanded(child: _textField('Ad *', _firstName, required: true)),
-              const SizedBox(width: 12),
-              Expanded(child: _textField('Soyad *', _lastName, required: true)),
-            ]),
-            _textField('E-posta *', _email, required: true, type: TextInputType.emailAddress),
-            _textField('Telefon', _phone, type: TextInputType.phone),
-            const SizedBox(height: 16),
-
-            _section('Organizasyon'),
-            DropdownButtonFormField<String>(
-              value: _companyId,
-              decoration: const InputDecoration(labelText: 'Şirket *'),
-              isExpanded: true,
-              items: _companies.map((c) => DropdownMenuItem<String>(
-                value: c['id'].toString(),
-                child: Text(c['name'] ?? '', overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
-              )).toList(),
-              onChanged: (v) { setState(() => _companyId = v); _loadDepartments(); },
-            ),
-            const SizedBox(height: 12),
-            if (_departments.isNotEmpty) ...[
-              DropdownButtonFormField<String>(
-                value: _departmentId,
-                decoration: const InputDecoration(labelText: 'Bölüm'),
-                isExpanded: true,
-                items: [
-                  const DropdownMenuItem<String>(value: null, child: Text('Seçilmedi')),
-                  ..._departments.map((d) => DropdownMenuItem<String>(
-                    value: d['id'].toString(),
-                    child: Text(d['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
-                  )),
+      body: WebContentWrapper(
+        child: Form(
+          key: _formKey,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 500;
+              final fieldWidth = isWide ? (constraints.maxWidth - 32 - 16) / 2 : constraints.maxWidth - 32;
+  
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _section('Kimlik Bilgileri'),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 0,
+                    children: [
+                      SizedBox(width: fieldWidth, child: _textField('Ad *', _firstName, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField('Soyad *', _lastName, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField('E-posta *', _email, required: true, type: TextInputType.emailAddress)),
+                      SizedBox(width: fieldWidth, child: _textField('Telefon', _phone, type: TextInputType.phone)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+  
+                  _section('Organizasyon'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    children: [
+                      if (_departments.isNotEmpty)
+                        SizedBox(
+                          width: fieldWidth,
+                          child: DropdownButtonFormField<String>(
+                            value: _departmentId,
+                            decoration: const InputDecoration(labelText: 'Bölüm'),
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem<String>(value: null, child: Text('Seçilmedi')),
+                              ..._departments.map((d) => DropdownMenuItem<String>(
+                                value: d['id'].toString(),
+                                child: Text(d['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
+                              )),
+                            ],
+                            onChanged: (v) => setState(() => _departmentId = v),
+                          ),
+                        ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: DropdownButtonFormField<String>(
+                          value: _role,
+                          decoration: const InputDecoration(labelText: 'Rol *'),
+                          items: _roles.entries.map((e) => DropdownMenuItem<String>(
+                            value: e.key,
+                            child: Text(e.value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
+                          )).toList(),
+                          onChanged: (v) => setState(() => _role = v!),
+                        ),
+                      ),
+                      SizedBox(width: fieldWidth, child: _textField('Pozisyon Başlığı', _position)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+  
+                  _section('Çalışma Bilgileri'),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    children: [
+                      SizedBox(
+                        width: fieldWidth,
+                        child: DropdownButtonFormField<String>(
+                          value: _employmentType,
+                          decoration: const InputDecoration(labelText: 'İstihdam Tipi'),
+                          items: ['Vollzeit', 'Teilzeit', 'Minijob', 'Werkvertrag', 'Sonstiges'].map((e) =>
+                            DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)))).toList(),
+                          onChanged: (v) => setState(() => _employmentType = v!),
+                        ),
+                      ),
+                      SizedBox(width: fieldWidth, child: _textField('Haftalık Saat', _weeklyHours, type: TextInputType.number)),
+                      SizedBox(width: fieldWidth, child: _textField('Aylık Saat', _monthlyHours, type: TextInputType.number)),
+                      SizedBox(width: fieldWidth, child: _dateField('Doğum Tarihi', _birthDate, (d) => setState(() => _birthDate = d))),
+                      SizedBox(width: fieldWidth, child: _dateField('İşe Giriş Tarihi', _entryDate, (d) => setState(() => _entryDate = d))),
+                      SizedBox(width: fieldWidth, child: _textField('Personel No', _employeeNumber)),
+                      SizedBox(width: fieldWidth, child: _textField('PIN (kiosk için)', _pin)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(widget.userId == null ? 'Personel Oluştur' : 'Kaydet'),
+                  ),
+                  const SizedBox(height: 24),
                 ],
-                onChanged: (v) => setState(() => _departmentId = v),
-              ),
-              const SizedBox(height: 12),
-            ],
-            DropdownButtonFormField<String>(
-              value: _role,
-              decoration: const InputDecoration(labelText: 'Rol *'),
-              items: _roles.entries.map((e) => DropdownMenuItem<String>(
-                value: e.key,
-                child: Text(e.value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
-              )).toList(),
-              onChanged: (v) => setState(() => _role = v!),
-            ),
-            const SizedBox(height: 12),
-            _textField('Pozisyon Başlığı', _position),
-            const SizedBox(height: 16),
-
-            _section('Çalışma Bilgileri'),
-            DropdownButtonFormField<String>(
-              value: _employmentType,
-              decoration: const InputDecoration(labelText: 'İstihdam Tipi'),
-              items: ['Vollzeit', 'Teilzeit', 'Minijob', 'Werkvertrag', 'Sonstiges'].map((e) =>
-                DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)))).toList(),
-              onChanged: (v) => setState(() => _employmentType = v!),
-            ),
-            const SizedBox(height: 12),
-            _textField('Haftalık Sözleşme Saati', _weeklyHours, type: TextInputType.number),
-            _textField('Personel No', _employeeNumber),
-            _textField('PIN (kiosk için)', _pin),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(widget.userId == null ? 'Personel Oluştur' : 'Kaydet'),
-            ),
-            const SizedBox(height: 24),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -212,6 +244,28 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       keyboardType: type,
       decoration: InputDecoration(labelText: label),
       validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+    ),
+  );
+
+  Widget _dateField(String label, DateTime? value, Function(DateTime) onPicked) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: InkWell(
+      onTap: () async {
+        final d = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now().subtract(const Duration(days: 365 * 20)),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+        );
+        if (d != null) onPicked(d);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(labelText: label),
+        child: Text(
+          value == null ? 'Seçilmedi' : '${value.day}.${value.month}.${value.year}',
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 14),
+        ),
+      ),
     ),
   );
 }

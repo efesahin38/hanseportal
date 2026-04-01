@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/web_utils.dart';
+import '../providers/app_state.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -23,8 +27,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _load() async {
+    final appState = context.read<AppState>();
     setState(() => _loading = true);
     try {
+      final departmentId = appState.isBereichsleiter ? appState.departmentId : null;
       final from = DateTime(_focusedDay.year, _focusedDay.month, 1);
       final to = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
 
@@ -32,6 +38,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final plans = await SupabaseService.getOperationPlans(
         dateFrom: from,
         dateTo: to,
+        departmentId: departmentId,
       );
 
       if (mounted) {
@@ -62,13 +69,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        toolbarHeight: 120, // Adjust height as needed for the content
+        toolbarHeight: kIsWeb ? 80 : 120, // Adjust height as needed for the content
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: AppTheme.gradientBox(),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -76,88 +84,88 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   IconButton(
                     icon: const Icon(Icons.chevron_left, color: Colors.white),
                     onPressed: () {
-                      setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1));
+                      setState(() {
+                        _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
+                        _selectedDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
+                      });
                       _load();
                     },
                   ),
                   Text(
                     _monthLabel(_focusedDay),
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                    style: TextStyle(color: Colors.white, fontSize: kIsWeb ? 20 : 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                   ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right, color: Colors.white),
                     onPressed: () {
-                      setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1));
+                      setState(() {
+                        _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
+                        _selectedDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
+                      });
                       _load();
                     },
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              // Gün başlıkları
-              Row(
-                children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
-                    .map((d) => Expanded(
-                          child: Text(d,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
-                        ))
-                    .toList(),
-              ),
+              if (!kIsWeb) ...[
+                const SizedBox(height: 8),
+                // Gün başlıkları - Mobile only (Web shows it inside grid)
+                Row(
+                  children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+                      .map((d) => Expanded(
+                            child: Text(d,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          ))
+                      .toList(),
+                ),
+              ],
             ],
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // ── Takvim Izgara ────────────────────────────────
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: _buildCalendarGrid(),
-          ),
-
-          const SizedBox(height: 4),
-
-          // ── Seçili Gün Etkinlikleri ──────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+          
+          if (isWide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _dayLabel(_selectedDay),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
-                ),
-                if (selectedItems.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                    child: Text('${selectedItems.length}', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                // Left: Calendar Grid
+                SizedBox(
+                  width: 450,
+                  child: Column(
+                    children: [
+                      _buildWebDayHeaders(),
+                      _buildCalendarGrid(),
+                      const Spacer(),
+                    ],
                   ),
-                ],
+                ),
+                const VerticalDivider(width: 1),
+                // Right: Events
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildSelectedDayHeader(selectedItems),
+                      Expanded(child: _buildEventList(selectedItems)),
+                    ],
+                  ),
+                ),
               ],
-            ),
-          ),
+            );
+          }
 
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : selectedItems.isEmpty
-                    ? Center(
-                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.event_busy_outlined, size: 48, color: AppTheme.textSub.withOpacity(0.4)),
-                          const SizedBox(height: 12),
-                          const Text('Bu gün için etkinlik yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                        ]),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: selectedItems.length,
-                        itemBuilder: (_, i) => _CalendarItemCard(item: selectedItems[i]),
-                      ),
-          ),
-        ],
+          return Column(
+            children: [
+              _buildCalendarGrid(),
+              const SizedBox(height: 4),
+              _buildSelectedDayHeader(selectedItems),
+              Expanded(child: _buildEventList(selectedItems)),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEventDialog(),
@@ -165,6 +173,62 @@ class _CalendarScreenState extends State<CalendarScreen> {
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Etkinlik Ekle', style: TextStyle(color: Colors.white, fontFamily: 'Inter')),
       ),
+    );
+  }
+
+  Widget _buildWebDayHeaders() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+            .map((d) => Expanded(
+                  child: Text(d,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                ))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildSelectedDayHeader(List<Map<String, dynamic>> selectedItems) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            _dayLabel(_selectedDay),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+          ),
+          if (selectedItems.isNotEmpty) ...[
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text('${selectedItems.length} Etkinlik', style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventList(List<Map<String, dynamic>> selectedItems) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (selectedItems.isEmpty) {
+      return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.event_busy_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          const Text('Bu gün için aktivite yok', style: TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
+        ]),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: selectedItems.length,
+      itemBuilder: (_, i) => _CalendarItemCard(item: selectedItems[i]),
     );
   }
 
@@ -176,55 +240,64 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final totalCells = startOffset + daysInMonth;
     final rows = (totalCells / 7).ceil();
 
-    return SizedBox(
-      height: rows * 48.0,
+    return Container(
+      color: Colors.white,
       child: GridView.builder(
+        shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, childAspectRatio: 1),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 7,
+          childAspectRatio: 1,
+          mainAxisSpacing: 4,
+          crossAxisSpacing: 4,
+        ),
         itemCount: rows * 7,
-        itemBuilder: (_, index) {
-          final dayNum = index - startOffset + 1;
-          if (dayNum < 1 || dayNum > daysInMonth) return const SizedBox.shrink();
-          final day = DateTime(_focusedDay.year, _focusedDay.month, dayNum);
-          final isSelected = _isSameDay(day, _selectedDay);
-          final isToday = _isSameDay(day, DateTime.now());
-          final hasItems = _hasItems(day);
-
-          return GestureDetector(
-            onTap: () => setState(() => _selectedDay = day),
-            child: Container(
-              margin: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primary : isToday ? AppTheme.primary.withOpacity(0.1) : null,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$dayNum',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  if (hasItems)
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected ? Colors.white : AppTheme.accent,
+          itemBuilder: (_, index) {
+            final dayNum = index - startOffset + 1;
+            if (dayNum < 1 || dayNum > daysInMonth) return const SizedBox.shrink();
+            final day = DateTime(_focusedDay.year, _focusedDay.month, dayNum);
+            final isSelected = _isSameDay(day, _selectedDay);
+            final isToday = _isSameDay(day, DateTime.now());
+            final hasItems = _hasItems(day);
+  
+            return InkWell(
+              onTap: () => setState(() => _selectedDay = day),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                margin: const EdgeInsets.all(1),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primary : isToday ? AppTheme.primary.withOpacity(0.08) : null,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isToday && !isSelected ? Border.all(color: AppTheme.primary.withOpacity(0.3)) : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$dayNum',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
+                        fontFamily: 'Inter',
                       ),
                     ),
-                ],
+                    const SizedBox(height: 4),
+                    if (hasItems)
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected ? Colors.white : AppTheme.accent,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
     );
   }
 

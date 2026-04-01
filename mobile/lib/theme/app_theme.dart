@@ -132,8 +132,14 @@ class AppTheme {
     gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [primary, secondary],
+      colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)], // More vibrant blue gradient
     ),
+  );
+
+  static BoxDecoration glassBox({Color? color, double blur = 10}) => BoxDecoration(
+    color: (color ?? Colors.white).withOpacity(0.1),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.white.withOpacity(0.2)),
   );
 
   static Color statusColor(String status) {
