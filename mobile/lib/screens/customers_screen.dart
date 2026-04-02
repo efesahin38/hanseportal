@@ -60,7 +60,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hanse Müşteri Sistemi (SWIPE)', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
+        title: const Text('Müşteri Yönetimi', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textMain,
@@ -134,7 +134,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                               final c = _filtered[i];
                               return Dismissible(
                                 key: ValueKey('customer-${c['id']}'),
-                                direction: DismissDirection.horizontal,
+                                direction: canCreate ? DismissDirection.horizontal : DismissDirection.none,
                                 background: Container(
                                   alignment: Alignment.centerLeft,
                                   padding: const EdgeInsets.only(left: 20),
@@ -171,6 +171,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
                                     _load(); // Restore list on error
                                   }
+                                  _load(); // Ensure local state is consistent with DB
                                 },
                                 child: _CustomerListTile(
                                   customer: c,
