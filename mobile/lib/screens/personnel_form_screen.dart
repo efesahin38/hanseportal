@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 
 /// Yeni personel / mevcut personel düzenleme formu
 class PersonnelFormScreen extends StatefulWidget {
@@ -127,7 +128,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.userId == null ? 'Yeni Personel' : 'Personel Düzenle')),
+      appBar: AppBar(title: Text(widget.userId == null ? tr('Yeni Personel') : tr('Personel Düzenle'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,

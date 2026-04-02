@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import '../services/pdf_service.dart';
 
 /// Ön Fatura Taslağı Detay Ekranı (Bölüm 13)
@@ -71,11 +72,11 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Durum güncellendi: ${_draftStatusLabel(newStatus)}')),
+          SnackBar(content: Text('${tr('Durum güncellendi')}: ${_draftStatusLabel(newStatus)}')),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -94,7 +95,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('PDF hatası: $e')));
+            .showSnackBar(SnackBar(content: Text('${tr('PDF hatası')}: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -103,12 +104,12 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
 
   String _draftStatusLabel(String s) {
     switch (s) {
-      case 'auto_generated':   return 'Otomatik Oluşturuldu';
-      case 'under_review':     return 'İncelemede';
-      case 'correction_needed': return 'Düzeltme Gerekli';
-      case 'approved':         return 'Onaylandı';
-      case 'invoiced':         return 'Faturalandı';
-      case 'cancelled':        return 'İptal Edildi';
+      case 'auto_generated':   return tr('Otomatik Oluşturuldu');
+      case 'under_review':     return tr('İncelemede');
+      case 'correction_needed': return tr('Düzeltme Gerekli');
+      case 'approved':         return tr('Onaylandı');
+      case 'invoiced':         return tr('Faturalandı');
+      case 'cancelled':        return tr('İptal Edildi');
       default:                 return s;
     }
   }
@@ -134,7 +135,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_draft == null) return Scaffold(appBar: AppBar(title: const Text('Ön Fatura')), body: const Center(child: Text('Bulunamadı')));
+    if (_draft == null) return Scaffold(appBar: AppBar(title: Text(tr('Ön Fatura'))), body: Center(child: Text(tr('Veri bulunamadı'))));
 
     final d = _draft!;
     final status = d['status'] ?? '';
@@ -149,12 +150,12 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(d['draft_number'] ?? 'Ön Fatura'),
+        title: Text(d['draft_number'] ?? tr('Ön Fatura')),
         actions: [
           // PDF Export
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'PDF Oluştur & Paylaş',
+            tooltip: tr('PDF Oluştur & Paylaş'),
             onPressed: _saving ? null : _exportPdf,
           ),
           if (canEdit)
@@ -194,23 +195,23 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
             const SizedBox(height: 16),
   
             // Şirket & Müşteri
-            _card('Fatura Bilgileri', [
+            _card(tr('Fatura Bilgileri'), [
               if (company != null) ...[
-                Text('Faturayı Kesen:', style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                Text(tr('Faturayı Kesen:'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                 Text(company['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter')),
                 if (company['iban'] != null) Text('IBAN: ${company['iban']}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
                 const SizedBox(height: 10),
               ],
               if (customer != null) ...[
-                Text('Müşteri:', style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                Text(tr('Müşteri:'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                 Text(customer['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter')),
                 if (d['billing_address'] != null) Text(d['billing_address'], style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                if (d['billing_tax_number'] != null) Text('Vergi No: ${d['billing_tax_number']}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                if (d['billing_tax_number'] != null) Text('${tr('Vergi No:')} ${d['billing_tax_number']}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
               ],
               if (d['service_date_from'] != null || d['service_date_to'] != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Hizmet Tarihi: ${d['service_date_from'] ?? ''} – ${d['service_date_to'] ?? ''}',
+                  '${tr('Hizmet Tarihi:')} ${d['service_date_from'] ?? ''} – ${d['service_date_to'] ?? ''}',
                   style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub),
                 ),
               ],
@@ -219,30 +220,30 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
   
             // Müşteri Banka & Vergi Bilgileri (Bölüm 1)
             if (customer != null && context.read<AppState>().canSeeFinancialDetails) ...[
-              _card('Müşteri Banka & Vergi Bilgileri (Hassas)', [
-                if (customer['bank_name'] != null) _row('Banka', customer['bank_name']),
+              _card(tr('Müşteri Banka & Vergi Bilgileri (Hassas)'), [
+                if (customer['bank_name'] != null) _row(tr('Banka'), customer['bank_name']),
                 if (customer['iban'] != null) _row('IBAN', customer['iban']),
                 if (customer['bic'] != null) _row('BIC', customer['bic']),
                 if (customer['vat_number'] != null) _row('USt-IdNr.', customer['vat_number']),
                 if (customer['secondary_contact_name'] != null) ...[
                   const Divider(),
-                  _row('İkinci Muhatap', customer['secondary_contact_name']),
-                  if (customer['secondary_contact_phone'] != null) _row('İkinci Tel', customer['secondary_contact_phone']),
+                  _row(tr('İkinci Muhatap'), customer['secondary_contact_name']),
+                  if (customer['secondary_contact_phone'] != null) _row(tr('İkinci Tel'), customer['secondary_contact_phone']),
                 ],
               ]),
               const SizedBox(height: 12),
             ],
   
             // Kalemler
-            _card('Fatura Kalemleri', [
+            _card(tr('Fatura Kalemleri'), [
               // Ana Kalemler
-              const Text('Ana Hizmet Kalemleri', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              Text(tr('Ana Hizmet Kalemleri'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
               const SizedBox(height: 8),
               ..._items.where((i) => i['item_type'] == 'main').map((item) => _itemRow(item)),
               const SizedBox(height: 12),
               // Ek Kalemler
               if (_items.any((i) => i['item_type'] == 'extra')) ...[
-                const Text('Ek Hizmet Kalemleri', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                Text(tr('Ek Hizmet Kalemleri'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                 const SizedBox(height: 8),
                 ..._items.where((i) => i['item_type'] == 'extra').map((item) => _itemRow(item)),
               ],
@@ -275,21 +276,21 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                 final realExpense = realLaborCost + realMaterialCost;
                 final realProfit = effectiveRevenue - realExpense;
   
-                return _card('Proje Finansal Analizi (Özet)', [
+                return _card(tr('Proje Finansal Analizi (Özet)'), [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _financialSummaryItem('Tahmini Gelir', '€ ${effectiveRevenue.toStringAsFixed(2)}', Colors.green),
-                      _financialSummaryItem('Tahmini Gider', '€ ${realExpense.toStringAsFixed(2)}', Colors.orange),
-                      _financialSummaryItem('Net Kar', '€ ${realProfit.toStringAsFixed(2)}', realProfit >= 0 ? AppTheme.primary : AppTheme.error),
+                      _financialSummaryItem(tr('Tahmini Gelir'), '€ ${effectiveRevenue.toStringAsFixed(2)}', Colors.green),
+                      _financialSummaryItem(tr('Tahmini Gider'), '€ ${realExpense.toStringAsFixed(2)}', Colors.orange),
+                      _financialSummaryItem(tr('Net Kar'), '€ ${realProfit.toStringAsFixed(2)}', realProfit >= 0 ? AppTheme.primary : AppTheme.error),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _financialSummaryItem('İşçilik Gideri', '€ ${realLaborCost.toStringAsFixed(2)}', Colors.deepOrange),
-                      _financialSummaryItem('Malzeme Gideri', '€ ${realMaterialCost.toStringAsFixed(2)}', Colors.amber),
+                      _financialSummaryItem(tr('İşçilik Gideri'), '€ ${realLaborCost.toStringAsFixed(2)}', Colors.deepOrange),
+                      _financialSummaryItem(tr('Malzeme Gideri'), '€ ${realMaterialCost.toStringAsFixed(2)}', Colors.amber),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -300,18 +301,18 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
             if (canEdit) const SizedBox(height: 12),
   
             // Muhasebe Notu
-            if (canEdit) _card('Muhasebe Notu', [
+            if (canEdit) _card(tr('Muhasebe Notu'), [
               TextFormField(
                 controller: _accountingNote,
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Muhasebe İçin Not', hintText: 'Muhasebe iç notu...'),
+                decoration: InputDecoration(labelText: tr('Muhasebe İçin Not'), hintText: tr('Muhasebe iç notu...')),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: _saving ? null : () => _updateStatus(status),
                 child: _saving
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Notu Kaydet'),
+                    : Text(tr('Notu Kaydet')),
               ),
             ]),
             const SizedBox(height: 24),

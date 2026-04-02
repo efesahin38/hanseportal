@@ -392,7 +392,7 @@ class _ActivityItem extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Faturalandırıldı ve geçmişe eklendi.'))));
                   Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen()));
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
                 }
               },
               style: TextButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),

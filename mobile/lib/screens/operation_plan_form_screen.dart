@@ -321,8 +321,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               ),
   
               if (_loadingPersonnel)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
                   child: Text(tr('Personel listesi yükleniyor...'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                 )
               else if (_personnel.isEmpty)
@@ -352,7 +352,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     }).toList();
   
                     if (filteredPersonnel.isEmpty) {
-                      return const Padding(
+                      return Padding(
                         padding: EdgeInsets.only(bottom: 16),
                         child: Text(tr('Bu departmanda personel bulunamadı.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                       );
@@ -405,7 +405,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
                   ),
                   child: Row(
-                    children: const [
+                    children: [
                       Icon(Icons.star, color: AppTheme.warning, size: 16),
                       SizedBox(width: 8),
                       Expanded(

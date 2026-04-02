@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'order_detail_screen.dart';
 
 /// Mitarbeiter / Vorarbeiter – kendi görevleri
@@ -84,7 +85,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ İşe başladınız!'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('İşe başladınız!')}'), backgroundColor: AppTheme.success),
         );
         _load();
       }
@@ -97,25 +98,25 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('İşi Tamamla', style: TextStyle(fontFamily: 'Inter')),
+        title: Text(tr('İşi Tamamla'), style: const TextStyle(fontFamily: 'Inter')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('İşi tamamladığınızı onaylıyor musunuz?', style: TextStyle(fontFamily: 'Inter')),
+            Text(tr('İşi tamamladığınızı onaylıyor musunuz?'), style: const TextStyle(fontFamily: 'Inter')),
             const SizedBox(height: 12),
             TextField(
               controller: noteCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Saha notu (opsiyonel)...',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: tr('Saha notu (opsiyonel)...'),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tamamla')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('İptal'))),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Tamamla'))),
         ],
       ),
     );
@@ -124,7 +125,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       await SupabaseService.endWorkSession(_activeSession!['id'], note: noteCtrl.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Çalışma tamamlandı! Onay bekliyor.'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('Çalışma tamamlandı! Onay bekliyor.')}'), backgroundColor: AppTheme.success),
         );
         _load();
       }
@@ -139,12 +140,12 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       final tomorrow = today.add(const Duration(days: 1));
       
       if (dt.year == today.year && dt.month == today.month && dt.day == today.day) {
-        return 'Bugünkü Görevlerim';
+        return tr('Bugünkü Görevlerim');
       }
       if (dt.year == tomorrow.year && dt.month == tomorrow.month && dt.day == tomorrow.day) {
-        return 'Yarınki Görevlerim';
+        return tr('Yarınki Görevlerim');
       }
-      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} Görevleri';
+      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${tr('Görevleri')}';
     } catch (_) {
       return dateStr;
     }
@@ -186,16 +187,16 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppTheme.divider),
                         ),
-                        child: const Center(child: Column(children: [
-                          Icon(Icons.event_available, size: 48, color: AppTheme.textSub),
-                          SizedBox(height: 8),
-                          Text('Planlanmış görev yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                        child: Center(child: Column(children: [
+                          const Icon(Icons.event_available, size: 48, color: AppTheme.textSub),
+                          const SizedBox(height: 8),
+                          Text(tr('Planlanmış görev yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ])),
                       )
                     else
                       ...groupedPlans.entries.map((group) {
                         final dateLabel = _formatDate(group.key);
-                        final isToday = dateLabel == 'Bugünkü Görevlerim';
+                        final isToday = (group.key != 'Belirsiz' && DateTime.tryParse(group.key)?.day == DateTime.now().day);
                         
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +278,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
     final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
     final h = safeElapsed.inHours;
     final m = safeElapsed.inMinutes % 60;
-    final elapsedText = h > 0 ? '${h}s ${m}dk çalışılıyor' : '${m}dk çalışılıyor';
+    final elapsedText = h > 0 ? '$h ${tr('s')} $m ${tr('dk çalışılıyor')}' : '$m ${tr('dk çalışılıyor')}';
 
     // Delay at start (saved in DB)
     String? delayText;
@@ -286,7 +287,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
       if (dm > 0) {
         final dh = dm ~/ 60;
         final dmin = dm % 60;
-        delayText = dh > 0 ? '${dh}s ${dmin}dk geç başlandı' : '${dmin}dk geç başlandı';
+        delayText = dh > 0 ? '$dh ${tr('s')} $dmin ${tr('dk geç başlandı')}' : '$dmin ${tr('dk geç başlandı')}';
       }
     } else if (op != null && op['plan_date'] != null && op['start_time'] != null && _startTime != null) {
       final plannedStart = DateTime.tryParse('${op['plan_date']}T${op['start_time']}');
@@ -295,7 +296,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
         if (!delay.isNegative && delay.inMinutes > 0) {
           final dh = delay.inHours;
           final dmin = delay.inMinutes % 60;
-          delayText = dh > 0 ? '${dh}s ${dmin}dk geç başlandı' : '${dmin}dk geç başlandı';
+          delayText = dh > 0 ? '$dh ${tr('s')} $dmin ${tr('dk geç başlandı')}' : '$dmin ${tr('dk geç başlandı')}';
         }
       }
     }
@@ -360,7 +361,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
                 ),
                 onPressed: widget.onEnd,
                 icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                label: const Text('Tamamla', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                label: Text(tr('Tamamla'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -426,7 +427,7 @@ class _TaskCardState extends State<_TaskCard> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Rapor başarıyla gönderildi'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('Rapor başarıyla gönderildi')}'), backgroundColor: AppTheme.success),
         );
         setState(() {
           _descCtrl.clear();
@@ -437,7 +438,7 @@ class _TaskCardState extends State<_TaskCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error),
         );
         setState(() => _sending = false);
       }
@@ -495,7 +496,7 @@ class _TaskCardState extends State<_TaskCard> {
     final delayH = delayMinutes ~/ 60;
     final delayM = delayMinutes % 60;
     final delayText = delayMinutes > 0
-        ? (delayH > 0 ? '${delayH}s ${delayM}dk gecikti' : '${delayM}dk gecikti')
+        ? (delayH > 0 ? '$delayH ${tr('s')} $delayM ${tr('dk gecikti')}' : '$delayM ${tr('dk gecikti')}')
         : null;
     
     // Check if user is the supervisor
@@ -565,7 +566,7 @@ class _TaskCardState extends State<_TaskCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                      child: const Text('SAHA LİDERİ', style: TextStyle(color: AppTheme.success, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                      child: Text(tr('SAHA LİDERİ'), style: const TextStyle(color: AppTheme.success, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                     ),
                 ],
               ),
@@ -608,7 +609,7 @@ class _TaskCardState extends State<_TaskCard> {
                       final dur = en.difference(st);
                       final dh = dur.inHours;
                       final dm = dur.inMinutes % 60;
-                      durText = dh > 0 ? ' (${dh}s ${dm}dk)' : ' (${dm}dk)';
+                      durText = dh > 0 ? ' ($dh ${tr('s')} $dm ${tr('dk')})' : ' ($dm ${tr('dk')})';
                     }
                   }
                   return Container(
@@ -622,7 +623,7 @@ class _TaskCardState extends State<_TaskCard> {
                       const Icon(Icons.check_circle_outline, size: 14, color: AppTheme.success),
                       const SizedBox(width: 6),
                       Text(
-                        'Başladı: $actualStart  →  Bitti: $actualEnd$durText',
+                        '${tr('Başladı')}: $actualStart  →  ${tr('Bitti')}: $actualEnd$durText',
                         style: const TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
                       ),
                     ]),
@@ -632,7 +633,7 @@ class _TaskCardState extends State<_TaskCard> {
               
               if (isSupervisor) ...[
                 const Divider(height: 24),
-                const Text('Lider Paneli: Saha Durum Bildir', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                Text('${tr('Lider Paneli')}: ${tr('Saha Durum Bildir')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,7 +660,7 @@ class _TaskCardState extends State<_TaskCard> {
                         maxLines: 2,
                         style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
                         decoration: InputDecoration(
-                          hintText: 'Sahadan not yazın...',
+                          hintText: tr('Sahadan not yazın...'),
                           hintStyle: const TextStyle(fontSize: 12),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           suffixIcon: _sending 
@@ -685,10 +686,10 @@ class _TaskCardState extends State<_TaskCard> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(color: AppTheme.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                       alignment: Alignment.center,
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.check_circle, color: AppTheme.success, size: 20),
-                        SizedBox(width: 8),
-                        Text('Tamamlandı', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
+                        const SizedBox(width: 8),
+                        Text(tr('Tamamlandı'), style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -700,10 +701,10 @@ class _TaskCardState extends State<_TaskCard> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                       alignment: Alignment.center,
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.cancel, color: Colors.red, size: 20),
-                        SizedBox(width: 8),
-                        Text('Çalışılmadı', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.cancel, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Text(tr('Çalışılmadı'), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -715,10 +716,10 @@ class _TaskCardState extends State<_TaskCard> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(color: AppTheme.textSub.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                       alignment: Alignment.center,
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.upcoming, color: AppTheme.textSub, size: 20),
-                        SizedBox(width: 8),
-                        Text('Planlanan Görev', style: TextStyle(color: AppTheme.textSub, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.upcoming, color: AppTheme.textSub, size: 20),
+                        const SizedBox(width: 8),
+                        Text(tr('Planlanan Görev'), style: const TextStyle(color: AppTheme.textSub, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -730,7 +731,7 @@ class _TaskCardState extends State<_TaskCard> {
                       onPressed: widget.hasActiveSession ? null : widget.onStartWork,
                       icon: const Icon(Icons.play_arrow, size: 20),
                       label: Text(
-                        widget.hasActiveSession ? 'Başka aktif görev var' : 'İşe Başla',
+                        widget.hasActiveSession ? tr('Başka aktif görev var') : tr('İşe Başla'),
                         style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(

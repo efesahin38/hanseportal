@@ -117,7 +117,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _durationH,
-                decoration: const InputDecoration(labelText: 'Ek İş Süresi (saat)', hintText: 'Ör: 2.5'),
+                decoration: InputDecoration(labelText: tr('Ek İş Süresi (saat)'), hintText: tr('Ör: 2.5')),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
 import 'company_form_screen.dart';
@@ -53,7 +54,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _company == null
-              ? const Center(child: Text('Şirket bulunamadı', style: TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)))
+              ? Center(child: Text(tr('Veri bulunamadı'), style: const TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: SingleChildScrollView(
@@ -68,50 +69,50 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
 
                         // Temel Bilgiler
                         _SectionCard(
-                          title: 'Temel Bilgiler',
+                          title: tr('Temel Bilgiler'),
                           icon: Icons.business_outlined,
                           children: [
-                            _InfoRow('Tam Unvan', _company!['name']),
-                            _InfoRow('Kısa Ad', _company!['short_name']),
-                            _InfoRow('Şirket Türü', _company!['company_type']),
-                            _InfoRow('Yapı', _company!['relation_type'] == 'parent' ? 'Ana Şirket' : _company!['relation_type'] == 'subsidiary' ? 'Bağlı Şirket' : 'İştirak'),
+                            _InfoRow(tr('Tam Unvan'), _company!['name']),
+                            _InfoRow(tr('Kısa Ad'), _company!['short_name']),
+                            _InfoRow(tr('Şirket Türü'), _company!['company_type']),
+                            _InfoRow(tr('Yapı'), _company!['relation_type'] == 'parent' ? tr('Ana Şirket') : _company!['relation_type'] == 'subsidiary' ? tr('Bağlı Şirket') : tr('İştirak')),
                             if (_company!['service_description'] != null)
-                              _InfoRow('Faaliyet Alanı', _company!['service_description']),
+                              _InfoRow(tr('Faaliyet Alanı'), _company!['service_description']),
                           ],
                         ),
                         const SizedBox(height: 12),
 
                         // Adres
                         _SectionCard(
-                          title: 'Adres',
+                          title: tr('Adres'),
                           icon: Icons.location_on_outlined,
                           children: [
-                            _InfoRow('Adres', _company!['address']),
-                            _InfoRow('Posta Kodu', _company!['postal_code']),
-                            _InfoRow('Şehir', _company!['city']),
-                            _InfoRow('Ülke', _company!['country']),
+                            _InfoRow(tr('Adres'), _company!['address']),
+                            _InfoRow(tr('Posta Kodu'), _company!['postal_code']),
+                            _InfoRow(tr('Şehir'), _company!['city']),
+                            _InfoRow(tr('Ülke'), _company!['country']),
                           ],
                         ),
                         const SizedBox(height: 12),
 
                         // İletişim
                         _SectionCard(
-                          title: 'İletişim',
+                          title: tr('İletişim'),
                           icon: Icons.contact_phone_outlined,
                           children: [
-                            _InfoRow('Telefon', _company!['phone'], isLink: true, linkPrefix: 'tel:'),
-                            _InfoRow('E-posta', _company!['email'], isLink: true, linkPrefix: 'mailto:'),
-                            _InfoRow('Web Sitesi', _company!['website'], isLink: true, linkPrefix: ''),
+                            _InfoRow(tr('Telefon'), _company!['phone'], isLink: true, linkPrefix: 'tel:'),
+                            _InfoRow(tr('E-posta'), _company!['email'], isLink: true, linkPrefix: 'mailto:'),
+                            _InfoRow(tr('Web Sitesi'), _company!['website'], isLink: true, linkPrefix: ''),
                           ],
                         ),
                         const SizedBox(height: 12),
 
                         if (context.read<AppState>().canSeeFinancialDetails) ...[
                           _SectionCard(
-                            title: 'Vergi & Hukuki Bilgiler (Hassas)',
+                            title: tr('Vergi & Hukuki Bilgiler (Hassas)'),
                             icon: Icons.gavel_outlined,
                             children: [
-                              _InfoRow('Vergi No', _company!['tax_number']),
+                              _InfoRow(tr('Vergi No'), _company!['tax_number']),
                               _InfoRow('USt-IdNr.', _company!['vat_number']),
                               _InfoRow('Handelsregister', _company!['trade_register_number']),
                               _InfoRow('Amtsgericht', _company!['trade_register_court']),
@@ -122,10 +123,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
 
                         if (context.read<AppState>().canSeeFinancialDetails) ...[
                           _SectionCard(
-                            title: 'Banka Bilgileri (Hassas)',
+                            title: tr('Banka Bilgileri (Hassas)'),
                             icon: Icons.account_balance_outlined,
                             children: [
-                              _InfoRow('Banka', _company!['bank_name']),
+                              _InfoRow(tr('Banka'), _company!['bank_name']),
                               _InfoRow('IBAN', _company!['iban']),
                               _InfoRow('BIC', _company!['bic']),
                             ],
@@ -135,7 +136,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                         if (_company!['notes'] != null && (_company!['notes'] as String).isNotEmpty) ...[
                           const SizedBox(height: 12),
                           _SectionCard(
-                            title: 'Notlar',
+                            title: tr('Notlar'),
                             icon: Icons.notes_outlined,
                             children: [
                               Padding(
@@ -149,7 +150,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                         const SizedBox(height: 24),
                         // Meta Bilgiler
                         Text(
-                          'Oluşturulma: ${_formatDate(_company!['created_at'])}',
+                          '${tr('Oluşturulma')}: ${_formatDate(_company!['created_at'])}',
                           style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter'),
                         ),
                       ],
@@ -191,7 +192,7 @@ class _StatusBanner extends StatelessWidget {
             color: isActive ? AppTheme.success : AppTheme.error, size: 18),
         const SizedBox(width: 8),
         Text(
-          isActive ? 'Aktif Şirket' : 'Pasif Şirket',
+          isActive ? tr('Aktif Şirket') : tr('Pasif Şirket'),
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontFamily: 'Inter',

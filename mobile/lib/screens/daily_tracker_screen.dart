@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 class DailyTrackerScreen extends StatefulWidget {
   const DailyTrackerScreen({super.key});
@@ -76,7 +77,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
       lastDate: DateTime.now().add(const Duration(days: 30)),
-      locale: const Locale('tr', 'TR'),
+      locale: const Locale('de', 'DE'),
     );
     if (d != null) { setState(() => _selectedDate = d); await _load(); }
   }
@@ -92,7 +93,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
     for (final row in _activity) {
       final plan = row['operation_plans'];
       final order = plan?['order'];
-      final jobKey = order?['title'] ?? 'Bilinmeyen İş';
+      final jobKey = order?['title'] ?? tr('Bilinmeyen İş');
       byJob.putIfAbsent(jobKey, () => []).add(row);
     }
     final sessionStarted  = _activity.where((r) => r['session']?['status'] == 'started').length;
@@ -106,7 +107,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
         backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Günlük Takip', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(tr('Günlük Takip'), style: const TextStyle(fontWeight: FontWeight.bold)),
           Text(_fmtDisplay(_selectedDate), style: const TextStyle(fontSize: 11, color: Colors.white70)),
         ]),
         actions: [
@@ -123,13 +124,13 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
               children: [
                 // Stats row
                 Row(children: [
-                  _statChip(sessionStarted.toString(), 'Sahada', Colors.green),
+                  _statChip(sessionStarted.toString(), tr('Sahada'), Colors.green),
                   const SizedBox(width: 8),
-                  _statChip(sessionDone.toString(), 'Bitti', Colors.grey),
+                  _statChip(sessionDone.toString(), tr('Bitti'), Colors.grey),
                   const SizedBox(width: 8),
-                  _statChip(sessionWaiting.toString(), 'Bekliyor', Colors.blue),
+                  _statChip(sessionWaiting.toString(), tr('Bekliyor'), Colors.blue),
                   const SizedBox(width: 8),
-                  _statChip(totalCount.toString(), 'Toplam', const Color(0xFF4F46E5)),
+                  _statChip(totalCount.toString(), tr('Toplam'), const Color(0xFF4F46E5)),
                 ]),
                 const SizedBox(height: 16),
 
@@ -140,7 +141,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                   child: Row(children: [
                     Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                     const SizedBox(width: 10),
-                    const Text('Bugünün canlı durumu görüntüleniyor.', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+                    Text(tr('Bugünün canlı durumu görüntüleniyor.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
                   ]),
                 ),
 
@@ -149,7 +150,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                   children: [
                     Icon(Icons.event_busy, size: 60, color: Colors.grey.shade300),
                     const SizedBox(height: 12),
-                    const Text('Bu gün için kayıt bulunamadı.', style: TextStyle(color: Colors.grey)),
+                    Text(tr('Bu gün için kayıt bulunamadı.'), style: const TextStyle(color: Colors.grey)),
                   ],
                 )),
 
@@ -170,7 +171,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                         const SizedBox(width: 8),
                         Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
                         const Spacer(),
-                        Text('${entry.value.length} kişi', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('${entry.value.length} ${tr('kişi')}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       ]),
                     ),
                     // Workers in this job
@@ -217,7 +218,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                                       if (isSupervisor) Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(4)),
-                                        child: const Text('SORUMLU', style: TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold)),
+                                        child: Text(tr('SORUMLU'), style: const TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold)),
                                       ),
                                     ]),
                                     if (plan != null) Text(
@@ -243,7 +244,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                                   const Icon(Icons.bolt, size: 14, color: Color(0xFF4F46E5)),
                                   const SizedBox(width: 6),
                                   Expanded(child: Text(
-                                    'Gerçekleşen: ${sess['actual_start'] != null ? DateTime.parse(sess['actual_start']).toLocal().toString().substring(11, 16) : '?'} – ${sess['actual_end'] != null ? DateTime.parse(sess['actual_end']).toLocal().toString().substring(11, 16) : 'Devam ediyor'}',
+                                    '${tr('Gerçekleşen')}: ${sess['actual_start'] != null ? DateTime.parse(sess['actual_start']).toLocal().toString().substring(11, 16) : '?'} – ${sess['actual_end'] != null ? DateTime.parse(sess['actual_end']).toLocal().toString().substring(11, 16) : tr('Devam ediyor')}',
                                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
                                   )),
                                   if (sess['actual_duration_h'] != null)
@@ -270,7 +271,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
   );
 
   Widget _statusBadge(String status, Color color, IconData icon) {
-    String label = status == 'active' ? 'SAHADA' : (status == 'completed' ? 'BİTTİ' : 'BEKLİYOR');
+    String label = status == 'started' ? tr('SAHADA') : (status == 'completed' ? tr('BİTTİ') : tr('BEKLİYOR'));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),

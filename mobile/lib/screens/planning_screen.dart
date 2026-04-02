@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'order_detail_screen.dart';
 import 'operation_plan_form_screen.dart';
 
@@ -62,7 +63,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
 
     if (orders.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Uygun aktif iş bulunamadı')),
+        SnackBar(content: Text(tr('Uygun aktif iş bulunamadı'))),
       );
       return;
     }
@@ -102,7 +103,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
           ? FloatingActionButton.extended(
               onPressed: _showAddPlanDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Plan Ekle', style: TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Plan Ekle'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -129,13 +130,13 @@ class _PlanningScreenState extends State<PlanningScreen> {
                       },
                       child: Column(
                         children: [
-                          Text(isToday ? 'Bugün' : '', style: const TextStyle(color: AppTheme.accent, fontFamily: 'Inter', fontSize: 12)),
+                          Text(isToday ? tr('Bugün') : '', style: const TextStyle(color: AppTheme.accent, fontFamily: 'Inter', fontSize: 12)),
                           Text(
                             '${_selectedDate.day}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}',
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                           ),
-                          const Text('Tarih seçmek için tıklayın', style: TextStyle(color: AppTheme.textSub, fontSize: 11, fontFamily: 'Inter')),
+                          Text(tr('Tarih seçmek için tıklayın'), style: const TextStyle(color: AppTheme.textSub, fontSize: 11, fontFamily: 'Inter')),
                         ],
                       ),
                     ),
@@ -154,7 +155,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
                           const Icon(Icons.event_busy, size: 56, color: AppTheme.textSub),
                           const SizedBox(height: 12),
                           Text(
-                            isToday ? 'Bugün için plan yok' : 'Bu tarih için plan yok',
+                            isToday ? tr('Bugün için plan yok') : tr('Bu tarih için plan yok'),
                             style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'),
                           ),
                           if (canPlan) ...[
@@ -162,7 +163,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
                             OutlinedButton.icon(
                               onPressed: _showAddPlanDialog,
                               icon: const Icon(Icons.add),
-                              label: const Text('Plan Oluştur', style: TextStyle(fontFamily: 'Inter')),
+                              label: Text(tr('Plan Oluştur'), style: const TextStyle(fontFamily: 'Inter')),
                             ),
                           ],
                         ]))
@@ -192,11 +193,11 @@ class _PlanningScreenState extends State<PlanningScreen> {
                                   return await showDialog(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: const Text('Planı Sil?'),
-                                      content: const Text('Bu işletme planını ve atanan personelleri silmek istediğinize emin misiniz?'),
+                                      title: Text(tr('Planı Sil?')),
+                                      content: Text(tr('Bu işletme planını ve atanan personelleri silmek istediğinize emin misiniz?')),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
                                       ],
                                     ),
                                   );
@@ -217,8 +218,8 @@ class _PlanningScreenState extends State<PlanningScreen> {
                                       for (var uid in personnelIds) {
                                         await SupabaseService.sendTaskNotification(
                                           recipientId: uid,
-                                          title: 'Plan İptal Edildi',
-                                          body: '$orderTitle planı yönetici tarafından iptal edildi.',
+                                          title: tr('Plan İptal Edildi'),
+                                          body: '$orderTitle ${tr('planı yönetici tarafından iptal edildi.')}',
                                           orderId: plan['order_id'],
                                           operationPlanId: planId,
                                           notificationType: 'task_cancelled',
@@ -229,9 +230,9 @@ class _PlanningScreenState extends State<PlanningScreen> {
                                       // 4. Planı asıl veritabanından sil
                                       await SupabaseService.deleteOperationPlan(planId);
                                       
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plan silindi ve personel bilgilendirildi')));
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Plan silindi ve personel bilgilendirildi'))));
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
                                     }
                                   } else if (dir == DismissDirection.startToEnd) {
                                     final orderId = plan['order_id'];
@@ -301,10 +302,10 @@ class _OrderPickerSheet extends StatelessWidget {
                 decoration: BoxDecoration(color: AppTheme.divider, borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Text('Hangi iş için plan oluşturulsun?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Text(tr('Hangi iş için plan oluşturulsun?'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
             ),
             const Divider(height: 1),
             Expanded(
@@ -423,7 +424,7 @@ class _PlanCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Expanded(
                     child: personnel.isEmpty
-                        ? const Text('Personel atanmamış', style: TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'))
+                        ? Text(tr('Personel atanmamış'), style: const TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'))
                         : Wrap(
                             spacing: 4,
                             runSpacing: 4,
@@ -448,7 +449,7 @@ class _PlanCard extends StatelessWidget {
                 Row(children: [
                   const Icon(Icons.star_outline, size: 15, color: AppTheme.warning),
                   const SizedBox(width: 4),
-                  Text('Saha Lideri: ${supervisor['first_name']} ${supervisor['last_name']}'.trim(),
+                  Text('${tr('Saha Lideri')}: ${supervisor['first_name']} ${supervisor['last_name']}'.trim(),
                     style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                 ]),
               ],
@@ -476,7 +477,7 @@ class _PlanCard extends StatelessWidget {
                     TextButton.icon(
                       onPressed: onEdit,
                       icon: const Icon(Icons.edit_calendar, size: 16),
-                      label: const Text('Planı Düzenle', style: TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                      label: Text(tr('Planı Düzenle'), style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
                     ),
                 ],
               ),

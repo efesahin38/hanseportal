@@ -90,10 +90,10 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
               children: [
                 TextField(
                   onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: tr('Ad, e-posta, görev ara...'),
-                    prefixIcon: Icon(Icons.search),
-                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    prefixIcon: const Icon(Icons.search),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   ),
                 ),
                 const SizedBox(height: 10),

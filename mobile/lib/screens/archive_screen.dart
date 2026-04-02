@@ -5,6 +5,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'order_detail_screen.dart';
+import '../services/localization_service.dart';
 
 /// Bölüm 14 – Dijital Arşiv (Tamamlanan / Faturalanan)
 class ArchiveScreen extends StatefulWidget {
@@ -77,7 +78,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Arşiv'),
+        title: Text(tr('Arşiv')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(104),
           child: Column(
@@ -89,7 +90,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                   onChanged: (v) => setState(() => _searchQuery = v),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'İş no, müşteri veya başlık ara...',
+                    hintText: tr('İş no, müşteri veya başlık ara...'),
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
                     prefixIcon: const Icon(Icons.search, color: Colors.white70),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -114,9 +115,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
-                tabs: const [
-                  Tab(text: 'Tamamlanan İşler'),
-                  Tab(text: 'Faturalanan İşler'),
+                tabs: [
+                  Tab(text: tr('Tamamlanan İşler')),
+                  Tab(text: tr('Faturalanan İşler')),
                 ],
               ),
             ],
@@ -130,8 +131,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
             : TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildList(filteredCompleted, 'Tamamlanan iş bulunamadı', 'completed'),
-                  _buildList(filteredInvoiced, 'Faturalanan iş bulunamadı', 'invoiced'),
+                  _buildList(filteredCompleted, tr('Tamamlanan iş bulunamadı'), 'completed'),
+                  _buildList(filteredInvoiced, tr('Faturalanan iş bulunamadı'), 'invoiced'),
                 ],
               ),
       ),
@@ -190,7 +191,7 @@ class _ArchiveCard extends StatelessWidget {
 
     final isCompleted = type == 'completed';
     final actualBadgeColor = isCompleted ? AppTheme.success : AppTheme.primary;
-    final badgeText = isCompleted ? 'Tamamlandı' : 'Faturalandırıldı';
+    final badgeText = isCompleted ? tr('Tamamlandı') : tr('Faturalandı');
     final iconData = isCompleted ? Icons.check_circle : Icons.receipt_long;
 
     return Card(
@@ -258,7 +259,7 @@ class _ArchiveCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: AppTheme.bg, borderRadius: BorderRadius.circular(6)),
-                child: Text('Tarih: $formattedDate', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                child: Text('${tr('Tarih')}: $formattedDate', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
               ),
             ],
           ]),

@@ -193,7 +193,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               DropdownButtonFormField<String>(
                 value: selectedType,
                 decoration: InputDecoration(labelText: tr('Belge Türü'), border: const OutlineInputBorder()),
-                items: const [
+                items: [
                   DropdownMenuItem(value: 'offer', child: Text(tr('Teklif'))),
                   DropdownMenuItem(value: 'approved_offer', child: Text(tr('Onaylı Teklif'))),
                   DropdownMenuItem(value: 'contract', child: Text(tr('Sözleşme'))),
@@ -303,7 +303,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                       } catch (e) {
                         if (ctx.mounted) {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Hata: $e'))
+                            SnackBar(content: Text('${tr('Hata')}: $e'))
                           );
                         }
                       } finally {
@@ -331,22 +331,22 @@ class _DocumentCard extends StatelessWidget {
 
   String _typeLabel(String? t) {
     switch (t) {
-      case 'offer':          return 'Teklif';
-      case 'approved_offer': return 'Onaylı Teklif';
-      case 'contract':       return 'Sözleşme';
-      case 'addendum':       return 'Ek Protokol';
-      case 'technical_spec': return 'Teknik Şartname';
-      case 'work_order':     return 'İş Emri';
-      case 'scope_list':     return 'Kapsam Listesi';
-      case 'excel':          return 'Excel';
-      case 'photo':          return 'Fotoğraf';
-      case 'video':          return 'Video';
-      case 'client_note':    return 'Müşteri Notu';
-      case 'delivery_form':  return 'Teslim Formu';
-      case 'work_report':     return 'İş Raporu';
-      case 'pre_invoice':    return 'Ön Fatura';
-      case 'final_invoice':  return 'Nihai Fatura';
-      default:               return 'Diğer';
+      case 'offer':          return tr('Teklif');
+      case 'approved_offer': return tr('Onaylı Teklif');
+      case 'contract':       return tr('Sözleşme');
+      case 'addendum':       return tr('Ek Protokol');
+      case 'technical_spec': return tr('Teknik Şartname');
+      case 'work_order':     return tr('İş Emri');
+      case 'scope_list':     return tr('Kapsam Listesi');
+      case 'excel':          return tr('Excel');
+      case 'photo':          return tr('Fotoğraf');
+      case 'video':          return tr('Video');
+      case 'client_note':    return tr('Müşteri Notu');
+      case 'delivery_form':  return tr('Teslim Formu');
+      case 'work_report':     return tr('İş Raporu');
+      case 'pre_invoice':    return tr('Ön Fatura');
+      case 'final_invoice':  return tr('Nihai Fatura');
+      default:               return tr('Diğer');
     }
   }
 
@@ -512,7 +512,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
     
     if (url == null || url.isEmpty || url == 'placeholder') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçersiz dosya bağlantısı.'))
+        SnackBar(content: Text(tr('Geçersiz dosya bağlantısı.')))
       );
       return;
     }
@@ -524,7 +524,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
     setState(() => _loading = true);
     try {
       final url = widget.doc['file_url'] as String;
-      final fileName = widget.doc['file_name'] as String? ?? 'belge';
+      final fileName = widget.doc['file_name'] as String? ?? tr('belge');
 
       if (kIsWeb) {
         await launchUrl(Uri.parse(url));
@@ -550,7 +550,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -571,7 +571,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
       children: [
         IconButton(
           icon: const Icon(Icons.share_outlined, size: 20, color: AppTheme.primary),
-          tooltip: tr('Ansehen / Teilen'), # Changing tooltip description to German directly or tr() if available
+          tooltip: tr('Ansehen / Teilen'), // Changing tooltip description to German directly or tr() if available,
           onPressed: () => _handleAction(context, true),
         ),
         if (context.read<AppState>().canManageDocuments)

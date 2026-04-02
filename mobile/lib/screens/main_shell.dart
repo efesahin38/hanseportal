@@ -194,7 +194,7 @@ class _MainShellState extends State<MainShell> {
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
-            title: const Text('Çıkış Yap', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+            title: Text(tr('Çıkış Yap'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
             onTap: () async {
               Navigator.pop(context);
               await context.read<AppState>().signOut();
@@ -391,9 +391,9 @@ class _WebSidebar extends StatelessWidget {
                 ),
                 child: const Icon(Icons.logout, color: Colors.white70, size: 18),
               ),
-              title: const Text(
-                'Çıkış Yap',
-                style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
+              title: Text(
+                tr('Çıkış Yap'),
+                style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
               ),
               onTap: () async {
                 await context.read<AppState>().signOut();
@@ -552,5 +552,5 @@ class _NavItem {
   final IconData activeIcon;
   final String label;
   final Widget screen;
-  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.screen});
+  _NavItem({required this.icon, required this.activeIcon, required this.label, required this.screen});
 }

@@ -118,9 +118,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _emailCtrl,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: tr('E-posta'),
-                              prefixIcon: Icon(Icons.email_outlined),
+                              prefixIcon: const Icon(Icons.email_outlined),
                             ),
                             validator: (v) => (v == null || !v.contains('@'))
                                 ? tr('Geçerli bir e-posta girin')
@@ -156,9 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             child: CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: Text(
                                 tr('Oturumu Açık Tut'),
-                                style: TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'),
+                                style: const TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'),
                               ),
                               value: _rememberMe,
                               onChanged: (v) => setState(() => _rememberMe = v ?? false),

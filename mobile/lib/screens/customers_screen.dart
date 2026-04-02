@@ -84,10 +84,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 children: [
                   TextField(
                     onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: tr('Müşteri adı, şehir, e-posta ara...'),
-                      prefixIcon: Icon(Icons.search),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      prefixIcon: const Icon(Icons.search),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -96,7 +96,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final entry in {'Tümü': null, 'Aktif': 'active', 'Pasif': 'inactive', 'Potansiyel': 'potential', 'Arşiv': 'archived'}.entries)
+                        for (final entry in {tr('Tümü'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Arşiv'): 'archived'}.entries)
                           Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
@@ -121,7 +121,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _filtered.isEmpty
-                      ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.business_outlined, size: 56, color: AppTheme.textSub),
                           SizedBox(height: 12),
                           Text(tr('Müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
@@ -166,10 +166,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   try {
                                     await SupabaseService.deleteCustomer(customerId);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müşteri başarıyla silindi')));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla silindi'))));
                                   } catch (e) {
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
                                     _load(); // Restore list on error
                                   }
                                   _load(); // Ensure local state is consistent with DB

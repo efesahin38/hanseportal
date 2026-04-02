@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 class EmployeeManagementScreen extends StatefulWidget {
   const EmployeeManagementScreen({Key? key}) : super(key: key);
@@ -42,7 +43,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
     final pass = _addPassCtrl.text.trim();
     final pin  = _addPinCtrl.text.trim();
     if (name.isEmpty || pass.isEmpty) {
-      setState(() { _addError = 'İsim ve Şifre zorunludur.'; _addSuccess = null; }); return;
+      setState(() { _addError = tr('İsim ve Şifre zorunludur.'); _addSuccess = null; }); return;
     }
     setState(() { _isAdding = true; _addError = null; _addSuccess = null; });
     try {
@@ -66,7 +67,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
       if (!mounted) return;
       setState(() {
         _isAdding = false;
-        _addSuccess = '✅ $name sisteme eklendi!';
+        _addSuccess = '✅ $name ${tr('sisteme eklendi!')}';
         _addIdCtrl.clear(); _addNameCtrl.clear(); _addPinCtrl.clear(); _addPassCtrl.clear();
       });
     } catch (e) {
@@ -77,16 +78,16 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
 
   Future<void> _searchWorker() async {
     final id = _delIdCtrl.text.trim();
-    if (id.isEmpty) { setState(() => _delError = 'ID boş olamaz.'); return; }
+    if (id.isEmpty) { setState(() => _delError = tr('ID boş olamaz.')); return; }
     setState(() { _isSearching = true; _delError = null; _foundWorker = null; });
     try {
       final worker = await SupabaseService.getUserById(id);
       if (!mounted) return;
-      if (worker == null) throw Exception('Bulunamadı');
+      if (worker == null) throw Exception(tr('Bulunamadı'));
       setState(() { _foundWorker = worker; _isSearching = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _delError = 'Bu ID ile çalışan bulunamadı.'; _isSearching = false; });
+      setState(() { _delError = tr('Bu ID ile çalışan bulunamadı.'); _isSearching = false; });
     }
   }
 
@@ -96,18 +97,18 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [Icon(Icons.warning_amber, color: Colors.red), SizedBox(width: 8), Text('Emin misiniz?', style: TextStyle(color: Colors.red))]),
+        title: Row(children: [const Icon(Icons.warning_amber, color: Colors.red), const SizedBox(width: 8), Text(tr('Emin misiniz?'), style: const TextStyle(color: Colors.red))]),
         content: RichText(text: TextSpan(style: const TextStyle(fontSize: 15, color: Colors.black), children: [
           const TextSpan(text: ''),
           TextSpan(text: _foundWorker!['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-          const TextSpan(text: ' adlı çalışan sistemden kalıcı olarak silinecek.\nTüm vardiya kayıtları da silinecektir. Bu işlem geri alınamaz!'),
+          TextSpan(text: ' ${tr('adlı çalışan sistemden kalıcı olarak silinecek.')}\n${tr('Tüm vardiya kayıtları da silinecektir. Bu işlem geri alınamaz!')}'),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hayır, İptal Et')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Hayır, İptal Et'))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Evet, Sil', style: TextStyle(color: Colors.white)),
+            child: Text(tr('Evet, Sil'), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -122,7 +123,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
           .eq('id', _foundWorker!['id']);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('🗑️ ${_foundWorker!['name']} silindi.'),
+        content: Text('🗑️ ${_foundWorker!['name']} ${tr('silindi.')}'),
         backgroundColor: Colors.red,
       ));
       setState(() { _foundWorker = null; _delIdCtrl.clear(); _isDeleting = false; });
@@ -139,15 +140,15 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
       appBar: AppBar(
         backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
-        title: const Text('Eleman Yönetimi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr('Eleman Yönetimi'), style: const TextStyle(fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
-          tabs: const [
-            Tab(icon: Icon(Icons.person_add), text: 'Eleman Ekle'),
-            Tab(icon: Icon(Icons.person_remove), text: 'Eleman Sil'),
+          tabs: [
+            Tab(icon: const Icon(Icons.person_add), text: tr('Eleman Ekle')),
+            Tab(icon: const Icon(Icons.person_remove), text: tr('Eleman Sil')),
           ],
         ),
       ),
@@ -162,17 +163,17 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
   Widget _buildAddTab() => SingleChildScrollView(
     padding: const EdgeInsets.all(20),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionHeader('Yeni Çalışan Ekle', Icons.person_add, const Color(0xFF4F46E5)),
+      _sectionHeader(tr('Yeni Çalışan Ekle'), Icons.person_add, const Color(0xFF4F46E5)),
       const SizedBox(height: 20),
-      _infoBox('ID, isim ve PIN belirleyerek yeni çalışanı sisteme ekleyin. Çalışan bu ID ve PIN ile giriş yapacaktır.', Colors.blue),
+      _infoBox(tr('ID, isim ve PIN belirleyerek yeni çalışanı sisteme ekleyin. Çalışan bu ID ve PIN ile giriş yapacaktır.'), Colors.blue),
       const SizedBox(height: 20),
-      _field(controller: _addIdCtrl, label: 'Çalışan ID', hint: 'Örn: 1041', icon: Icons.badge),
+      _field(controller: _addIdCtrl, label: tr('Çalışan ID'), hint: tr('Örn: 1041'), icon: Icons.badge),
       const SizedBox(height: 14),
-      _field(controller: _addNameCtrl, label: 'Ad Soyad', hint: 'Örn: Ahmet Yılmaz', icon: Icons.person),
+      _field(controller: _addNameCtrl, label: tr('Ad Soyad'), hint: tr('Örn: Ahmet Yılmaz'), icon: Icons.person),
       const SizedBox(height: 14),
-      _field(controller: _addPassCtrl, label: 'Giriş Şifresi', hint: 'Örn: ahmet123 (Uygulama Girişi)', icon: Icons.password),
+      _field(controller: _addPassCtrl, label: tr('Giriş Şifresi'), hint: tr('Örn: ahmet123 (Uygulama Girişi)'), icon: Icons.password),
       const SizedBox(height: 14),
-      _field(controller: _addPinCtrl, label: 'PIN Şifre', hint: 'Örn: 1234', icon: Icons.lock, isPin: true),
+      _field(controller: _addPinCtrl, label: tr('PIN Şifre'), hint: tr('Örn: 1234'), icon: Icons.lock, isPin: true),
       const SizedBox(height: 20),
       if (_addError != null) _alertBox(_addError!, Colors.red),
       if (_addSuccess != null) _alertBox(_addSuccess!, Colors.green),
@@ -188,7 +189,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           icon: _isAdding ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save),
-          label: Text(_isAdding ? 'Ekleniyor...' : 'KAYDET VE EKLE', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          label: Text(_isAdding ? tr('Ekleniyor...') : tr('KAYDET VE EKLE'), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
         ),
       ),
     ]),
@@ -198,12 +199,12 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
   Widget _buildDeleteTab() => SingleChildScrollView(
     padding: const EdgeInsets.all(20),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionHeader('Çalışan Sil', Icons.person_remove, Colors.red),
+      _sectionHeader(tr('Çalışan Sil'), Icons.person_remove, Colors.red),
       const SizedBox(height: 20),
-      _infoBox('Silmek istediğiniz çalışanın ID\'sini girin. Doğrulama için isim gösterilecektir.', Colors.orange),
+      _infoBox(tr('Silmek istediğiniz çalışanın ID\'sini girin. Doğrulama için isim gösterilecektir.'), Colors.orange),
       const SizedBox(height: 20),
       Row(children: [
-        Expanded(child: _field(controller: _delIdCtrl, label: 'Çalışan ID', hint: 'Örn: 1005', icon: Icons.search)),
+        Expanded(child: _field(controller: _delIdCtrl, label: tr('Çalışan ID'), hint: tr('Örn: 1005'), icon: Icons.search)),
         const SizedBox(width: 10),
         ElevatedButton(
           onPressed: _isSearching ? null : _searchWorker,
@@ -239,7 +240,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
             Text(_foundWorker!['name'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
             Text('ID: ${_foundWorker!['id']}', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-            Text('Rol: ${_foundWorker!['role'] == 'worker' ? 'Çalışan' : _foundWorker!['role']}', style: const TextStyle(color: Colors.grey)),
+            Text('${tr('Rol: ')}${_foundWorker!['role'] == 'worker' ? tr('Çalışan') : _foundWorker!['role']}', style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -252,7 +253,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 icon: _isDeleting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.delete_forever),
-                label: Text(_isDeleting ? 'Siliniyor...' : 'EVET, SİSTEMDEN SİL', style: const TextStyle(fontWeight: FontWeight.bold)),
+                label: Text(_isDeleting ? tr('Siliniyor...') : tr('EVET, SİSTEMDEN SİL'), style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ]),

@@ -338,9 +338,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
 
                   // Tab 3: Saha Günlüğü
                   _siteUpdates.isEmpty
-                      ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.auto_stories_outlined, size: 48, color: AppTheme.textSub),
-                          SizedBox(height: 12),
+                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.auto_stories_outlined, size: 48, color: AppTheme.textSub),
+                          const SizedBox(height: 12),
                           Text(tr('Henüz saha bildirimi yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : ListView.builder(
@@ -403,9 +403,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                         ),
                   // Tab 4: Belgeler
                   docs.isEmpty
-                      ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.folder_open_outlined, size: 48, color: AppTheme.textSub),
-                          SizedBox(height: 12),
+                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.folder_open_outlined, size: 48, color: AppTheme.textSub),
+                          const SizedBox(height: 12),
                           Text(tr('Belge yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : ListView.builder(

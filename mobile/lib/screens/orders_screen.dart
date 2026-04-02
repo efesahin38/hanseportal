@@ -146,13 +146,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            const Text('İş bulunamadı', style: TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter')),
+                            Text(tr('İş bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderFormScreen())).then((_) => _load()),
                                 icon: const Icon(Icons.add),
-                                label: const Text('Yeni İş Ekle'),
+                                label: Text(tr('Yeni İş Ekle')),
                               ),
                             ],
                           ],
@@ -184,11 +184,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 return await showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    title: const Text('İşi Sil?'),
-                                    content: const Text('Bu işi ve bağlı olan tüm plan/raporları silmek istediğinize emin misiniz?'),
+                                    title: Text(tr('İşi Sil?')),
+                                    content: Text(tr('Bu işi ve bağlı olan tüm plan/raporları silmek istediğinize emin misiniz?')),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
                                     ],
                                   ),
                                 );
