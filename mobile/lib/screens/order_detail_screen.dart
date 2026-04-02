@@ -239,16 +239,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                                             style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14),
                                           ),
                                           const Spacer(),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.statusColor(p['status'] ?? '').withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              AppTheme.statusLabel(p['status'] ?? ''),
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Inter', color: AppTheme.statusColor(p['status'] ?? '')),
-                                            ),
+                                          Builder(
+                                            builder: (context) {
+                                              String dispStatus = p['status'] ?? 'draft';
+                                              final oStatus = _order?['status'] ?? '';
+                                              if (oStatus == 'completed' || oStatus == 'invoiced' || oStatus == 'archived' || oStatus == 'in_progress') {
+                                                dispStatus = oStatus;
+                                              } else if (personnel.isNotEmpty && dispStatus == 'draft') {
+                                                dispStatus = 'approved'; // Atanmış plan
+                                              }
+                                              
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.statusColor(dispStatus).withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  AppTheme.statusLabel(dispStatus),
+                                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Inter', color: AppTheme.statusColor(dispStatus)),
+                                                ),
+                                              );
+                                            }
                                           ),
                                         ],
                                       ),
