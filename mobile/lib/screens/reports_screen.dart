@@ -643,7 +643,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
       );
       await PdfService.sharePdf(bytes, 'aylik_rapor_${_selectedYear}_${_selectedMonth.toString().padLeft(2, '0')}.pdf');
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Hatası: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('PDF Hatası')}: $e')));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -651,7 +651,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
 
   @override
   Widget build(BuildContext context) {
-    final monthNames = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    final monthNames = ['', tr('Ocak'), tr('Şubat'), tr('Mart'), tr('Nisan'), tr('Mayıs'), tr('Haziran'), tr('Temmuz'), tr('Ağustos'), tr('Eylül'), tr('Ekim'), tr('Kasım'), tr('Aralık')];
     final totalExpense = _totalLaborCost + _totalMaterialCost;
     final totalProfit = _totalIncome - totalExpense;
     final daysInMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
@@ -676,7 +676,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
               ),
               Expanded(
                 child: Center(
-                  child: Text('${monthNames[_selectedMonth]} $_selectedYear ($daysInMonth gün)',
+                  child: Text('${monthNames[_selectedMonth]} $_selectedYear ($daysInMonth ${tr('gün')})',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                 ),
               ),
@@ -710,22 +710,22 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${monthNames[_selectedMonth]} $_selectedYear Özeti', style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
+                  Text('${monthNames[_selectedMonth]} $_selectedYear ${tr('Özeti')}', style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _monthStat('Toplam Gelir', '€ ${_totalIncome.toStringAsFixed(0)}', Colors.greenAccent),
-                      _monthStat('Toplam Gider', '€ ${totalExpense.toStringAsFixed(0)}', Colors.orangeAccent),
-                      _monthStat('Net Kar', '€ ${totalProfit.toStringAsFixed(0)}', totalProfit >= 0 ? Colors.cyanAccent : Colors.redAccent),
+                      _monthStat(tr('Toplam Gelir'), '€ ${_totalIncome.toStringAsFixed(0)}', Colors.greenAccent),
+                      _monthStat(tr('Toplam Gider'), '€ ${totalExpense.toStringAsFixed(0)}', Colors.orangeAccent),
+                      _monthStat(tr('Net Kar'), '€ ${totalProfit.toStringAsFixed(0)}', totalProfit >= 0 ? Colors.cyanAccent : Colors.redAccent),
                     ],
                   ),
                   const Divider(color: Colors.white10, height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('İşçilik: € ${_totalLaborCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter')),
-                      Text('Malzeme: € ${_totalMaterialCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter')),
+                      Text('${tr('İşçilik')}: € ${_totalLaborCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter')),
+                      Text('${tr('Malzeme')}: € ${_totalMaterialCost.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter')),
                     ],
                   ),
                 ],
@@ -741,7 +741,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
                 icon: _exporting 
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Icon(Icons.picture_as_pdf),
-                label: Text(_exporting ? 'Oluşturuluyor...' : 'Aylık Rapor PDF İndir'),
+                label: Text(_exporting ? tr('Oluşturuluyor...') : tr('Aylık Rapor PDF İndir')),
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
             ),
@@ -749,7 +749,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
 
             // Günlük döküm listesi
             if (_dailyBreakdown.isNotEmpty) ...[
-              const Text('Günlük Döküm', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              Text(tr('Günlük Döküm'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
               const SizedBox(height: 8),
               ..._dailyBreakdown.map((d) {
                 final dateStr = d['date'] as String;
@@ -770,15 +770,15 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
                     children: [
                       Text(dateStr.substring(8, 10), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary)),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Gelir', style: TextStyle(fontSize: 9, color: AppTheme.textSub)),
+                        Text(tr('Gelir'), style: const TextStyle(fontSize: 9, color: AppTheme.textSub)),
                         Text('€${inc.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.green)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Gider', style: TextStyle(fontSize: 9, color: AppTheme.textSub)),
+                        Text(tr('Gider'), style: const TextStyle(fontSize: 9, color: AppTheme.textSub)),
                         Text('€${exp.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Net Kar', style: TextStyle(fontSize: 9, color: AppTheme.textSub)),
+                        Text(tr('Net Kar'), style: const TextStyle(fontSize: 9, color: AppTheme.textSub)),
                         Text('€${prof.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: prof >= 0 ? AppTheme.primary : AppTheme.error)),
                       ]),
                     ],
@@ -882,7 +882,7 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
       );
       await PdfService.sharePdf(bytes, 'personel_saatleri_${_selectedYear}_${_selectedMonth.toString().padLeft(2, '0')}.pdf');
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Hatası: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('PDF Hatası')}: $e')));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -890,7 +890,7 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
 
   @override
   Widget build(BuildContext context) {
-    final monthNames = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    final monthNames = ['', tr('Ocak'), tr('Şubat'), tr('Mart'), tr('Nisan'), tr('Mayıs'), tr('Haziran'), tr('Temmuz'), tr('Ağustos'), tr('Eylül'), tr('Ekim'), tr('Kasım'), tr('Aralık')];
     final totalHours = _personnelData.fold<double>(0, (sum, p) => sum + ((p['hours'] as num?)?.toDouble() ?? 0));
 
     return SingleChildScrollView(
@@ -943,9 +943,9 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Text('Toplam Çalışma Saati', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
-              Text('${totalHours.toStringAsFixed(1)} saat', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-              Text('${_personnelData.length} çalışan', style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'Inter')),
+              Text(tr('Toplam Çalışma Saati'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+              Text('${totalHours.toStringAsFixed(1)} ${tr('saat')}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              Text('${_personnelData.length} ${tr('çalışan')}', style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'Inter')),
             ]),
           ),
           const SizedBox(height: 12),
@@ -958,7 +958,7 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
               icon: _exporting 
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : const Icon(Icons.picture_as_pdf),
-              label: Text(_exporting ? 'Oluşturuluyor...' : 'Personel Saatleri PDF İndir'),
+              label: Text(_exporting ? tr('Oluşturuluyor...') : tr('Personel Saatleri PDF İndir')),
               style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ),
@@ -973,7 +973,7 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
                 child: Column(children: [
                   Icon(Icons.people_outline, size: 48, color: AppTheme.textSub.withOpacity(0.4)),
                   const SizedBox(height: 12),
-                  const Text('Bu ay çalışma verisi yok', style: TextStyle(color: AppTheme.textSub)),
+                  Text(tr('Bu ay çalışma verisi yok'), style: const TextStyle(color: AppTheme.textSub)),
                 ]),
               ),
             )
@@ -1011,8 +1011,8 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
                           ]),
                         ]),
                         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          Text('${hours.toStringAsFixed(1)} sa', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
-                          Text('${p['sessionCount']} seans', style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
+                          Text('${hours.toStringAsFixed(1)} ${tr('sa')}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
+                          Text('${p['sessionCount']} ${tr('seansı')}', style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
                         ]),
                       ],
                     ),
@@ -1053,7 +1053,7 @@ class _DepartmentPerformanceTab extends StatelessWidget {
           children: [
             Icon(Icons.folder_open_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
             const SizedBox(height: 16),
-            const Text('Henüz performans verisi bulunmuyor', style: TextStyle(color: AppTheme.textSub)),
+            Text(tr('Henüz performans verisi bulunmuyor'), style: const TextStyle(color: AppTheme.textSub)),
           ],
         ),
       );
@@ -1091,9 +1091,9 @@ class _DepartmentPerformanceTab extends StatelessWidget {
                 const Divider(height: 24),
                 Row(
                   children: [
-                    _Metric(label: 'Biten İş', value: '$completed', color: AppTheme.success),
+                    _Metric(label: tr('Biten İş'), value: '$completed', color: AppTheme.success),
                     const SizedBox(width: 24),
-                    _Metric(label: 'Toplam Saat', value: '${hours.toStringAsFixed(1)} h', color: AppTheme.info),
+                    _Metric(label: tr('Toplam Saat'), value: '${hours.toStringAsFixed(1)} h', color: AppTheme.info),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1107,7 +1107,7 @@ class _DepartmentPerformanceTab extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Aylık hedefe göre ilerleme (20 İş)', style: TextStyle(fontSize: 10, color: AppTheme.textSub)),
+                Text(tr('Aylık hedefe göre ilerleme (20 İş)'), style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
               ],
             ),
           );
@@ -1199,10 +1199,10 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
         final pdf = await PdfService.buildWorkReportPdf(order: order, report: workReport, sessions: sessions, extraWorks: extraWorks);
         await PdfService.sharePdf(pdf, 'is_raporu_$orderId.pdf');
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İş bulunamadı.')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş bulunamadı.'))));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Hatası: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('PDF Hatası')}: $e')));
     } finally {
       if (mounted) setState(() => _downloadingOrderId = null);
     }
@@ -1265,9 +1265,9 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.receipt_long_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.4)),
                 const SizedBox(height: 12),
-                const Text('Hiç fatura bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                Text(tr('Hiç fatura bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                 const SizedBox(height: 8),
-                Text('Cihaz Saati: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                Text('${tr('Cihaz Saati')}: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
               ]),
             ),
           )
@@ -1278,7 +1278,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('${_invoices.length} fatura listeleniyor', style: const TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+                  child: Text(tr('{count} fatura listeleniyor', args: {'count': _invoices.length.toString()}), style: const TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
                 ),
                 ..._groupedByDate.entries.map((entry) {
                   final dateStr = entry.key;
@@ -1286,7 +1286,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
 
                   DateTime? parsedDate;
                   try { parsedDate = DateTime.parse(dateStr); } catch (_) {}
-                  final displayDate = parsedDate != null ? DateFormat('dd MMMM yyyy', 'tr_TR').format(parsedDate) : dateStr;
+                  final displayDate = parsedDate != null ? DateFormat('dd MMMM yyyy', 'de_DE').format(parsedDate) : dateStr;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1301,7 +1301,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                            child: Text('${invoices.length} fatura', style: const TextStyle(fontSize: 10, color: AppTheme.primary)),
+                            child: Text(tr('{count} fatura', args: {'count': invoices.length.toString()}), style: const TextStyle(fontSize: 10, color: AppTheme.primary)),
                           ),
                         ]),
                       ),
@@ -1366,8 +1366,8 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                             children: [
                               Expanded(
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text(inv['draft_number'] ?? 'Taslak', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter')),
-                                  Text(customer['name'] ?? 'İsimsiz Müşteri', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                                  Text(inv['draft_number'] ?? tr('Taslak'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter')),
+                                  Text(customer['name'] ?? tr('İsimsiz Müşteri'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
                                 ]),
                               ),
                               Column(
@@ -1375,7 +1375,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                                 children: [
                                   Text('€ ${netProfit.toStringAsFixed(2)}', 
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: netProfit >= 0 ? Colors.green[700] : Colors.red[700])),
-                                  const Text('Net Kar', style: TextStyle(fontSize: 8, color: Colors.grey)),
+                                  Text(tr('Net Kar'), style: const TextStyle(fontSize: 8, color: Colors.grey)),
                                 ],
                               ),
                               const SizedBox(width: 8),

@@ -19,12 +19,18 @@ class LocalizationService {
     }
   }
 
-  String translate(String key) {
-    return _localizedStrings[key] ?? key;
+  String translate(String key, {Map<String, String>? args}) {
+    String value = _localizedStrings[key] ?? key;
+    if (args != null) {
+      args.forEach((k, v) {
+        value = value.replaceAll('{$k}', v);
+      });
+    }
+    return value;
   }
 }
 
 // Global helper function for easier access
-String tr(String key) {
-  return LocalizationService().translate(key);
+String tr(String key, {Map<String, String>? args}) {
+  return LocalizationService().translate(key, args: args);
 }

@@ -9,6 +9,7 @@ import '../services/pdf_service.dart';
 import 'invoice_draft_detail_screen.dart';
 import 'work_report_screen.dart';
 import 'reports_screen.dart';
+import '../services/localization_service.dart';
 
 class AccountingOverviewScreen extends StatefulWidget {
   const AccountingOverviewScreen({super.key});
@@ -70,7 +71,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Mali Proje Analizi', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+        title: Text(tr('Mali Proje Analizi'), style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
@@ -85,7 +86,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
                   children: [
                     _buildDailySummary(),
                     const SizedBox(height: 24),
-                    const Text('Proje Bazlı Analiz', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                    Text(tr('Proje Bazlı Analiz'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                     const SizedBox(height: 12),
                     if (_groupedSessions.isEmpty)
                       _buildEmptyState()
@@ -172,7 +173,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
         todayMaterialCost += projectMaterial;
 
         todayProjects.add({
-          'title': order['title'] ?? 'İsimsiz',
+          'title': order['title'] ?? tr('İsimsiz'),
           'income': projectIncome,
           'labor': projectLabor,
           'material': projectMaterial,
@@ -193,34 +194,34 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Bugünkü Finansal Özet', style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
+          Text(tr('Bugünkü Finansal Özet'), style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
           const SizedBox(height: 4),
-          Text(DateFormat('dd MMMM yyyy', 'tr_TR').format(now), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+          Text(DateFormat('dd MMMM yyyy', 'de_DE').format(now), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _summaryItem('Tahmini Gelir', '€ ${todayIncome.toStringAsFixed(0)}', Colors.greenAccent),
-              _summaryItem('Tahmini Gider', '€ ${todayExpense.toStringAsFixed(0)}', Colors.orangeAccent),
-              _summaryItem('Net Kar', '€ ${todayProfit.toStringAsFixed(0)}', todayProfit >= 0 ? Colors.blueAccent : Colors.redAccent),
+              _summaryItem(tr('Tahmini Gelir'), '€ ${todayIncome.toStringAsFixed(0)}', Colors.greenAccent),
+              _summaryItem(tr('Tahmini Gider'), '€ ${todayExpense.toStringAsFixed(0)}', Colors.orangeAccent),
+              _summaryItem(tr('Net Kar'), '€ ${todayProfit.toStringAsFixed(0)}', todayProfit >= 0 ? Colors.blueAccent : Colors.redAccent),
             ],
           ),
 
           // Bugünkü projelerin detaylı dökümü
           if (todayProjects.isNotEmpty) ...[
             const Divider(color: Colors.white10, height: 24),
-            const Text('Bugünkü Proje Detayları', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+            Text(tr('Bugünkü Proje Detayları'), style: const TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...todayProjects.map((p) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
                   Expanded(child: Text(p['title'], style: const TextStyle(color: Colors.white60, fontSize: 11, fontFamily: 'Inter'), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  Text('G:€${(p['income'] as double).toStringAsFixed(0)}', style: const TextStyle(color: Colors.greenAccent, fontSize: 10, fontFamily: 'Inter')),
+                  Text('${tr('G')}:€${(p['income'] as double).toStringAsFixed(0)}', style: const TextStyle(color: Colors.greenAccent, fontSize: 10, fontFamily: 'Inter')),
                   const SizedBox(width: 8),
-                  Text('Gd:€${((p['labor'] as double) + (p['material'] as double)).toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontSize: 10, fontFamily: 'Inter')),
+                  Text('${tr('Gd')}:€${((p['labor'] as double) + (p['material'] as double)).toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontSize: 10, fontFamily: 'Inter')),
                   const SizedBox(width: 8),
-                  Text('K:€${((p['income'] as double) - (p['labor'] as double) - (p['material'] as double)).toStringAsFixed(0)}', style: TextStyle(color: ((p['income'] as double) - (p['labor'] as double) - (p['material'] as double)) >= 0 ? Colors.blueAccent : Colors.redAccent, fontSize: 10, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                  Text('${tr('K')}:€${((p['income'] as double) - (p['labor'] as double) - (p['material'] as double)).toStringAsFixed(0)}', style: TextStyle(color: ((p['income'] as double) - (p['labor'] as double) - (p['material'] as double)) >= 0 ? Colors.blueAccent : Colors.redAccent, fontSize: 10, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
                 ],
               ),
             )),
@@ -231,7 +232,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
             children: [
               const Icon(Icons.receipt_long, color: Colors.white54, size: 16),
               const SizedBox(width: 8),
-              Text('Bugün $todayDrafts yeni fatura taslağı oluşturuldu.', style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'Inter')),
+              Text(tr('Bugün {count} yeni fatura taslağı oluşturuldu.', args: {'count': todayDrafts.toString()}), style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'Inter')),
             ],
           ),
           if (todayLaborCost > 0 || todayMaterialCost > 0) ...[
@@ -241,7 +242,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
                 const Icon(Icons.monetization_on_outlined, color: Colors.white38, size: 14),
                 const SizedBox(width: 8),
                 Text(
-                  'İşçilik: €${todayLaborCost.toStringAsFixed(0)} • Malzeme: €${todayMaterialCost.toStringAsFixed(0)}',
+                  '${tr('İşçilik')}: €${todayLaborCost.toStringAsFixed(0)} • ${tr('Malzeme')}: €${todayMaterialCost.toStringAsFixed(0)}',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter'),
                 ),
               ],
@@ -270,6 +271,8 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
           Icon(Icons.pie_chart_outline, size: 64, color: AppTheme.textSub.withOpacity(0.3)),
           const SizedBox(height: 16),
           const Text('Analiz yapılacak proje bulunmuyor.', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+          const SizedBox(height: 16),
+          Text(tr('Analiz yapılacak proje bulunmuyor.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
         ],
       ),
     );
@@ -338,7 +341,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(order['title'] ?? 'İsimsiz Proje', 
+                      child: Text(order['title'] ?? tr('İsimsiz Proje'), 
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primary)),
                     ),
                     StatefulBuilder(
@@ -373,7 +376,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                                   margin: const EdgeInsets.only(right: 8),
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(color: Colors.green.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-                                  child: const Text('Faturalandır', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                  child: Text(tr('Faturalandır'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
                               ),
                             if (isAlreadyInvoiced)
@@ -381,7 +384,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                                 margin: const EdgeInsets.only(right: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-                                child: const Text('Faturalandırıldı', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                child: Text(tr('Faturalandırıldı'), style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                               ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -403,9 +406,9 @@ class _ProjectFinancialCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _finItem('Tahmini Gelir', '€ ${totalIncome.toStringAsFixed(0)}', Colors.green),
-                    _finItem('Tahmini Gider', '€ ${totalExpense.toStringAsFixed(0)}', Colors.redAccent),
-                    _finItem('Net Kar', '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
+                    _finItem(tr('Tahmini Gelir'), '€ ${totalIncome.toStringAsFixed(0)}', Colors.green),
+                    _finItem(tr('Tahmini Gider'), '€ ${totalExpense.toStringAsFixed(0)}', Colors.redAccent),
+                    _finItem(tr('Net Kar'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -421,12 +424,12 @@ class _ProjectFinancialCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Gider Dökümü', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(tr('Gider Dökümü'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter')),
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('İşçilik Gideri:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
+                          Text('${tr('İşçilik Gideri')}:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
                           Text('€ ${laborCost.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.deepOrange, fontFamily: 'Inter')),
                         ],
                       ),
@@ -434,7 +437,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Malzeme Gideri:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
+                          Text('${tr('Malzeme Gideri')}:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
                           Text('€ ${materialCost.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange, fontFamily: 'Inter')),
                         ],
                       ),
@@ -444,7 +447,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                           children: [
                             Icon(Icons.verified_outlined, size: 12, color: AppTheme.success.withOpacity(0.7)),
                             const SizedBox(width: 4),
-                            Text('İş sonu raporundan alınmıştır', style: TextStyle(fontSize: 9, color: AppTheme.success.withOpacity(0.7), fontFamily: 'Inter', fontStyle: FontStyle.italic)),
+                            Text(tr('İş sonu raporundan alınmıştır'), style: TextStyle(fontSize: 9, color: AppTheme.success.withOpacity(0.7), fontFamily: 'Inter', fontStyle: FontStyle.italic)),
                           ],
                         ),
                       ],
@@ -473,11 +476,11 @@ class _ProjectFinancialCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('Kar Marjı', style: TextStyle(fontSize: 10, color: AppTheme.textSub)),
+                  Text(tr('Kar Marjı'), style: TextStyle(fontSize: 10, color: AppTheme.textSub)),
                   const SizedBox(height: 12),
                 ],
                 
-                const Text('Çalışan Detayı & Saatleri', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSub)),
+                Text(tr('Çalışan Detayı & Saatleri'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSub)),
                 const SizedBox(height: 8),
                 ...sessions.map((s) {
                   final user = s['user'];
@@ -490,7 +493,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('${user['first_name']} ${user['last_name']}', style: const TextStyle(fontSize: 13)),
-                        Text('${hrs.toStringAsFixed(1)} sa • $approvedAt', 
+                        Text('${hrs.toStringAsFixed(1)} ${tr('sa')} • $approvedAt', 
                           style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontStyle: FontStyle.italic)),
                       ],
                     ),
@@ -513,7 +516,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkReportScreen(orderId: first['order_id']))),
                     icon: const Icon(Icons.analytics_outlined, size: 18),
-                    label: const Text('Raporu Görüntüle', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    label: Text(tr('Raporu Görüntüle'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, padding: const EdgeInsets.symmetric(vertical: 12)),
                   ),
                 ),
@@ -536,7 +539,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                       }
                     },
                     icon: const Icon(Icons.picture_as_pdf, size: 18),
-                    label: const Text('PDF İndir', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    label: Text(tr('PDF İndir'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, padding: const EdgeInsets.symmetric(vertical: 12)),
                   ),
                 ),
