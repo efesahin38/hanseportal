@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 /// Operasyon planı oluşturma / düzenleme ekranı (Bölüm 7 – Personel Planlama)
 class OperationPlanFormScreen extends StatefulWidget {
@@ -51,7 +52,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
     try {
       final order = await SupabaseService.getOrder(widget.orderId);
       if (order != null && mounted) {
-        setState(() => _orderTitle = order['title'] ?? 'İş');
+        setState(() => _orderTitle = order['title'] ?? tr('İş'));
       }
     } catch (_) {}
   }
@@ -180,8 +181,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           for (var uid in _selectedPersonnelIds) {
             await SupabaseService.sendTaskNotification(
               recipientId: uid,
-              title: 'Yeni Görev Atandı',
-              body: '$_orderTitle için yeni bir operasyon planı oluşturuldu.',
+              title: tr('Yeni Görev Atandı'),
+              body: '$_orderTitle ${tr('için yeni bir operasyon planı oluşturuldu.')}',
               orderId: widget.orderId,
               operationPlanId: newPlanId,
               notificationType: 'task_assignment',
@@ -200,8 +201,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           for (var uid in _selectedPersonnelIds) {
             await SupabaseService.sendTaskNotification(
               recipientId: uid,
-              title: 'Görev Güncellendi',
-              body: '$_orderTitle operasyon planında değişiklik yapıldı.',
+              title: tr('Görev Güncellendi'),
+              body: '$_orderTitle ${tr('operasyon planında değişiklik yapıldı.')}',
               orderId: widget.orderId,
               operationPlanId: widget.planId,
               notificationType: 'task_update',
@@ -214,7 +215,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -232,23 +233,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.planId == null ? 'Yeni Operasyon Planı' : 'Planı Düzenle')),
+      appBar: AppBar(title: Text(widget.planId == null ? tr('Yeni Operasyon Planı') : tr('Planı Düzenle'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _section('Durum, Tarih & Saat'),
+              _section(tr('Durum, Tarih & Saat')),
               DropdownButtonFormField<String>(
                 value: _status,
-                decoration: const InputDecoration(labelText: 'Plan Durumu'),
-                items: const [
-                  DropdownMenuItem(value: 'draft', child: Text('Taslak')),
-                  DropdownMenuItem(value: 'sent', child: Text('Gönderildi')),
-                  DropdownMenuItem(value: 'confirmed', child: Text('Onaylandı')),
-                  DropdownMenuItem(value: 'updated', child: Text('Güncellendi')),
-                  DropdownMenuItem(value: 'cancelled', child: Text('İptal Edildi')),
+                decoration: InputDecoration(labelText: tr('Plan Durumu')),
+                items: [
+                  DropdownMenuItem(value: 'draft', child: Text(tr('Taslak'))),
+                  DropdownMenuItem(value: 'sent', child: Text(tr('Gönderildi'))),
+                  DropdownMenuItem(value: 'confirmed', child: Text(tr('Onaylandı'))),
+                  DropdownMenuItem(value: 'updated', child: Text(tr('Güncellendi'))),
+                  DropdownMenuItem(value: 'cancelled', child: Text(tr('İptal Edildi'))),
                 ],
                 onChanged: (v) {
                   if (v != null) setState(() => _status = v);
@@ -269,7 +270,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
                     const SizedBox(width: 10),
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Plan Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(tr('Plan Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                       Text(
                         '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
@@ -280,14 +281,14 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               ),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: _timeTile('Başlangıç Saati *', _startTime.format(context), () => _pickTime(true))),
+                Expanded(child: _timeTile(tr('Başlangıç Saati *'), _startTime.format(context), () => _pickTime(true))),
                 const SizedBox(width: 12),
-                Expanded(child: _timeTile('Bitiş Saati', _endTime?.format(context) ?? 'Seçiniz', () => _pickTime(false))),
+                Expanded(child: _timeTile(tr('Bitiş Saati'), _endTime?.format(context) ?? tr('Seçiniz'), () => _pickTime(false))),
               ]),
               const SizedBox(height: 20),
   
               // Personel Atama
-              _section('Personel Atama'),
+              _section(tr('Personel Atama')),
   
               // Filtre Barı
               SingleChildScrollView(
@@ -299,7 +300,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(filter, style: TextStyle(
+                        label: Text(tr(filter), style: TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                           color: isSelected ? Colors.white : AppTheme.textMain,
@@ -322,7 +323,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               if (_loadingPersonnel)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
-                  child: Text('Personel listesi yükleniyor...', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                  child: Text(tr('Personel listesi yükleniyor...'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                 )
               else if (_personnel.isEmpty)
                 Container(
@@ -334,9 +335,9 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     border: Border.all(color: AppTheme.error.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'Atanabilecek hiçbir "Çalışan" veya "İş Lideri" bulunamadı.\n(Lütfen ana menüdeki Personeller ekranından Yeni Personel ekleyin)',
-                    style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13, height: 1.4),
+                  child: Text(
+                    tr('Atanabilecek hiçbir "Çalışan" veya "İş Lideri" bulunamadı.\n(Lütfen ana menüdeki Personeller ekranından Yeni Personel ekleyin)'),
+                    style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13, height: 1.4),
                   ),
                 )
               else
@@ -353,7 +354,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     if (filteredPersonnel.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.only(bottom: 16),
-                        child: Text('Bu departmanda personel bulunamadı.', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                        child: Text(tr('Bu departmanda personel bulunamadı.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                       );
                     }
   
@@ -409,7 +410,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'İlgili personelin yanındaki yıldıza tıklayarak bu işin Saha Sorumlusunu (İş Lideri) atayabilirsiniz.',
+                          tr('İlgili personelin yanındaki yıldıza tıklayarak bu işin Saha Sorumlusunu (İş Lideri) atayabilirsiniz.'),
                           style: TextStyle(fontSize: 12, color: AppTheme.textMain, fontWeight: FontWeight.w500, fontFamily: 'Inter'),
                         ),
                       ),
@@ -431,7 +432,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     const Icon(Icons.star, color: AppTheme.warning, size: 18),
                     const SizedBox(width: 8),
                     Expanded(child: Text(
-                      'Saha Sorumlusu: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
+                      '${tr('Saha Sorumlusu')}: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
                       style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500),
                     )),
                   ]),
@@ -440,39 +441,39 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               ],
   
               // Talimatlar
-              _section('Saha Talimatları & Notlar'),
+              _section(tr('Saha Talimatları & Notlar')),
               TextFormField(
                 controller: _siteInstructions,
                 maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Saha Talimatları',
-                  hintText: 'Giriş bilgisi, özel kurallar, dikkat edilmesi gerekenler...',
+                decoration: InputDecoration(
+                  labelText: tr('Saha Talimatları'),
+                  hintText: tr('Giriş bilgisi, özel kurallar, dikkat edilmesi gerekenler...'),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _equipmentNotes,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Ekipman / Araç Notları', hintText: 'Gerekli ekipmanlar...'),
+                decoration: InputDecoration(labelText: tr('Ekipman / Araç Notları'), hintText: tr('Gerekli ekipmanlar...')),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _materialNotes,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Malzeme Notları', hintText: 'Götürülmesi gereken malzemeler...'),
+                decoration: InputDecoration(labelText: tr('Malzeme Notları'), hintText: tr('Gerekli malzemeler...')),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'İç Notlar'),
+                decoration: InputDecoration(labelText: tr('İç Notlar')),
               ),
               const SizedBox(height: 28),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(widget.planId == null ? 'Planı Oluştur' : 'Güncelle'),
+                    : Text(widget.planId == null ? tr('Planı Oluştur') : tr('Güncelle')),
               ),
               const SizedBox(height: 28),
             ],

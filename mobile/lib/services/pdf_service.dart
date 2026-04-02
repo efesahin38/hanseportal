@@ -3,6 +3,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'localization_service.dart';
+
 
 /// Hanse Kollektiv – PDF Üretim Servisi
 /// İş Sonu Raporu ve Ön Fatura Taslağı için PDF çıktısı üretir.
@@ -55,10 +57,10 @@ class PdfService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('İŞ SONU RAPORU',
+                pw.Text(tr('İŞ SONU RAPORU'),
                     style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
                 pw.Text(
-                  'Oluşturma: ${_date.format(DateTime.now())}',
+                  '${tr('Oluşturma')}: ${_date.format(DateTime.now())}',
                   style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey600),
                 ),
               ],
@@ -67,32 +69,32 @@ class PdfService {
           pw.SizedBox(height: 16),
 
           // ── İş Özeti ──
-          _sectionTitle('İş Bilgileri', fontBold),
+          _sectionTitle(tr('İş Bilgileri'), fontBold),
           _infoTable([
-            ['İş Numarası', order['order_number'] ?? '-'],
-            ['İş Başlığı', order['title'] ?? '-'],
-            ['Müşteri', customer['name'] ?? '-'],
-            ['Hizmet Alanı', serviceArea['name'] ?? '-'],
-            ['Saha Adresi', order['site_address'] ?? '-'],
+            [tr('İş Numarası'), order['order_number'] ?? '-'],
+            [tr('İş Başlığı'), order['title'] ?? '-'],
+            [tr('Müşteri'), customer['name'] ?? '-'],
+            [tr('Hizmet Alanı'), serviceArea['name'] ?? '-'],
+            [tr('Saha Adresi'), order['site_address'] ?? '-'],
             [
-              'Tarih Aralığı',
+              tr('Tarih Aralığı'),
               '${_fmtDate(order['planned_start_date'])} – ${_fmtDate(order['planned_end_date'])}'
             ],
           ], font, fontBold),
           pw.SizedBox(height: 16),
 
           // ── Çalışma Süreleri ──
-          _sectionTitle('Çalışma Süre Özeti', fontBold),
+          _sectionTitle(tr('Çalışma Süre Özeti'), fontBold),
           _infoTable([
-            ['Toplam Fiili Süre', '${totalActual.toStringAsFixed(1)} saat'],
-            ['Faturalanabilir Süre', '${totalBillable.toStringAsFixed(1)} saat'],
-            ['Fazla Mesai', '${totalExtra.toStringAsFixed(1)} saat'],
-            ['Seans Sayısı', '${sessions.length}'],
+            [tr('Toplam Fiili Süre'), '${totalActual.toStringAsFixed(1)} ${tr('saat')}'],
+            [tr('Faturalanabilir Süre'), '${totalBillable.toStringAsFixed(1)} ${tr('saat')}'],
+            [tr('Fazla Mesai'), '${totalExtra.toStringAsFixed(1)} ${tr('saat')}'],
+            [tr('Seans Sayısı'), '${sessions.length}'],
           ], font, fontBold),
 
           if (sessions.isNotEmpty) ...[
             pw.SizedBox(height: 10),
-            pw.Text('Çalışan Detayı',
+            pw.Text(tr('Çalışan Detayı'),
                 style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.grey700)),
             pw.SizedBox(height: 6),
             _sessionsTable(sessions, font, fontBold),
@@ -100,9 +102,9 @@ class PdfService {
           pw.SizedBox(height: 16),
 
           // ── Ek İşler ──
-          _sectionTitle('Ek İşler (${extraWorks.length})', fontBold),
+          _sectionTitle('${tr('Ek İşler')} (${extraWorks.length})', fontBold),
           if (extraWorks.isEmpty)
-            pw.Text('Ek iş kaydı bulunmuyor.',
+            pw.Text(tr('Ek iş kaydı bulunmuyor.'),
                 style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey500))
           else
             _extraWorksTable(extraWorks, font, fontBold),
@@ -145,7 +147,7 @@ class PdfService {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                _sectionTitle('Tahmini Maliyet & Gelir (Yönetici Özeti)', fontBold),
+                _sectionTitle(tr('Tahmini Maliyet & Gelir (Yönetici Özeti)'), fontBold),
                 pw.Container(
                   padding: const pw.EdgeInsets.all(10),
                   decoration: pw.BoxDecoration(
@@ -159,17 +161,17 @@ class PdfService {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          _totalLine('Tahmini Gelir', _euro.format(income), font, fontBold, bold: false),
-                          _totalLine('İşçilik Gideri', _euro.format(labor), font, fontBold, bold: false),
-                          _totalLine('Malzeme Gideri', _euro.format(material), font, fontBold, bold: false),
+                          _totalLine(tr('Tahmini Gelir'), _euro.format(income), font, fontBold, bold: false),
+                          _totalLine(tr('İşçilik Gideri'), _euro.format(labor), font, fontBold, bold: false),
+                          _totalLine(tr('Malzeme Gideri'), _euro.format(material), font, fontBold, bold: false),
                         ],
                       ),
                       pw.SizedBox(height: 4),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          _totalLine('Toplam Gider', _euro.format(totalExpense), font, fontBold, bold: false),
-                          _totalLine('Net Kar', _euro.format(profit), font, fontBold, bold: true),
+                          _totalLine(tr('Toplam Gider'), _euro.format(totalExpense), font, fontBold, bold: false),
+                          _totalLine(tr('Net Kar'), _euro.format(profit), font, fontBold, bold: true),
                         ],
                       ),
                     ],
@@ -181,33 +183,29 @@ class PdfService {
           }(),
 
           // ── Müşteri Bilgileri (Bölüm 1) ──
-          _sectionTitle('Müşteri Bilgileri', fontBold),
+          _sectionTitle(tr('Müşteri Bilgileri'), fontBold),
           _infoTable([
-            ['Banka', customer['bank_name'] ?? '-'],
-            ['IBAN', customer['iban'] ?? '-'],
-            ['BIC', customer['bic'] ?? '-'],
-            ['USt-IdNr.', customer['vat_number'] ?? '-'],
-            if (customer['secondary_contact_name'] != null) ['İkinci Muhatap', customer['secondary_contact_name']],
+            if (customer['secondary_contact_name'] != null) [tr('İkinci Muhatap'), customer['secondary_contact_name']],
           ], font, fontBold),
           pw.SizedBox(height: 16),
 
           // ── Notlar ──
           if (report != null) ...[
-            _sectionTitle('Notlar & Değerlendirme', fontBold),
+            _sectionTitle(tr('Notlar & Değerlendirme'), fontBold),
             if ((report['summary_note'] ?? '').isNotEmpty) ...[
-              pw.Text('Genel Özet', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              pw.Text(tr('Genel Özet'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
               pw.Text(report['summary_note'] ?? '',
                   style: pw.TextStyle(font: font, fontSize: 10)),
               pw.SizedBox(height: 8),
             ],
             if ((report['quality_note'] ?? '').isNotEmpty) ...[
-              pw.Text('Kalite Notu', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              pw.Text(tr('Kalite Notu'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
               pw.Text(report['quality_note'] ?? '',
                   style: pw.TextStyle(font: font, fontSize: 10)),
               pw.SizedBox(height: 8),
             ],
             if ((report['customer_feedback'] ?? '').isNotEmpty) ...[
-              pw.Text('Müşteri Geri Bildirimi', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              pw.Text(tr('Müşteri Geri Bildirimi'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
               pw.Text(report['customer_feedback'] ?? '',
                   style: pw.TextStyle(font: font, fontSize: 10)),
             ],
@@ -216,7 +214,7 @@ class PdfService {
           // ── Faturalanabilir Ek İşler Özeti ──
           if (billableExtras.isNotEmpty) ...[
             pw.SizedBox(height: 16),
-            _sectionTitle('Faturalanabilir Ek İşler', fontBold),
+            _sectionTitle(tr('Faturalanabilir Ek İşler'), fontBold),
             _extraWorksTable(billableExtras, font, fontBold),
           ],
         ],
@@ -270,7 +268,7 @@ class PdfService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('ÖN FATURA TASLAĞI',
+                    pw.Text(tr('ÖN FATURA TASLAĞI'),
                         style: pw.TextStyle(
                             font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
                     pw.Text(draft['draft_number'] ?? '',
@@ -278,7 +276,7 @@ class PdfService {
                   ],
                 ),
                 pw.Text(
-                  'Tarih: ${_date.format(DateTime.now())}',
+                  '${tr('Tarih')}: ${_date.format(DateTime.now())}',
                   style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey600),
                 ),
               ],
@@ -294,7 +292,7 @@ class PdfService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('FATURALAYIN', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey500)),
+                    pw.Text(tr('FATURALAYIN'), style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey500)),
                     pw.SizedBox(height: 4),
                     pw.Text(company['name'] ?? '', style: pw.TextStyle(font: fontBold, fontSize: 11)),
                     if (company['address'] != null)
@@ -313,7 +311,7 @@ class PdfService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('MÜŞTERİ', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey500)),
+                    pw.Text(tr('MÜŞTERİ'), style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey500)),
                     pw.SizedBox(height: 4),
                     pw.Text(customer['name'] ?? '', style: pw.TextStyle(font: fontBold, fontSize: 11)),
                     if ((draft['billing_address'] ?? '').isNotEmpty)
@@ -331,25 +329,25 @@ class PdfService {
           if (draft['service_date_from'] != null || draft['service_date_to'] != null)
             _infoTable([
               [
-                'Hizmet Tarihi',
+                tr('Hizmet Tarihi'),
                 '${_fmtDate(draft['service_date_from'])} – ${_fmtDate(draft['service_date_to'])}'
               ],
-              if ((draft['site_address'] ?? '').isNotEmpty) ['Hizmet Adresi', draft['site_address']],
-              if ((draft['contact_name'] ?? '').isNotEmpty) ['Muhatap', draft['contact_name']],
-              if ((draft['payment_terms'] ?? '').isNotEmpty) ['Ödeme Koşulu', draft['payment_terms']],
+              if ((draft['site_address'] ?? '').isNotEmpty) [tr('Hizmet Adresi'), draft['site_address']],
+              if ((draft['contact_name'] ?? '').isNotEmpty) [tr('Muhatap'), draft['contact_name']],
+              if ((draft['payment_terms'] ?? '').isNotEmpty) [tr('Ödeme Koşulu'), draft['payment_terms']],
             ], font, fontBold),
           pw.SizedBox(height: 20),
 
           // ── Ana Kalemler ──
           if (mainItems.isNotEmpty) ...[
-            _sectionTitle('Ana Hizmet Kalemleri', fontBold),
+            _sectionTitle(tr('Ana Hizmet Kalemleri'), fontBold),
             _itemsTable(mainItems, font, fontBold),
             pw.SizedBox(height: 12),
           ],
 
           // ── Ek Kalemler ──
           if (extraItems.isNotEmpty) ...[
-            _sectionTitle('Ek Hizmet Kalemleri (Detaylı)', fontBold),
+            _sectionTitle(tr('Ek Hizmet Kalemleri (Detaylı)'), fontBold),
             _itemsTable(extraItems, font, fontBold, isExtra: true),
             pw.SizedBox(height: 12),
           ],
@@ -366,15 +364,15 @@ class PdfService {
               padding: const pw.EdgeInsets.all(12),
               child: pw.Column(
                 children: [
-                  _totalLine('Ara Toplam', _euro.format(subtotal), font, fontBold, bold: false),
+                  _totalLine(tr('Ara Toplam'), _euro.format(subtotal), font, fontBold, bold: false),
                   _totalLine(
-                      'KDV (${taxRate.toStringAsFixed(0)}%)',
+                      '${tr('KDV')} (${taxRate.toStringAsFixed(0)}%)',
                       _euro.format(taxAmount),
                       font,
                       fontBold,
                       bold: false),
                   pw.Divider(color: PdfColors.grey300),
-                  _totalLine('GENEL TOPLAM', _euro.format(total), font, fontBold, bold: true),
+                  _totalLine(tr('GENEL TOPLAM'), _euro.format(total), font, fontBold, bold: true),
                 ],
               ),
             ),
@@ -392,22 +390,22 @@ class PdfService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('İNTERNAL ANALİZ (Sadece Yönetici Görür)', style: pw.TextStyle(font: fontBold, fontSize: 8, color: PdfColors.blueGrey700)),
+                pw.Text(tr('İNTERNAL ANALİZ (Sadece Yönetici Görür)'), style: pw.TextStyle(font: fontBold, fontSize: 8, color: PdfColors.blueGrey700)),
                 pw.SizedBox(height: 6),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    _totalLine('Toplam Gelir', _euro.format(total), font, fontBold, bold: false),
-                    _totalLine('İşçilik Gideri', _euro.format(laborCost ?? 0), font, fontBold, bold: false),
-                    _totalLine('Malzeme Gideri', _euro.format(materialCost ?? 0), font, fontBold, bold: false),
+                    _totalLine(tr('Toplam Gelir'), _euro.format(total), font, fontBold, bold: false),
+                    _totalLine(tr('İşçilik Gideri'), _euro.format(laborCost ?? 0), font, fontBold, bold: false),
+                    _totalLine(tr('Malzeme Gideri'), _euro.format(materialCost ?? 0), font, fontBold, bold: false),
                   ],
                 ),
                 pw.SizedBox(height: 4),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    _totalLine('Toplam Gider', _euro.format((laborCost ?? 0) + (materialCost ?? 0)), font, fontBold, bold: false),
-                    _totalLine('Net Kar', _euro.format(total - (laborCost ?? 0) - (materialCost ?? 0)), font, fontBold, bold: true),
+                    _totalLine(tr('Toplam Gider'), _euro.format((laborCost ?? 0) + (materialCost ?? 0)), font, fontBold, bold: false),
+                    _totalLine(tr('Net Kar'), _euro.format(total - (laborCost ?? 0) - (materialCost ?? 0)), font, fontBold, bold: true),
                   ],
                 ),
               ],
@@ -417,12 +415,12 @@ class PdfService {
           // ── Notlar ──
           if ((draft['notes'] ?? '').isNotEmpty || (draft['accounting_note'] ?? '').isNotEmpty) ...[
             pw.SizedBox(height: 20),
-            _sectionTitle('Notlar', fontBold),
+            _sectionTitle(tr('Notlar'), fontBold),
             if ((draft['notes'] ?? '').isNotEmpty)
               pw.Text(draft['notes'] ?? '', style: pw.TextStyle(font: font, fontSize: 10)),
             if ((draft['accounting_note'] ?? '').isNotEmpty) ...[
               pw.SizedBox(height: 4),
-              pw.Text('Muhasebe Notu: ${draft['accounting_note']}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic)),
+              pw.Text('${tr('Muhasebe Notu')}: ${draft['accounting_note']}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic)),
             ],
           ],
 
@@ -436,7 +434,7 @@ class PdfService {
               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
             ),
             child: pw.Text(
-              'Bu belge ön fatura taslağıdır. Resmi fatura değildir.',
+              tr('Bu belge ön fatura taslağıdır. Resmi fatura değildir.'),
               style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.orange800),
             ),
           ),
@@ -462,7 +460,7 @@ class PdfService {
         children: [
           pw.Text('Hanse Kollektiv GmbH',
               style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.blueGrey700)),
-          pw.Text('Dijital Yönetim Sistemi',
+          pw.Text(tr('Dijital Yönetim Sistemi'),
               style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
         ],
       ),
@@ -491,7 +489,7 @@ class PdfService {
             ],
           ),
           pw.SizedBox(height: 4),
-          pw.Text('Bu belge dijital olarak oluşturulmuştur ve imza gerektirmez.', 
+          pw.Text(tr('Bu belge dijital olarak oluşturulmuştur ve imza gerektirmez.'), 
               style: pw.TextStyle(font: font, fontSize: 6, color: PdfColors.grey400)),
         ],
       ),
@@ -553,7 +551,7 @@ class PdfService {
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          children: ['Çalışan', 'Başlangıç', 'Bitiş', 'Fiili', 'Faturalanan']
+          children: [tr('Çalışan'), tr('Başlangıç'), tr('Bitiş'), tr('Fiili'), tr('Faturalanan')]
               .map((h) => pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
                     child: pw.Text(h, style: headerStyle),
@@ -591,7 +589,7 @@ class PdfService {
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          children: ['Ek İş Başlığı', 'Tarih', 'Süre', 'Durum']
+          children: [tr('Ek İş Başlığı'), tr('Tarih'), tr('Süre'), tr('Durum')]
               .map((h) => pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
                     child: pw.Text(h, style: headerStyle),
@@ -605,7 +603,7 @@ class PdfService {
           pw.Padding(
             padding: const pw.EdgeInsets.all(4),
             child: pw.Text(
-              ew['is_billable'] == true ? 'Fatural.' : ew['is_billable'] == false ? 'Fatural. değil' : 'Bek.',
+              ew['is_billable'] == true ? tr('Fatural.') : ew['is_billable'] == false ? tr('Fatural. değil') : tr('Bek.'),
               style: pw.TextStyle(
                 font: fontBold,
                 fontSize: 8,
@@ -638,11 +636,11 @@ class PdfService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
           children: [
-            'Açıklama', 
-            if (isExtra) 'Yapan / Kaydeden' else 'Miktar',
-            if (isExtra) 'Süre (h)' else 'Birim', 
-            'Birim Fiyat', 
-            'Toplam'
+            tr('Açıklama'), 
+            if (isExtra) tr('Yapan / Kaydeden') else tr('Miktar'),
+            if (isExtra) tr('Süre (h)') else tr('Birim'), 
+            tr('Birim Fiyat'), 
+            tr('Toplam')
           ].map((h) => pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
                     child: pw.Text(h, style: headerStyle),
@@ -775,7 +773,7 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
-    final monthNames = ['', 'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+    final monthNames = ['', tr('Ocak'), tr('Şubat'), tr('Mart'), tr('Nisan'), tr('Mayıs'), tr('Haziran'), tr('Temmuz'), tr('Ağustos'), tr('Eylül'), tr('Ekim'), tr('Kasım'), tr('Aralık')];
     final monthName = monthNames[month];
 
     pdf.addPage(
@@ -791,7 +789,7 @@ class PdfService {
             decoration: const pw.BoxDecoration(
               border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300)),
             ),
-            child: pw.Text('AYLIK MALI RAPOR - $monthName $year',
+            child: pw.Text('${tr('AYLIK MALI RAPOR')} - $monthName $year',
                 style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
           ),
           pw.SizedBox(height: 16),
@@ -851,7 +849,7 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
-    final monthNames = ['', 'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+    final monthNames = ['', tr('Ocak'), tr('Subat'), tr('Mart'), tr('Nisan'), tr('Mayis'), tr('Haziran'), tr('Temmuz'), tr('Agustos'), tr('Eylul'), tr('Ekim'), tr('Kasim'), tr('Aralik')];
     final monthName = monthNames[month];
 
     pdf.addPage(
@@ -867,7 +865,7 @@ class PdfService {
             decoration: const pw.BoxDecoration(
               border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300)),
             ),
-            child: pw.Text('PERSONEL CALISMA SAATLERI - $monthName $year',
+            child: pw.Text('${tr('PERSONEL CALISMA SAATLERI')} - $monthName $year',
                 style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
           ),
           pw.SizedBox(height: 16),

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import '../utils/platform_helper.dart'; // PlatformHelper ekle
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,16 +25,16 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   bool _loading = true;
   String _filterType = 'hepsi';
 
-  final List<_FilterOption> _typeFilters = const [
-    _FilterOption('hepsi', 'Tümü'),
-    _FilterOption('offer', 'Teklif'),
-    _FilterOption('contract', 'Sözleşme'),
-    _FilterOption('work_order', 'İş Emri'),
-    _FilterOption('photo', 'Fotoğraf'),
-    _FilterOption('pre_invoice', 'Ön Fatura'),
-    _FilterOption('work_report', 'İş Raporu'),
-    _FilterOption('final_invoice', 'Fatura'),
-    _FilterOption('other', 'Diğer'),
+  final List<_FilterOption> _typeFilters = [
+    _FilterOption('hepsi', tr('Tümü')),
+    _FilterOption('offer', tr('Teklif')),
+    _FilterOption('contract', tr('Sözleşme')),
+    _FilterOption('work_order', tr('İş Emri')),
+    _FilterOption('photo', tr('Fotoğraf')),
+    _FilterOption('pre_invoice', tr('Ön Fatura')),
+    _FilterOption('work_report', tr('İş Raporu')),
+    _FilterOption('final_invoice', tr('Fatura')),
+    _FilterOption('other', tr('Diğer')),
   ];
 
   @override
@@ -65,12 +66,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final appState = context.watch<AppState>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Belgeler'),
+        title: Text(tr('Belgeler')),
         actions: [
           if (appState.canManageDocuments)
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Belge Ekle',
+              tooltip: tr('Belge Ekle'),
               onPressed: () => _showAddDialog(context, appState),
             ),
         ],
@@ -127,7 +128,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                             Icon(Icons.folder_open_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
                             const SizedBox(height: 12),
-                            const Text('Belge bulunamadı',
+                            Text(tr('Belge bulunamadı'),
                                 style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                           ]),
                         )
@@ -176,7 +177,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Yeni Belge Kaydı',
+                  Text(tr('Yeni Belge Kaydı'),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                   if (uploading)
                     const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -186,24 +187,24 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               TextField(
                 controller: titleCtrl,
                 enabled: !uploading,
-                decoration: const InputDecoration(labelText: 'Belge Başlığı', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Belge Başlığı'), border: const OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: selectedType,
-                decoration: const InputDecoration(labelText: 'Belge Türü', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Belge Türü'), border: const OutlineInputBorder()),
                 items: const [
-                  DropdownMenuItem(value: 'offer', child: Text('Teklif')),
-                  DropdownMenuItem(value: 'approved_offer', child: Text('Onaylı Teklif')),
-                  DropdownMenuItem(value: 'contract', child: Text('Sözleşme')),
-                  DropdownMenuItem(value: 'addendum', child: Text('Ek Protokol')),
-                  DropdownMenuItem(value: 'technical_spec', child: Text('Teknik Şartname')),
-                  DropdownMenuItem(value: 'work_order', child: Text('İş Emri')),
-                  DropdownMenuItem(value: 'work_report', child: Text('İş Raporu')),
-                  DropdownMenuItem(value: 'photo', child: Text('Fotoğraf')),
-                  DropdownMenuItem(value: 'pre_invoice', child: Text('Ön Fatura')),
-                  DropdownMenuItem(value: 'final_invoice', child: Text('Nihai Fatura')),
-                  DropdownMenuItem(value: 'other', child: Text('Diğer')),
+                  DropdownMenuItem(value: 'offer', child: Text(tr('Teklif'))),
+                  DropdownMenuItem(value: 'approved_offer', child: Text(tr('Onaylı Teklif'))),
+                  DropdownMenuItem(value: 'contract', child: Text(tr('Sözleşme'))),
+                  DropdownMenuItem(value: 'addendum', child: Text(tr('Ek Protokol'))),
+                  DropdownMenuItem(value: 'technical_spec', child: Text(tr('Teknik Şartname'))),
+                  DropdownMenuItem(value: 'work_order', child: Text(tr('İş Emri'))),
+                  DropdownMenuItem(value: 'work_report', child: Text(tr('İş Raporu'))),
+                  DropdownMenuItem(value: 'photo', child: Text(tr('Fotoğraf'))),
+                  DropdownMenuItem(value: 'pre_invoice', child: Text(tr('Ön Fatura'))),
+                  DropdownMenuItem(value: 'final_invoice', child: Text(tr('Nihai Fatura'))),
+                  DropdownMenuItem(value: 'other', child: Text(tr('Diğer'))),
                 ],
                 onChanged: uploading ? null : (v) => setM(() => selectedType = v!),
               ),
@@ -239,7 +240,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          selectedFile != null ? selectedFile!.name : 'Dosya Seçin',
+                          selectedFile != null ? selectedFile!.name : tr('Dosya Seçin'),
                           style: TextStyle(
                             fontFamily: 'Inter',
                             color: selectedFile != null ? AppTheme.textMain : AppTheme.textSub,
@@ -261,7 +262,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: uploading ? null : () => Navigator.pop(ctx),
-                    child: const Text('İptal'),
+                    child: Text(tr('İptal')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -311,7 +312,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     },
                     child: uploading 
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                      : const Text('Kaydet'),
+                      : Text(tr('Kaydet')),
                   ),
                 ),
               ]),
@@ -419,7 +420,7 @@ class _DocumentCard extends StatelessWidget {
                         color: AppTheme.textSub.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text('Eski Sürüm',
+                      child: Text(tr('Eski Sürüm'),
                           style: TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter')),
                     ),
                 ]),
@@ -472,13 +473,13 @@ class _ActionButtonsState extends State<_ActionButtons> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Silme Onayı', style: TextStyle(fontFamily: 'Inter')),
-        content: const Text('Bu belgeyi kalıcı olarak silmek istediğinize emin misiniz? Sistemden ve depolama alanından tamamen kaldırılacaktır.', style: TextStyle(fontFamily: 'Inter')),
+        title: Text(tr('Silme Onayı'), style: const TextStyle(fontFamily: 'Inter')),
+        content: Text(tr('Bu belgeyi kalıcı olarak silmek istediğinize emin misiniz? Sistemden ve depolama alanından tamamen kaldırılacaktır.'), style: const TextStyle(fontFamily: 'Inter')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('İptal'))),
           TextButton(
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Sil', style: TextStyle(color: AppTheme.error)),
+            child: Text(tr('Sil'), style: const TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -493,7 +494,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
       await SupabaseService.deleteDocument(docId, fileUrl);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge başarıyla silindi')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Belge başarıyla silindi'))));
         widget.onDeleted();
       }
     } catch (e) {
@@ -517,7 +518,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(isShare ? 'Paylaşım hazırlanıyor...' : 'Belge indiriliyor...'), duration: const Duration(seconds: 2))
+      SnackBar(content: Text(isShare ? tr('Paylaşım hazırlanıyor...') : tr('Belge indiriliyor...')), duration: const Duration(seconds: 2))
     );
 
     setState(() => _loading = true);
@@ -570,13 +571,13 @@ class _ActionButtonsState extends State<_ActionButtons> {
       children: [
         IconButton(
           icon: const Icon(Icons.share_outlined, size: 20, color: AppTheme.primary),
-          tooltip: 'Görüntüle / Paylaş',
+          tooltip: tr('Ansehen / Teilen'), # Changing tooltip description to German directly or tr() if available
           onPressed: () => _handleAction(context, true),
         ),
         if (context.read<AppState>().canManageDocuments)
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.error),
-            tooltip: 'Sil',
+            tooltip: tr('Sil'),
             onPressed: _deleteDocument,
           ),
       ],

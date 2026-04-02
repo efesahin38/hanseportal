@@ -8,6 +8,7 @@ import '../services/supabase_service.dart';
 import 'orders_screen.dart';
 import 'reports_screen.dart';
 import 'invoice_draft_detail_screen.dart';
+import '../services/localization_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -89,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Merhaba, ${appState.fullName.split(' ').first} 👋',
+                                '${tr('Merhaba')}, ${appState.fullName.split(' ').first} 👋',
                                 style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                               ),
                               const SizedBox(height: 4),
@@ -109,11 +110,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Quick Stats Row
                       Row(
                         children: [
-                          _QuickStat(label: 'Aktif İş', value: '${_stats['activeOrders'] ?? 0}'),
+                          _QuickStat(label: tr('Aktif İş'), value: '${_stats['activeOrders'] ?? 0}'),
                           const SizedBox(width: 12),
-                          _QuickStat(label: 'Bugün', value: '${_stats['todayPlans'] ?? 0}'),
+                          _QuickStat(label: tr('Bugün'), value: '${_stats['todayPlans'] ?? 0}'),
                           const SizedBox(width: 12),
-                          _QuickStat(label: 'Bekleyen', value: '${_stats['pendingDrafts'] ?? 0}'),
+                          _QuickStat(label: tr('Bekleyen'), value: '${_stats['pendingDrafts'] ?? 0}'),
                         ],
                       ),
                     ],
@@ -128,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Departman Klasörleri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                      Text(tr('Departman Klasörleri'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
                       const SizedBox(height: 16),
                       GridView.count(
                         crossAxisCount: WebUtils.gridColumns(context, mobile: 2, tablet: 3, desktop: 5),
@@ -140,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-1111-1111-1111-111111111111')
                             _FolderCard(
-                              title: 'Temizlik',
+                              title: tr('Temizlik'),
                               subtitle: 'Gebäudereinigung',
                               icon: Icons.cleaning_services_outlined,
                               color: const Color(0xFF3B82F6),
@@ -149,7 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-2222-2222-2222-222222222222')
                             _FolderCard(
-                              title: 'Ray Servis',
+                              title: tr('Ray Servis'),
                               subtitle: 'Gleisbausicherung',
                               icon: Icons.railway_alert_outlined,
                               color: const Color(0xFFEF4444),
@@ -158,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-3333-3333-3333-333333333333')
                             _FolderCard(
-                              title: 'Otel Servis',
+                              title: tr('Otel Servis'),
                               subtitle: 'Hotelservice',
                               icon: Icons.hotel_outlined,
                               color: const Color(0xFFF59E0B),
@@ -167,7 +168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-4444-4444-4444-444444444444')
                             _FolderCard(
-                              title: 'Personel',
+                              title: tr('Personel'),
                               subtitle: 'Überlassung',
                               icon: Icons.people_outline,
                               color: const Color(0xFF10B981),
@@ -176,7 +177,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-5555-5555-5555-555555555555')
                             _FolderCard(
-                              title: 'Yönetim',
+                              title: tr('Yönetim'),
                               subtitle: 'Verwaltung',
                               icon: Icons.admin_panel_settings_outlined,
                               color: const Color(0xFF6366F1),
@@ -201,8 +202,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Bekleyen Taslak Faturalar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
-                            TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen())), child: const Text('Tümü')),
+                            Text(tr('Bekleyen Taslak Faturalar'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                            TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen())), child: Text(tr('Tümü'))),
                           ],
                         ),
                         ..._pendingDrafts.map((d) {
@@ -231,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: ListTile(
                               dense: true,
                               leading: const Icon(Icons.receipt_long, color: AppTheme.warning, size: 20),
-                              title: Text(d['draft_number'] ?? 'Taslak', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Inter')),
+                              title: Text(d['draft_number'] ?? tr('Taslak'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Inter')),
                               subtitle: Text(d['customer']?['name'] ?? '', style: const TextStyle(fontSize: 11)),
                               trailing: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -258,8 +259,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Son Hareketler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
-                      TextButton(onPressed: () {}, child: const Text('Tümü')),
+                      Text(tr('Son Hareketler'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                      TextButton(onPressed: () {}, child: Text(tr('Tümü'))),
                     ],
                   ),
                 ),
@@ -268,7 +269,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (_loading)
                 const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())))
               else if (_recentOrders.isEmpty)
-                const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: Text('Henüz aktivite yok'))))
+                SliverToBoxAdapter(child: Center(child: Padding(padding: const EdgeInsets.all(40), child: Text(tr('Henüz aktivite yok')))))
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -388,14 +389,14 @@ class _ActivityItem extends StatelessWidget {
                 try {
                   await SupabaseService.markOrderAsInvoiced(order['id'], context.read<AppState>().userId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Faturalandırıldı ve geçmişe eklendi.')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Faturalandırıldı ve geçmişe eklendi.'))));
                   Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen()));
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
                 }
               },
               style: TextButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-              child: const Text('Faturalandır', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text(tr('Faturalandır'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
             )
           else
             Text(AppTheme.statusLabel(status), style: TextStyle(fontSize: 11, color: AppTheme.statusColor(status), fontWeight: FontWeight.bold)),

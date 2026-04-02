@@ -5,6 +5,7 @@ import '../theme/web_utils.dart'; // WebUtils ekle
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/pdf_service.dart';
+import '../services/localization_service.dart';
 import 'package:intl/intl.dart';
 import 'invoice_draft_detail_screen.dart';
 
@@ -70,11 +71,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final canSeePersonnel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
 
     final tabs = <Tab>[
-      const Tab(text: 'Muhasebe Özeti'),
-      const Tab(text: 'Aylık Rapor'),
-      if (canSeePersonnel) const Tab(text: 'Ön Fatura Taslakları'),
-      if (canSeePersonnel) const Tab(text: 'Personel Saatleri'),
-      if (canSeePersonnel) const Tab(text: 'Fatura Geçmişi'),
+      Tab(text: tr('Muhasebe Özeti')),
+      Tab(text: tr('Aylık Rapor')),
+      if (canSeePersonnel) Tab(text: tr('Ön Fatura Taslakları')),
+      if (canSeePersonnel) Tab(text: tr('Personel Saatleri')),
+      if (canSeePersonnel) Tab(text: tr('Fatura Geçmişi')),
     ];
 
     final tabViews = <Widget>[
@@ -94,7 +95,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Raporlar ve Analizler'),
+        title: Text(tr('Raporlar ve Analizler')),
         centerTitle: false,
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.primary,
@@ -384,11 +385,11 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
     if (_dailyData.isEmpty) {
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.calendar_today_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
+          const Icon(Icons.calendar_today_outlined, size: 56, color: AppTheme.textSub),
           const SizedBox(height: 16),
-          const Text('Günlük finansal veri bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+          Text(tr('Günlük finansal veri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
           const SizedBox(height: 8),
-          const Text('Son 30 gün içinde onaylı çalışma seansı yok', style: TextStyle(color: AppTheme.textSub, fontSize: 12, fontFamily: 'Inter')),
+          Text(tr('Son 30 gün içinde onaylı çalışma seansı yok'), style: const TextStyle(color: AppTheme.textSub, fontSize: 12, fontFamily: 'Inter')),
         ]),
       );
     }
@@ -416,21 +417,21 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Son 30 Gün Özeti', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                  Text(tr('Son 30 Gün Özeti'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Gelir', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                        Text(tr('Gelir'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
                         Text('€ ${totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.greenAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Gider', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                        Text(tr('Gider'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
                         Text('€ ${totalExpense.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Net Kar', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                        Text(tr('Net Kar'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
                         Text('€ ${(totalIncome - totalExpense).toStringAsFixed(0)}', style: TextStyle(color: (totalIncome - totalExpense) >= 0 ? Colors.blueAccent : Colors.redAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                       ]),
                     ],
@@ -472,7 +473,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Text('$sessions seans', style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontFamily: 'Inter')),
+                      child: Text('${sessions} ${tr('seans')}', style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontFamily: 'Inter')),
                     ),
                   ],
                 ),
@@ -480,10 +481,10 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _miniStat('Gelir', '€ ${income.toStringAsFixed(0)}', Colors.green),
-                    _miniStat('İşçilik', '€ ${labor.toStringAsFixed(0)}', Colors.deepOrange),
-                    _miniStat('Malzeme', '€ ${material.toStringAsFixed(0)}', Colors.orange),
-                    _miniStat('Net Kar', '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
+                    _miniStat(tr('Gelir'), '€ ${income.toStringAsFixed(0)}', Colors.green),
+                    _miniStat(tr('İşçilik'), '€ ${labor.toStringAsFixed(0)}', Colors.deepOrange),
+                    _miniStat(tr('Malzeme'), '€ ${material.toStringAsFixed(0)}', Colors.orange),
+                    _miniStat(tr('Net Kar'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
                   ],
                 ),
               ],

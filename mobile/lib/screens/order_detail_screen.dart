@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'operation_plan_form_screen.dart';
 import 'extra_work_form_screen.dart';
 import 'work_report_screen.dart';
@@ -58,8 +59,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_order == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('İş Detayı')),
-        body: const Center(child: Text('İş bulunamadı', style: TextStyle(fontFamily: 'Inter'))),
+        appBar: AppBar(title: Text(tr('İş Detayı'))),
+        body: Center(child: Text(tr('İş bulunamadı'), style: const TextStyle(fontFamily: 'Inter'))),
       );
     }
 
@@ -88,7 +89,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
             FloatingActionButton.small(
               heroTag: 'work_report',
               backgroundColor: AppTheme.success,
-              tooltip: 'İş Sonu Raporu',
+              tooltip: tr('İş Sonu Raporu'),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkReportScreen(orderId: widget.orderId))).then((_) => _load()),
               child: const Icon(Icons.summarize_outlined, color: Colors.white),
             ),
@@ -97,7 +98,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
             FloatingActionButton.small(
               heroTag: 'extra_work',
               backgroundColor: AppTheme.warning,
-              tooltip: 'Ek İş Ekle',
+              tooltip: tr('Ek İş Ekle'),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExtraWorkFormScreen(orderId: widget.orderId))).then((_) => _load()),
               child: const Icon(Icons.add_task, color: Colors.white),
             ),
@@ -107,12 +108,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
               heroTag: 'add_plan',
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OperationPlanFormScreen(orderId: widget.orderId))).then((_) => _load()),
               icon: const Icon(Icons.calendar_today),
-              label: const Text('Plan Ekle'),
+              label: Text(tr('Plan Ekle')),
             ),
         ],
       ) : null,
       appBar: AppBar(
-        title: Text(o['order_number'] ?? 'İş Detayı'),
+        title: Text(o['order_number'] ?? tr('İş Detayı')),
       ),
       body: WebContentWrapper(
         padding: EdgeInsets.zero,
@@ -155,11 +156,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                     labelStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 12),
                     unselectedLabelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
                       tabs: [
-                        Tab(text: 'Bilgiler'),
-                        Tab(text: 'Planlama (${plans.length})'),
-                        Tab(text: 'Saha Günlüğü (${_siteUpdates.length})'),
-                        Tab(text: 'Belgeler (${docs.length})'),
-                        Tab(text: 'Geçmiş (${history.length})'),
+                        Tab(text: tr('Bilgiler')),
+                        Tab(text: '${tr('Planlama')} (${plans.length})'),
+                        Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
+                        Tab(text: '${tr('Belgeler')} (${docs.length})'),
+                        Tab(text: '${tr('Geçmiş')} (${history.length})'),
                       ],
                   ),
                 ],
@@ -173,24 +174,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                   SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(children: [
-                      _InfoCard('İş Bilgileri', [
-                        _InfoRow('İş Numarası', o['order_number']),
-                        _InfoRow('Öncelik', o['priority']),
-                        _InfoRow('Başlangıç', o['planned_start_date']),
-                        _InfoRow('Bitiş', o['planned_end_date']),
-                        _InfoRow('Saha Adresi', o['site_address']),
-                        _InfoRow('Min. Faturalanacak Saat', o['minimum_billable_hours']?.toString()),
-                        _InfoRow('Malzeme/Ekipman', o['material_notes']),
+                      _InfoCard(tr('İş Bilgileri'), [
+                        _InfoRow(tr('İş Numarası'), o['order_number']),
+                        _InfoRow(tr('Öncelik'), o['priority']),
+                        _InfoRow(tr('Başlangıç'), o['planned_start_date']),
+                        _InfoRow(tr('Bitiş'), o['planned_end_date']),
+                        _InfoRow(tr('Saha Adresi'), o['site_address']),
+                        _InfoRow(tr('Min. Faturalanacak Saat'), o['minimum_billable_hours']?.toString()),
+                        _InfoRow(tr('Malzeme/Ekipman'), o['material_notes']),
                       ]),
                       const SizedBox(height: 12),
-                      _InfoCard('Müşteri', [
-                        _InfoRow('Müşteri', customer?['name']),
-                        _InfoRow('Telefon', customer?['phone'], isMasked: !appState.canSeeFullCustomerDetails),
-                        _InfoRow('E-posta', customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                      _InfoCard(tr('Müşteri'), [
+                        _InfoRow(tr('Müşteri'), customer?['name']),
+                        _InfoRow(tr('Telefon'), customer?['phone'], isMasked: !appState.canSeeFullCustomerDetails),
+                        _InfoRow(tr('E-posta'), customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
                       ]),
                       const SizedBox(height: 12),
                       if (o['short_description'] != null || o['detailed_description'] != null)
-                        _InfoCard('Açıklama', [
+                        _InfoCard(tr('Açıklama'), [
                           if (o['short_description'] != null)
                             Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(o['short_description'], style: const TextStyle(fontFamily: 'Inter', fontSize: 14))),
                           if (o['detailed_description'] != null)
@@ -200,10 +201,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                   ),
                   // Tab 2: Planlama
                   plans.isEmpty
-                      ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.calendar_today_outlined, size: 48, color: AppTheme.textSub),
-                          SizedBox(height: 12),
-                          Text('Henüz plan yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.calendar_today_outlined, size: 48, color: AppTheme.textSub),
+                          const SizedBox(height: 12),
+                          Text(tr('Henüz plan yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : ListView.builder(
                           padding: const EdgeInsets.all(12),
@@ -283,7 +284,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                                           const Icon(Icons.star_outline, size: 13, color: AppTheme.warning),
                                           const SizedBox(width: 4),
                                           Text(
-                                            'Saha Sorumlusu: ${supervisor['first_name']} ${supervisor['last_name']}',
+                                            '${tr('Saha Sorumlusu')}: ${supervisor['first_name']} ${supervisor['last_name']}',
                                             style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.warning, fontWeight: FontWeight.w600),
                                           ),
                                         ]),
@@ -296,7 +297,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                                         Row(children: [
                                           const Icon(Icons.people_outline, size: 13, color: AppTheme.textSub),
                                           const SizedBox(width: 4),
-                                          Text('Atanan Personel (${personnel.length} kişi)', style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontWeight: FontWeight.w600)),
+                                          Text('${tr('Atanan Personel')} (${personnel.length} ${tr('kişi')})', style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontWeight: FontWeight.w600)),
                                         ]),
                                         const SizedBox(height: 6),
                                         ...personnel.map((pp) {
@@ -325,7 +326,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                                         }),
                                       ] else ...[
                                         const SizedBox(height: 6),
-                                        const Text('Henüz personel atanmadı', style: TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontStyle: FontStyle.italic)),
+                                        Text(tr('Henüz personel atanmadı'), style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontStyle: FontStyle.italic)),
                                       ],
                                     ],
                                   ),
@@ -340,7 +341,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                       ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.auto_stories_outlined, size: 48, color: AppTheme.textSub),
                           SizedBox(height: 12),
-                          Text('Henüz saha bildirimi yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          Text(tr('Henüz saha bildirimi yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : ListView.builder(
                           padding: const EdgeInsets.all(12),
@@ -405,7 +406,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                       ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.folder_open_outlined, size: 48, color: AppTheme.textSub),
                           SizedBox(height: 12),
-                          Text('Belge yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          Text(tr('Belge yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : ListView.builder(
                           padding: const EdgeInsets.all(12),
@@ -423,7 +424,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                         ),
                   // Tab 5: Durum Geçmişi
                   history.isEmpty
-                      ? const Center(child: Text('Geçmiş yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')))
+                      ? Center(child: Text(tr('Geçmiş yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')))
                       : ListView.builder(
                           padding: const EdgeInsets.all(12),
                           itemCount: history.length,

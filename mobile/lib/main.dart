@@ -16,6 +16,8 @@ import 'screens/field_worker_shell.dart';
 import 'screens/documents_screen.dart';
 import 'screens/archive_screen.dart';
 import 'screens/role_management_screen.dart';
+import 'services/localization_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,9 @@ void main() async {
     url: 'https://qlfdbkrmjzggoaxbnvij.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZmRia3JtanpnZ29heGJudmlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDg0MDYsImV4cCI6MjA4OTQyNDQwNn0.7Z_bcVZRY2d5WyqXSTMv6_0JXtro7UmFd_hLP_aGPE8',
   );
+
+  // Localization
+  await LocalizationService().load('de');
 
   runApp(
     MultiProvider(
@@ -100,7 +105,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             SizedBox(height: 24),
             Text(
-              'Hanse Kollektiv GmbH',
+              tr('Hanse Kollektiv GmbH'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -110,7 +115,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             SizedBox(height: 12),
             Text(
-              'Dijital Yönetim Sistemi',
+              tr('Dijital Yönetim Sistemi'),
               style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Inter'),
             ),
             SizedBox(height: 48),

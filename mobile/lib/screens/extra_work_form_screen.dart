@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 /// Ek İş / Ek Hizmet kayıt formu (Bölüm 11)
 class ExtraWorkFormScreen extends StatefulWidget {
@@ -59,7 +60,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -80,16 +81,16 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Ek İş Kayıt')),
+      appBar: AppBar(title: Text(tr('Ek İş Kayıt'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _section('Ek İş Bilgisi'),
-              _textField('Ek İş Başlığı *', _title, required: true),
-              _textField('Açıklama', _description, maxLines: 3),
+              _section(tr('Ek İş Bilgisi')),
+              _textField(tr('Ek İş Başlığı *'), _title, required: true),
+              _textField(tr('Açıklama'), _description, maxLines: 3),
               const SizedBox(height: 12),
               GestureDetector(
                 onTap: _pickDate,
@@ -104,7 +105,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
                     const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
                     const SizedBox(width: 10),
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('İş Tarihi', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(tr('İş Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                       Text(
                         '${_workDate.day.toString().padLeft(2, '0')}.${_workDate.month.toString().padLeft(2, '0')}.${_workDate.year}',
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
@@ -123,43 +124,43 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
               // Onay Durumu ve Maliyet sadece yönetici/adminlere görünür
               if (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) ...[
                 const SizedBox(height: 20),
-                _section('Onay Durumu'),
+                _section(tr('Onay Durumu')),
                 DropdownButtonFormField<String>(
                   value: _approvalStatus,
-                  decoration: const InputDecoration(labelText: 'İşlem Durumu'),
-                  items: const [
-                    DropdownMenuItem(value: 'recorded', child: Text('Kaydedildi (Taslak)', style: TextStyle(fontFamily: 'Inter'))),
-                    DropdownMenuItem(value: 'pending_customer', child: Text('Müşteri Onayı Bekliyor', style: TextStyle(fontFamily: 'Inter'))),
-                    DropdownMenuItem(value: 'approved', child: Text('Onaylandı / İşleme Hazır', style: TextStyle(fontFamily: 'Inter'))),
-                    DropdownMenuItem(value: 'rejected', child: Text('Reddedildi', style: TextStyle(fontFamily: 'Inter'))),
+                  decoration: InputDecoration(labelText: tr('İşlem Durumu')),
+                  items: [
+                    DropdownMenuItem(value: 'recorded', child: Text(tr('Kaydedildi (Taslak)'), style: const TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'pending_customer', child: Text(tr('Müşteri Onayı Bekliyor'), style: const TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'approved', child: Text(tr('Onaylandı / İşleme Hazır'), style: const TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'rejected', child: Text(tr('Reddedildi'), style: const TextStyle(fontFamily: 'Inter'))),
                   ],
                   onChanged: (v) => setState(() => _approvalStatus = v!),
                 ),
                 const SizedBox(height: 20),
-                _section('Maliyet Bilgileri (Yönetici Özel)'),
+                _section(tr('Maliyet Bilgileri (Yönetici Özel)')),
                 Row(children: [
                   Expanded(child: TextFormField(
                     controller: _materialCost,
-                    decoration: const InputDecoration(labelText: 'Malzeme Maliyeti (€)'),
+                    decoration: InputDecoration(labelText: '${tr('Malzeme Maliyeti')} (€)'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: TextFormField(
                     controller: _laborCost,
-                    decoration: const InputDecoration(labelText: 'İşçilik Maliyeti (€)'),
+                    decoration: InputDecoration(labelText: '${tr('İşçilik Maliyeti')} (€)'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   )),
                 ]),
               ],
               const SizedBox(height: 16),
-              _section('Ek Bilgiler'),
-              _textField('Notlar', _notes, maxLines: 3),
+              _section(tr('Ek Bilgiler')),
+              _textField(tr('Notlar'), _notes, maxLines: 3),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Ek İşi Kaydet'),
+                    : Text(tr('Ek İşi Kaydet')),
               ),
               const SizedBox(height: 24),
             ],
@@ -180,7 +181,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 }

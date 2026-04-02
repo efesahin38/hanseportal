@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'order_detail_screen.dart';
 import 'order_form_screen.dart';
 
@@ -23,8 +24,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String _search = '';
   String? _statusFilter;
 
-  final _statuses = ['', 'draft', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
-  final _statusLabels = ['Tümü', 'Taslak', 'Planlamada', 'Devam Ediyor', 'Tamamlandı', 'Faturalandı', 'Arşivlendi'];
+    final _statuses = ['', 'draft', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
+    final _statusLabels = [tr('Tümü'), tr('Taslak'), tr('Planlamada'), tr('Devam Ediyor'), tr('Tamamlandı'), tr('Faturalandı'), tr('Arşivlendi')];
 
   @override
   void initState() {
@@ -82,7 +83,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(initialDepartmentId: widget.departmentId))).then((_) => _load()),
               icon: const Icon(Icons.add),
-              label: const Text('Yeni İş', style: TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Yeni İş'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -97,8 +98,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
               children: [
                 TextField(
                   onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                  decoration: const InputDecoration(
-                    hintText: 'İş adı, numara, müşteri ara...',
+                    decoration: InputDecoration(
+                      hintText: tr('İş adı, numara, müşteri ara...'),
                     prefixIcon: Icon(Icons.search),
                     contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   ),
@@ -196,9 +197,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 final orderId = order['id'];
                                 try {
                                   await SupabaseService.deleteOrder(orderId);
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İş başarıyla silindi')));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş başarıyla silindi'))));
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
                                 }
                                 _load();
                               },
@@ -221,12 +222,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
 }
 
   String _getTitle() {
-    if (widget.departmentId == 'dddddddd-1111-1111-1111-111111111111') return 'Temizlik İşleri';
-    if (widget.departmentId == 'dddddddd-2222-2222-2222-222222222222') return 'Ray Servis İşleri';
-    if (widget.departmentId == 'dddddddd-3333-3333-3333-333333333333') return 'Otel Servis İşleri';
-    if (widget.departmentId == 'dddddddd-4444-4444-4444-444444444444') return 'Personel İşleri';
-    if (widget.departmentId == 'dddddddd-5555-5555-5555-555555555555') return 'Yönetim / Diğer';
-    return 'Tüm İşler';
+    if (widget.departmentId == 'dddddddd-1111-1111-1111-111111111111') return tr('Temizlik İşleri');
+    if (widget.departmentId == 'dddddddd-2222-2222-2222-222222222222') return tr('Ray Servis İşleri');
+    if (widget.departmentId == 'dddddddd-3333-3333-3333-333333333333') return tr('Otel Servis İşleri');
+    if (widget.departmentId == 'dddddddd-4444-4444-4444-444444444444') return tr('Personel İşleri');
+    if (widget.departmentId == 'dddddddd-5555-5555-5555-555555555555') return tr('Yönetim / Diğer');
+    return tr('Tüm İşler');
   }
 }
 

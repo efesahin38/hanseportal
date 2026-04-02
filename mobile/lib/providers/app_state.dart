@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 class AppState extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
@@ -84,7 +85,7 @@ class AppState extends ChangeNotifier {
         debugPrint('[AUTH] Failed: User not found or password incorrect.');
         _isLoading = false;
         notifyListeners();
-        return 'E-posta veya şifre hatalı.';
+        return tr('E-posta veya şifre hatalı.');
       }
       
       debugPrint('[AUTH] Success! User ID: ${user['id']}');
@@ -107,7 +108,7 @@ class AppState extends ChangeNotifier {
       debugPrint('[AUTH] Error during signIn: $e');
       _isLoading = false;
       notifyListeners();
-      return 'Bağlantı hatası: ${e.toString()}';
+      return '${tr('Bağlantı hatası')}: ${e.toString()}';
     }
   }
 

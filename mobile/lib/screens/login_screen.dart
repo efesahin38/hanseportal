@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,8 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Dijital Yönetim Sistemi',
+                  Text(
+                    tr('Dijital Yönetim Sistemi'),
                     style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
                   ),
                   const SizedBox(height: 48),
@@ -101,8 +102,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'Giriş Yap',
+                          Text(
+                            tr('Giriş Yap'),
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -118,11 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
-                              labelText: 'E-posta',
+                              labelText: tr('E-posta'),
                               prefixIcon: Icon(Icons.email_outlined),
                             ),
                             validator: (v) => (v == null || !v.contains('@'))
-                                ? 'Geçerli bir e-posta girin'
+                                ? tr('Geçerli bir e-posta girin')
                                 : null,
                           ),
                           const SizedBox(height: 16),
@@ -134,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _login(),
                             decoration: InputDecoration(
-                              labelText: 'Şifre',
+                              labelText: tr('Şifre'),
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
@@ -142,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             validator: (v) => (v == null || v.length < 4)
-                                ? 'Şifre en az 4 karakter olmalı'
+                                ? tr('Şifre en az 4 karakter olmalı')
                                 : null,
                           ),
   
@@ -156,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text(
-                                'Oturumu Açık Tut',
+                                tr('Oturumu Açık Tut'),
                                 style: TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'),
                               ),
                               value: _rememberMe,
@@ -206,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       height: 22,
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                     )
-                                  : const Text('Giriş Yap'),
+                                  : Text(tr('Giriş Yap')),
                             ),
                           ),
                         ],

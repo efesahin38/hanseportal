@@ -2,7 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'dart:typed_data';
+import 'dart:typed_material';
+import 'localization_service.dart';
 
 class SupabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -234,7 +235,7 @@ class SupabaseService {
             'service_date_from': order['planned_start_date'],
             'service_date_to': order['planned_end_date'],
             'status': 'auto_generated',
-            'internal_notes': 'Sistem tarafından otomatik oluşturuldu – lütfen kalemleri düzenleyin.',
+            'internal_notes': tr('Sistem tarafından otomatik oluşturuldu – lütfen kalemleri düzenleyin.'),
           };
           
           final result = await _client.from('invoice_drafts').insert(draftData).select().single();
@@ -242,7 +243,7 @@ class SupabaseService {
           await _client.from('invoice_draft_items').insert({
             'invoice_draft_id': result['id'],
             'item_type': 'main',
-            'description': order['title'] ?? 'Hizmet Bedeli',
+            'description': order['title'] ?? tr('Hizmet Bedeli'),
             'quantity': 1,
             'unit': 'Pausch.',
           });
@@ -255,7 +256,7 @@ class SupabaseService {
 
   static Future<void> markOrderAsInvoiced(String orderId, String changedById) async {
     // 1. Order status güncelle ve logla
-    await updateOrderStatus(orderId, 'invoiced', 'Tahsilat / Fatura süreci başlatıldı', changedById);
+    await updateOrderStatus(orderId, 'invoiced', tr('Tahsilat / Fatura süreci başlatıldı'), changedById);
 
     // 2. Draft faturayı invoiced yap
     final existingDraft = await _client.from('invoice_drafts').select('id, status').eq('order_id', orderId).maybeSingle();
@@ -283,7 +284,7 @@ class SupabaseService {
         await _client.from('invoice_draft_items').insert({
           'invoice_draft_id': result['id'],
           'item_type': 'main',
-          'description': order['title'] ?? 'Hizmet Bedeli',
+          'description': order['title'] ?? tr('Hizmet Bedeli'),
           'quantity': 1,
           'unit': 'Pausch.',
         });
@@ -339,7 +340,7 @@ class SupabaseService {
       if (orderId != null) {
         final order = await _client.from('orders').select('status').eq('id', orderId).single();
         if (order['status'] == 'draft') {
-          await updateOrderStatus(orderId, 'planning', 'Personel atandı, plan oluşturuldu', assignedBy);
+          await updateOrderStatus(orderId, 'planning', tr('Personel atandı, plan oluşturuldu'), assignedBy);
         }
       }
     } catch (e) {
@@ -402,7 +403,7 @@ class SupabaseService {
       final order = await _client.from('orders').select('status').eq('id', orderId).single();
       final status = order['status'];
       if (status != 'in_progress' && status != 'completed' && status != 'invoiced') {
-        await updateOrderStatus(orderId, 'in_progress', 'Çalışma başlatıldı', userId);
+        await updateOrderStatus(orderId, 'in_progress', tr('Çalışma başlatıldı'), userId);
       }
     } catch (e) {
       print('Status change to in_progress error: $e');
@@ -482,8 +483,8 @@ class SupabaseService {
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
-      title: 'Yeni Mesai Onaylandı',
-      body: 'Bir çalışma seansı onaylandı ve fatura taslağına eklendi.',
+      title: tr('Yeni Mesai Onaylandı'),
+      body: tr('Bir çalışma seansı onaylandı ve fatura taslağına eklendi.'),
       sentBy: approvedBy,
     );
   }
@@ -509,7 +510,7 @@ class SupabaseService {
           'order_id': orderId,
           'issuing_company_id': order['company_id'],
           'customer_id': order['customer_id'],
-          'billing_name': order['title'] ?? 'Hizmet Bedeli',
+          'billing_name': order['title'] ?? tr('Hizmet Bedeli'),
           'status': 'auto_generated',
           'service_date_from': order['planned_start_date'],
           'service_date_to': order['planned_end_date'],
@@ -527,7 +528,7 @@ class SupabaseService {
       if (existingItem == null) {
         final start = session['actual_start'] != null ? DateTime.parse(session['actual_start']).toLocal() : DateTime.now();
         final dateStr = DateFormat('dd.MM.yyyy').format(start);
-        final description = '${user['first_name']} ${user['last_name']} - $dateStr Çalışma Bedeli';
+        final description = '${user['first_name']} ${user['last_name']} - $dateStr ${tr('Çalışma Bedeli')}';
         
         await _client.from('invoice_draft_items').insert({
           'invoice_draft_id': draft['id'],
@@ -599,8 +600,8 @@ class SupabaseService {
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
-      title: 'Yeni Ek İş Onaylandı',
-      body: '${extraWork['title']} başlıklı ek iş onaylandı ve faturaya eklendi.',
+      title: tr('Yeni Ek İş Onaylandı'),
+      body: '${extraWork['title']} ${tr('başlıklı ek iş onaylandı ve faturaya eklendi.')}',
       sentBy: approvedBy,
     );
   }

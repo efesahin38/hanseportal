@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
+
 
 // Tüm sekme ekranları
 import 'dashboard_screen.dart';
@@ -36,28 +38,28 @@ class _MainShellState extends State<MainShell> {
 
   List<_NavItem> _buildNavItems(AppState appState) {
     return [
-      _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard', screen: const DashboardScreen()),
-      _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: 'İşler', screen: const OrdersScreen()),
+      _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: tr('Dashboard'), screen: const DashboardScreen()),
+      _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('İşler'), screen: const OrdersScreen()),
       if (appState.canManageCustomers)
-        _NavItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: 'Müşteriler', screen: const CustomersScreen()),
+        _NavItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: tr('Müşteriler'), screen: const CustomersScreen()),
       if (appState.canPlanOperations)
-        _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: 'Planlama', screen: const PlanningScreen()),
+        _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: tr('Planlama'), screen: const PlanningScreen()),
       if (appState.canPlanOperations)
-        _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Takvim', screen: const CalendarScreen()),
+        _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: tr('Takvim'), screen: const CalendarScreen()),
       if (appState.canManageUsers)
-        _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Personel', screen: const PersonnelScreen()),
+        _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: tr('Personel'), screen: const PersonnelScreen()),
       if (appState.canManageDocuments)
-        _NavItem(icon: Icons.folder_outlined, activeIcon: Icons.folder, label: 'Belgeler', screen: const DocumentsScreen()),
+        _NavItem(icon: Icons.folder_outlined, activeIcon: Icons.folder, label: tr('Belgeler'), screen: const DocumentsScreen()),
       if (appState.canViewReports)
-        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Raporlar', screen: const ReportsScreen()),
+        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: tr('Raporlar'), screen: const ReportsScreen()),
       if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer || appState.isSystemAdmin)
-        _NavItem(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Muhasebe', screen: const AccountingOverviewScreen()),
+        _NavItem(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: tr('Muhasebe'), screen: const AccountingOverviewScreen()),
       if (appState.canPlanOperations)
-        _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: 'Mesai Onay', screen: const WorkSessionApprovalScreen()),
+        _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: tr('Mesai Onay'), screen: const WorkSessionApprovalScreen()),
       if (appState.canManageArchive)
-        _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: 'Arşiv', screen: const ArchiveScreen()),
+        _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: tr('Arşiv'), screen: const ArchiveScreen()),
       if (appState.canManageRoles)
-        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: 'Yetki', screen: const RoleManagementScreen()),
+        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Yetki'), screen: const RoleManagementScreen()),
     ];
   }
 

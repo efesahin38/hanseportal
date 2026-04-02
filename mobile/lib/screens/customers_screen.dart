@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'customer_detail_screen.dart';
 import 'customer_form_screen.dart';
 
@@ -60,7 +61,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Müşteri Yönetimi', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
+        title: Text(tr('Müşteri Yönetimi'), style: const TextStyle(fontFamily: 'Inter', fontSize: 18)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textMain,
@@ -69,7 +70,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerFormScreen())).then((_) => _load()),
               icon: const Icon(Icons.add),
-              label: const Text('Yeni Müşteri', style: TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Yeni Müşteri'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -84,7 +85,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   TextField(
                     onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
                     decoration: const InputDecoration(
-                      hintText: 'Müşteri adı, şehir, e-posta ara...',
+                      hintText: tr('Müşteri adı, şehir, e-posta ara...'),
                       prefixIcon: Icon(Icons.search),
                       contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                     ),
@@ -123,7 +124,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.business_outlined, size: 56, color: AppTheme.textSub),
                           SizedBox(height: 12),
-                          Text('Müşteri bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          Text(tr('Müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : RefreshIndicator(
                           onRefresh: _load,
@@ -151,11 +152,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   return await showDialog(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: const Text('Müşteriyi Sil?'),
-                                      content: const Text('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?'),
+                                      title: Text(tr('Müşteriyi Sil?')),
+                                      content: Text(tr('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?')),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
                                       ],
                                     ),
                                   );

@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'personnel_form_screen.dart';
 
 class PersonnelScreen extends StatefulWidget {
@@ -20,16 +21,16 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   String _search = '';
   String? _roleFilter;
 
-  final _roles = {
-    'Tümü': null,
-    'Geschäftsführer': 'geschaeftsfuehrer',
-    'Betriebsleiter': 'betriebsleiter',
-    'Bereichsleiter': 'bereichsleiter',
-    'Vorarbeiter': 'vorarbeiter',
-    'Mitarbeiter': 'mitarbeiter',
-    'Muhasebe': 'buchhaltung',
-    'Backoffice': 'backoffice',
-  };
+    final _roles = {
+      tr('Tümü'): null,
+      'Geschäftsführer': 'geschaeftsfuehrer',
+      'Betriebsleiter': 'betriebsleiter',
+      'Bereichsleiter': 'bereichsleiter',
+      'Vorarbeiter': 'vorarbeiter',
+      'Mitarbeiter': 'mitarbeiter',
+      tr('Muhasebe'): 'buchhaltung',
+      'Backoffice': 'backoffice',
+    };
 
   @override
   void initState() {
@@ -75,7 +76,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonnelFormScreen())).then((_) => _load()),
               icon: const Icon(Icons.person_add),
-              label: const Text('Yeni Personel', style: TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Yeni Personel'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -90,7 +91,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                 TextField(
                   onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
                   decoration: const InputDecoration(
-                    hintText: 'Ad, e-posta, görev ara...',
+                    hintText: tr('Ad, e-posta, görev ara...'),
                     prefixIcon: Icon(Icons.search),
                     contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   ),
@@ -123,10 +124,10 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _filtered.isEmpty
-                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.person_off_outlined, size: 56, color: AppTheme.textSub),
-                        SizedBox(height: 12),
-                        Text('Personel bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.person_off_outlined, size: 56, color: AppTheme.textSub),
+                        const SizedBox(height: 12),
+                        Text(tr('Personel bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                       ]))
                     : RefreshIndicator(
                         onRefresh: _load,

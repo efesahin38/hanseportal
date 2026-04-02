@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 
 /// Yeni müşteri / mevcut müşteri düzenleme formu
 class CustomerFormScreen extends StatefulWidget {
@@ -103,7 +104,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final companyId = context.read<AppState>().currentUser?['company_id'];
     if (companyId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hata: Kullanıcı şirket bilgisi bulunamadı.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Hata: Kullanıcı şirket bilgisi bulunamadı.'))));
         setState(() => _saving = false);
       }
       return;
@@ -136,7 +137,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -145,7 +146,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.customerId == null ? 'Yeni Müşteri' : 'Müşteri Düzenle')),
+      appBar: AppBar(title: Text(widget.customerId == null ? tr('Yeni Müşteri') : tr('Müşteri Düzenle'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
@@ -157,22 +158,22 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section('Temel Bilgiler'),
+                  _section(tr('Temel Bilgiler')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('Müşteri / Şirket Adı *', _name, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Müşteri / Şirket Adı *'), _name, required: true)),
                       SizedBox(
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _type,
-                          decoration: const InputDecoration(labelText: 'Müşteri Tipi'),
-                          items: const [
-                            DropdownMenuItem(value: 'company', child: Text('Firma / Şirket', style: TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'public_institution', child: Text('Kamu Kurumu', style: TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'individual', child: Text('Şahıs / Bireysel', style: TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'other', child: Text('Diğer', style: TextStyle(fontFamily: 'Inter'))),
+                          decoration: InputDecoration(labelText: tr('Müşteri Tipi')),
+                          items: [
+                            DropdownMenuItem(value: 'company', child: Text(tr('Firma / Şirket'), style: const TextStyle(fontFamily: 'Inter'))),
+                            DropdownMenuItem(value: 'public_institution', child: Text(tr('Kamu Kurumu'), style: const TextStyle(fontFamily: 'Inter'))),
+                            DropdownMenuItem(value: 'individual', child: Text(tr('Şahıs / Bireysel'), style: const TextStyle(fontFamily: 'Inter'))),
+                            DropdownMenuItem(value: 'other', child: Text(tr('Diğer'), style: const TextStyle(fontFamily: 'Inter'))),
                           ],
                           onChanged: (v) => setState(() => _type = v!),
                         ),
@@ -181,7 +182,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _selectedServiceAreaId,
-                          decoration: const InputDecoration(labelText: 'Varsayılan Hizmet Alanı'),
+                          decoration: InputDecoration(labelText: tr('Varsayılan Hizmet Alanı')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
                             child: Text(s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
@@ -193,7 +194,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  _section('Müşteri Durumu'),
+                  _section(tr('Müşteri Durumu')),
                   Wrap(
                     spacing: 16,
                     children: [
@@ -202,67 +203,67 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  _section('Adres'),
-                  _textField('Adres', _address),
+                  _section(tr('Adres')),
+                  _textField(tr('Adres'), _address),
                   Wrap(
                     spacing: 12,
                     children: [
-                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.3 : (constraints.maxWidth - 32 - 12) * 0.3, child: _textField('Posta Kodu', _postalCode)),
-                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField('Şehir', _city)),
+                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.3 : (constraints.maxWidth - 32 - 12) * 0.3, child: _textField(tr('Posta Kodu'), _postalCode)),
+                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField(tr('Şehir'), _city)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section('İletişim'),
+                  _section(tr('İletişim')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('Telefon', _phone)),
-                      SizedBox(width: fieldWidth, child: _textField('E-posta', _email)),
-                      SizedBox(width: fieldWidth, child: _textField('Vergi Numarası', _taxNumber)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _phone)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('E-posta'), _email)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Vergi Numarası'), _taxNumber)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section('Ek Bilgiler'),
+                  _section(tr('Ek Bilgiler')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('Notlar', _notes, maxLines: 3)),
-                      SizedBox(width: fieldWidth, child: _textField('Saha Erişim Bilgisi', _specialAccess, maxLines: 2)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Notlar'), _notes, maxLines: 3)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Saha Erişim Bilgisi'), _specialAccess, maxLines: 2)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section('Fatura Adresi'),
-                  _textField('Fatura Adresi (Boşsa İş Adresi kullanılır)', _billingAddress, maxLines: 2),
+                  _section(tr('Fatura Adresi')),
+                  _textField(tr('Fatura Adresi (Boşsa İş Adresi kullanılır)'), _billingAddress, maxLines: 2),
                   const SizedBox(height: 16),
                   
                   // Finansal Bilgiler
                   if (context.read<AppState>().canSeeFinancialDetails) ...[
-                    _section('Finansal Bilgiler (Yetkili)'),
+                    _section(tr('Finansal Bilgiler (Yetkili)')),
                     Wrap(
                       spacing: 16,
                       runSpacing: 0,
                       children: [
-                        SizedBox(width: fieldWidth, child: _textField('USt-IdNr. (KDV No)', _vatNumber)),
-                        SizedBox(width: fieldWidth, child: _textField('Banka Adı', _bankName)),
-                        SizedBox(width: fieldWidth, child: _textField('IBAN', _iban)),
-                        SizedBox(width: fieldWidth, child: _textField('BIC / SWIFT', _bic)),
+                        SizedBox(width: fieldWidth, child: _textField(tr('USt-IdNr. (KDV No)'), _vatNumber)),
+                        SizedBox(width: fieldWidth, child: _textField(tr('Banka Adı'), _bankName)),
+                        SizedBox(width: fieldWidth, child: _textField(tr('IBAN'), _iban)),
+                        SizedBox(width: fieldWidth, child: _textField(tr('BIC / SWIFT'), _bic)),
                       ],
                     ),
                     const SizedBox(height: 16),
                   ],
   
-                  _section('İkinci İletişim Kişisi'),
+                  _section(tr('İkinci İletişim Kişisi')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('İsim Soyisim', _contactName2)),
-                      SizedBox(width: fieldWidth, child: _textField('Telefon', _contactPhone2)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('İsim Soyisim'), _contactName2)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _contactPhone2)),
                     ],
                   ),
                   
@@ -271,7 +272,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     onPressed: _saving ? null : _save,
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.customerId == null ? 'Müşteri Oluştur' : 'Kaydet'),
+                        : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -294,7 +295,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 
@@ -304,12 +305,12 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
     return DropdownButtonFormField<String>(
       value: _status,
-      decoration: const InputDecoration(labelText: 'Müşteri Durumu'),
-      items: const [
-        DropdownMenuItem(value: 'active', child: Text('✅ Aktif (Active)', style: TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'passive', child: Text('⚠️ Pasif (Passive)', style: TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'potential', child: Text('✨ Potansiyel (Potential)', style: TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'archived', child: Text('📁 Arşiv (Archived)', style: TextStyle(fontFamily: 'Inter'))),
+      decoration: InputDecoration(labelText: tr('Müşteri Durumu')),
+      items: [
+        DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')} (Active)', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')} (Passive)', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')} (Potential)', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')} (Archived)', style: const TextStyle(fontFamily: 'Inter'))),
       ],
       onChanged: canEditStatus ? (v) => setState(() => _status = v!) : null,
     );

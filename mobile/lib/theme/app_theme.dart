@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 
 class AppTheme {
   // ── Marka Renkleri ────────────────────────────────────────
@@ -158,14 +159,14 @@ class AppTheme {
 
   static String statusLabel(String status) {
     switch (status) {
-      case 'draft':            return 'Taslak';
-      case 'planning':         return 'Planlamada';
-      case 'in_progress':      return 'Devam Ediyor';
-      case 'completed':        return 'Tamamlandı';
-      case 'invoiced':         return 'Faturalandı';
-      case 'archived':         return 'Arşivlendi';
-      case 'active':           return 'Aktif';
-      case 'inactive':         return 'Pasif';
+      case 'draft':            return tr('Taslak');
+      case 'planning':         return tr('Planlamada');
+      case 'in_progress':      return tr('Devam Ediyor');
+      case 'completed':        return tr('Tamamlandı');
+      case 'invoiced':         return tr('Faturalandı');
+      case 'archived':         return tr('Arşivlendi');
+      case 'active':           return tr('Aktif');
+      case 'inactive':         return tr('Pasif');
       default:                 return status;
     }
   }

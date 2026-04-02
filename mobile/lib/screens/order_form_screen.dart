@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 
 /// Yeni iş / mevcut iş düzenleme formu
 class OrderFormScreen extends StatefulWidget {
@@ -69,7 +70,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         });
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dropdown verileri yüklenemedi: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Dropdown verileri yüklenemedi')}: $e')));
     }
   }
 
@@ -109,11 +110,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen bir müşteri seçin')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen bir müşteri seçin'))));
       return;
     }
     if (_selectedServiceAreaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen bir hizmet alanı seçin')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen bir hizmet alanı seçin'))));
       return;
     }
     
@@ -122,7 +123,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final autoDeptId = selectedSA['department_id'];
     
     if (autoDeptId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hata: Seçilen hizmet alanı için departman tanımlanmamış')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Hata: Seçilen hizmet alanı için departman tanımlanmamış'))));
       return;
     }
 
@@ -157,7 +158,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -166,7 +167,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.orderId == null ? 'Yeni İş' : 'İş Düzenle')),
+      appBar: AppBar(title: Text(widget.orderId == null ? tr('Yeni İş') : tr('İş Düzenle'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
@@ -178,14 +179,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section('1. Müşteri & Hizmet Bilgileri'),
+                  _section(tr('1. Müşteri & Hizmet Bilgileri')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
                     children: [
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown('Müşteri *', _customers, _selectedCustomerId, 'name', (v) {
+                        child: _dropdown(tr('Müşteri *'), _customers, _selectedCustomerId, 'name', (v) {
                           setState(() {
                             _selectedCustomerId = v;
                             if (v != null) {
@@ -212,7 +213,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown('Hizmet Alanı *', _serviceAreas, _selectedServiceAreaId, 'name', (v) {
+                        child: _dropdown(tr('Hizmet Alanı *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) {
                           setState(() {
                             _selectedServiceAreaId = v;
                             if (v != null) {
@@ -228,31 +229,31 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  _section('2. Temel Bilgiler'),
+                  _section(tr('2. Temel Bilgiler')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('İş Başlığı *', _title, required: true)),
-                      SizedBox(width: fieldWidth, child: _textField('Kısa Açıklama', _shortDesc, maxLines: 2)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('İş Başlığı *'), _title, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Kısa Açıklama'), _shortDesc, maxLines: 2)),
                     ],
                   ),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('Müşteri Sipariş No', _customerRef)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Müşteri Sipariş No'), _customerRef)),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  _section('3. Saha & Operasyon Detayları'),
-                  _textField('Saha Adresi', _siteAddress),
-                  _textField('Detaylı İş Açıklaması', _detailedDesc, maxLines: 4),
-                  _textField('Malzeme/Ekipman Gereksinimi', _materialNotes, maxLines: 3),
+                  _section(tr('3. Saha & Operasyon Detayları')),
+                  _textField(tr('Saha Adresi'), _siteAddress),
+                  _textField(tr('Detaylı İş Açıklaması'), _detailedDesc, maxLines: 4),
+                  _textField(tr('Malzeme/Ekipman Gereksinimi'), _materialNotes, maxLines: 3),
                   const SizedBox(height: 16),
   
-                  _section('4. Planlama & Öncelik'),
+                  _section(tr('4. Planlama & Öncelik')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -261,12 +262,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _priority,
-                          decoration: const InputDecoration(labelText: 'Öncelik'),
-                          items: const [
-                            DropdownMenuItem(value: 'low', child: Text('Düşük')),
-                            DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                            DropdownMenuItem(value: 'high', child: Text('Yüksek')),
-                            DropdownMenuItem(value: 'urgent', child: Text('🔴 Acil')),
+                          decoration: InputDecoration(labelText: tr('Öncelik')),
+                          items: [
+                            DropdownMenuItem(value: 'low', child: Text(tr('Düşük'))),
+                            DropdownMenuItem(value: 'normal', child: Text(tr('Normal'))),
+                            DropdownMenuItem(value: 'high', child: Text(tr('Yüksek'))),
+                            DropdownMenuItem(value: 'urgent', child: Text('🔴 ${tr('Acil')}')),
                           ],
                           onChanged: (v) => setState(() => _priority = v!),
                         ),
@@ -275,7 +276,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         width: fieldWidth,
                         child: TextFormField(
                           initialValue: _minBillableHours.toString(),
-                          decoration: const InputDecoration(labelText: 'Min. Faturalanacak Saat', hintText: 'Varsayılan: 4.0'),
+                          decoration: InputDecoration(labelText: tr('Min. Faturalanacak Saat'), hintText: '${tr('Varsayılan')}: 4.0'),
                           keyboardType: TextInputType.number,
                           onChanged: (v) => _minBillableHours = double.tryParse(v) ?? 4.0,
                         ),
@@ -284,14 +285,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: _dateTile('Başlangıç', _startDate, () => _pickDate(true))),
+                    Expanded(child: _dateTile(tr('Başlangıç'), _startDate, () => _pickDate(true))),
                     const SizedBox(width: 12),
-                    Expanded(child: _dateTile('Bitiş', _endDate, () => _pickDate(false))),
+                    Expanded(child: _dateTile(tr('Bitiş'), _endDate, () => _pickDate(false))),
                   ]),
                   const SizedBox(height: 24),
   
-                  _section('5. Ek Notlar'),
-                  _textField('Notlar', _notes, maxLines: 4),
+                  _section(tr('5. Ek Notlar')),
+                  _textField(tr('Notlar'), _notes, maxLines: 4),
                   const SizedBox(height: 32),
                   
                   ElevatedButton(
@@ -301,7 +302,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     ),
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.orderId == null ? 'İş Oluştur' : 'Değişiklikleri Kaydet', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : Text(widget.orderId == null ? tr('İş Oluştur') : tr('Değişiklikleri Kaydet'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -324,7 +325,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 
@@ -334,7 +335,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         enabled: false,
         decoration: InputDecoration(
           labelText: label,
-          hintText: 'Sistemde kayıtlı veri yok (Önce ekleme yapın)',
+          hintText: tr('Sistemde kayıtlı veri yok (Önce ekleme yapın)'),
           hintStyle: const TextStyle(color: Colors.redAccent, fontSize: 13),
         ),
       );
@@ -378,7 +379,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
-          date == null ? 'Seçiniz' : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
+          date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
           style: TextStyle(fontSize: 14, fontFamily: 'Inter', color: date == null ? AppTheme.textSub : AppTheme.textMain),
         ),
       ]),
