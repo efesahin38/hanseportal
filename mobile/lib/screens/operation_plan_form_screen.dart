@@ -32,6 +32,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   bool _loadingPersonnel = true;
   String _selectedFilter = 'Tümü'; // Yeni filtre
   String _orderTitle = 'İş'; 
+  String _status = 'draft';
 
   List<Map<String, dynamic>> _personnel = [];
 
@@ -107,6 +108,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           _equipmentNotes.text = data['equipment_notes'] ?? '';
           _materialNotes.text = data['material_notes'] ?? '';
           _notes.text = data['notes'] ?? '';
+          _status = data['status'] ?? 'draft';
           final pp = data['operation_plan_personnel'] as List? ?? [];
           _selectedPersonnelIds = pp.map((e) => e['user_id'] as String).toList();
         });
@@ -164,6 +166,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         'site_instructions': _siteInstructions.text.trim(),
         'equipment_notes': _equipmentNotes.text.trim(),
         'material_notes': _materialNotes.text.trim(),
+        'status': _status,
         'notes': _notes.text.trim(),
       };
 
@@ -236,7 +239,22 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _section('Tarih & Saat'),
+              _section('Durum, Tarih & Saat'),
+              DropdownButtonFormField<String>(
+                value: _status,
+                decoration: const InputDecoration(labelText: 'Plan Durumu'),
+                items: const [
+                  DropdownMenuItem(value: 'draft', child: Text('Taslak')),
+                  DropdownMenuItem(value: 'sent', child: Text('Gönderildi')),
+                  DropdownMenuItem(value: 'confirmed', child: Text('Onaylandı')),
+                  DropdownMenuItem(value: 'updated', child: Text('Güncellendi')),
+                  DropdownMenuItem(value: 'cancelled', child: Text('İptal Edildi')),
+                ],
+                onChanged: (v) {
+                  if (v != null) setState(() => _status = v);
+                },
+              ),
+              const SizedBox(height: 12),
               // Tarih
               GestureDetector(
                 onTap: _pickDate,
