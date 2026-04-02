@@ -60,7 +60,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Müşteriler v2.1', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
+        title: const Text('Hanse Müşteri Sistemi (SWIPE)', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textMain,
