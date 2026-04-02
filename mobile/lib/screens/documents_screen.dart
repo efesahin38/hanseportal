@@ -499,8 +499,9 @@ class _ActionButtonsState extends State<_ActionButtons> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme işlemi başarısız: $e')));
-        setState(() => _loading = false);
       }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 

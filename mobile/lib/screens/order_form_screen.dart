@@ -201,8 +201,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                   final csa = customer['customer_service_areas'] as List;
                                   if (csa.isNotEmpty) {
                                     final sId = csa.first['service_area_id']?.toString();
-                                    if (_serviceAreas.any((s) => s['id']?.toString() == sId)) {
+                                    final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == sId, orElse: () => <String, dynamic>{});
+                                    if (sArea.isNotEmpty) {
                                       _selectedServiceAreaId = sId;
+                                      _title.text = sArea['name'] ?? '';
                                     }
                                   }
                                 }
