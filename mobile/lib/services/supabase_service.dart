@@ -1,0 +1,1178 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+
+class SupabaseService {
+  static final SupabaseClient _client = Supabase.instance.client;
+  static SupabaseClient get client => _client;
+
+  // ── Auth (LOKAL SQL KONTROLÜ) ─────────────────────────────
+  static Future<Map<String, dynamic>?> signIn(String email, String password) async {
+    final data = await _client.from('users').select().eq('email', email.toLowerCase()).eq('password', password).maybeSingle();
+    return data;
+  }
+
+  static Future<void> signOut() async {
+    // Lokal sistemde çıkış için session silmek gerekmez, AppState'ten temizlenir
+  }
+
+  static Future<void> deleteOrder(String id) async {
+    await _client.from('orders').delete().eq('id', id);
+  }
+
+  // ── Mevcut Kullanıcı Profili ──────────────────────────────
+  static Future<Map<String, dynamic>?> getUserProfileById(String userId) async {
+    final data = await _client
+        .from('users')
+        .select('''
+          *,
+          company:companies(id, name, short_name),
+          department:departments(id, name),
+          manager:users!users_manager_id_fkey(id, first_name, last_name)
+        ''')
+        .eq('id', userId)
+        .maybeSingle();
+    return data;
+  }
+
+  // ── Şirketler ─────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getCompanies({String? status}) async {
+    final base = _client.from('companies').select();
+    final data = await (status != null ? base.eq('status', status).order('name') : base.order('name'));
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<Map<String, dynamic>?> getCompany(String id) async {
+    return await _client.from('companies').select().eq('id', id).maybeSingle();
+  }
+
+  static Future<void> upsertCompany(Map<String, dynamic> data) async {
+    await _client.from('companies').upsert(data);
+  }
+
+  // ── Personel ──────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getUsers({
+    String? companyId,
+    String? departmentId,
+    String? role,
+    String? status,
+    String? serviceAreaCode,
+  }) async {
+    var query = _client.from('users').select('''
+      *,
+      company:companies(id, name, short_name),
+      department:departments(id, name)
+    ''');
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
+    if (role != null) query = query.eq('role', role) as dynamic;
+    if (status != null) query = query.eq('status', status) as dynamic;
+    final data = await query.order('last_name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<Map<String, dynamic>?> getUserById(String id) async {
+    return await _client.from('users').select('''
+      *,
+      company:companies(id, name, short_name),
+      department:departments(id, name),
+      user_service_areas(service_area_id, service_areas(code, name, color))
+    ''').eq('id', id).maybeSingle();
+  }
+
+  static Future<void> upsertUser(Map<String, dynamic> data) async {
+    await _client.from('users').upsert(data);
+  }
+
+  // ── Müşteriler ────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getCustomers({
+    String? status,
+    String? companyId,
+    String? departmentId,
+  }) async {
+    var query = _client.from('customers').select('''
+      *,
+      company:companies(id, name, short_name),
+      customer_contacts(*)
+    ''');
+    if (status != null) query = query.eq('status', status) as dynamic;
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (departmentId != null) {
+      // Sadece bu departmana ait işlerde (orders) geçen müşterileri getir
+      final ordersInDept = await _client
+          .from('orders')
+          .select('customer_id')
+          .eq('department_id', departmentId);
+      final customerIds = (ordersInDept as List)
+          .map((o) => o['customer_id'] as String)
+          .toSet()
+          .toList();
+      if (customerIds.isEmpty) return [];
+      query = query.inFilter('id', customerIds) as dynamic;
+    }
+    final data = await query.order('name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<Map<String, dynamic>?> getCustomer(String id) async {
+    return await _client.from('customers').select('''
+      *,
+      company:companies(id, name, short_name),
+      customer_contacts(*),
+      customer_service_areas(service_area_id, service_areas(code, name, color))
+    ''').eq('id', id).maybeSingle();
+  }
+
+  static Future<void> upsertCustomer(Map<String, dynamic> data) async {
+    await _client.from('customers').upsert(data);
+  }
+
+  // ── İşler ─────────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getOrders({
+    String? status,
+    String? companyId,
+    String? customerId,
+    String? responsibleUserId,
+    String? serviceAreaId,
+    String? departmentId,
+  }) async {
+    var query = _client.from('orders').select('''
+      *,
+      company:companies(id, name, short_name),
+      customer:customers(id, name),
+      service_area:service_areas(id, code, name, color),
+      responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
+      department:departments(id, name)
+    ''');
+    if (status != null) query = query.eq('status', status) as dynamic;
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (customerId != null) query = query.eq('customer_id', customerId) as dynamic;
+    if (responsibleUserId != null) query = query.eq('responsible_user_id', responsibleUserId) as dynamic;
+    
+    // Bereichsleiter (Bölüm Sorumlusu) ise sadece kendi departmanını görsün
+    // Not: departmentId parametre olarak da gelebilir, zorlayalım.
+    if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
+
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<Map<String, dynamic>?> getOrder(String id) async {
+    return await _client.from('orders').select('''
+      *,
+      company:companies(id, name, short_name),
+      customer:customers(id, name, phone, email),
+      customer_contact:customer_contacts(id, name, phone, email),
+      service_area:service_areas(id, code, name, color),
+      responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
+      department:departments(id, name),
+      order_status_history(*),
+      documents(*),
+      operation_plans(*)
+    ''').eq('id', id).maybeSingle();
+  }
+
+  static Future<String> createOrder(Map<String, dynamic> data) async {
+    final result = await _client.from('orders').insert(data).select().single();
+    return result['id'];
+  }
+
+  static Future<void> updateOrderStatus(String orderId, String newStatus, String? note, String changedById) async {
+    final order = await _client.from('orders')
+        .select('status, title, company_id, customer_id, site_address, planned_start_date, planned_end_date, customer:customers(name, address)')
+        .eq('id', orderId).single();
+    
+    final oldStatus = order['status'];
+
+    await _client.from('order_status_history').insert({
+      'order_id': orderId,
+      'old_status': oldStatus,
+      'new_status': newStatus,
+      'changed_by': changedById,
+      'note': note,
+    });
+    
+    await _client.from('orders').update({'status': newStatus}).eq('id', orderId);
+
+    // Otomatik Taslak Oluşturma (Eğer arka planda trigger çalışmıyorsa yedek)
+    if (newStatus == 'completed' && oldStatus != 'completed') {
+      try {
+        final existing = await _client.from('invoice_drafts').select('id').eq('order_id', orderId).maybeSingle();
+        if (existing == null) {
+          final customer = order['customer'] ?? {};
+          final draftData = {
+            'order_id': orderId,
+            'issuing_company_id': order['company_id'],
+            'customer_id': order['customer_id'],
+            'billing_name': customer['name'],
+            'billing_address': customer['address'],
+            'site_address': order['site_address'],
+            'service_date_from': order['planned_start_date'],
+            'service_date_to': order['planned_end_date'],
+            'status': 'auto_generated',
+            'internal_notes': 'Sistem tarafından otomatik oluşturuldu – lütfen kalemleri düzenleyin.',
+          };
+          
+          final result = await _client.from('invoice_drafts').insert(draftData).select().single();
+          
+          await _client.from('invoice_draft_items').insert({
+            'invoice_draft_id': result['id'],
+            'item_type': 'main',
+            'description': order['title'] ?? 'Hizmet Bedeli',
+            'quantity': 1,
+            'unit': 'Pausch.',
+          });
+        }
+      } catch (e) {
+        print('Front-end invoice draft creation error: $e');
+      }
+    }
+  }
+
+  static Future<void> markOrderAsInvoiced(String orderId, String changedById) async {
+    // 1. Order status güncelle ve logla
+    await updateOrderStatus(orderId, 'invoiced', 'Tahsilat / Fatura süreci başlatıldı', changedById);
+
+    // 2. Draft faturayı invoiced yap
+    final existingDraft = await _client.from('invoice_drafts').select('id, status').eq('order_id', orderId).maybeSingle();
+    if (existingDraft != null) {
+      if (existingDraft['status'] != 'invoiced') {
+        await _client.from('invoice_drafts').update({'status': 'invoiced'}).eq('id', existingDraft['id']);
+      }
+    } else {
+      // Draft yoksa yeni yarat ve invoiced yap
+      final order = await getOrder(orderId);
+      if (order != null) {
+        final customer = order['customer'] ?? {};
+        final draftData = {
+          'order_id': orderId,
+          'issuing_company_id': order['company_id'],
+          'customer_id': order['customer_id'],
+          'billing_name': customer['name'],
+          'billing_address': customer['address'],
+          'site_address': order['site_address'],
+          'service_date_from': order['planned_start_date'],
+          'service_date_to': order['planned_end_date'],
+          'status': 'invoiced',
+        };
+        final result = await _client.from('invoice_drafts').insert(draftData).select().single();
+        await _client.from('invoice_draft_items').insert({
+          'invoice_draft_id': result['id'],
+          'item_type': 'main',
+          'description': order['title'] ?? 'Hizmet Bedeli',
+          'quantity': 1,
+          'unit': 'Pausch.',
+        });
+      }
+    }
+  }
+
+  // ── Operasyon Planları ────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getOperationPlans({
+    String? orderId,
+    DateTime? date,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? userId,
+    String? departmentId,
+  }) async {
+    final inner = userId != null ? '!inner' : '';
+    final deptInner = departmentId != null ? '!inner' : '';
+    var query = _client.from('operation_plans').select('''
+      *,
+      order:orders$deptInner(id, title, order_number, site_address, department_id, status, customer:customers(id, name)),
+      site_supervisor:users!operation_plans_site_supervisor_id_fkey(id, first_name, last_name),
+      operation_plan_personnel$inner(user_id, is_supervisor, users!operation_plan_personnel_user_id_fkey(id, first_name, last_name, role))
+    ''');
+    if (orderId != null) query = query.eq('order_id', orderId) as dynamic;
+    if (departmentId != null) query = query.eq('orders.department_id', departmentId) as dynamic;
+    if (date != null) {
+      final dateStr = date.toIso8601String().split('T')[0];
+      query = query.eq('plan_date', dateStr) as dynamic;
+    }
+    if (dateFrom != null) query = query.gte('plan_date', dateFrom.toIso8601String().split('T')[0]) as dynamic;
+    if (dateTo != null) query = query.lte('plan_date', dateTo.toIso8601String().split('T')[0]) as dynamic;
+    if (userId != null) query = query.eq('operation_plan_personnel.user_id', userId) as dynamic;
+    final data = await query.order('plan_date').order('start_time');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertOperationPlan(Map<String, dynamic> data) async {
+    await _client.from('operation_plans').upsert(data);
+  }
+
+  static Future<void> assignPersonnelToPlan(String planId, List<String> userIds, String assignedBy) async {
+    final items = userIds.map((uid) => {
+      'operation_plan_id': planId,
+      'user_id': uid,
+      'assigned_by': assignedBy,
+    }).toList();
+    await _client.from('operation_plan_personnel').upsert(items);
+
+    try {
+      final plan = await _client.from('operation_plans').select('order_id').eq('id', planId).single();
+      final orderId = plan['order_id'];
+      if (orderId != null) {
+        final order = await _client.from('orders').select('status').eq('id', orderId).single();
+        if (order['status'] == 'draft') {
+          await updateOrderStatus(orderId, 'planning', 'Personel atandı, plan oluşturuldu', assignedBy);
+        }
+      }
+    } catch (e) {
+      print('Status change to planning error: $e');
+    }
+  }
+
+  // ── Çalışma Seansları ─────────────────────────────────────
+  static Future<Map<String, dynamic>?> getActiveSession(String userId) async {
+    return await _client
+        .from('work_sessions')
+        .select('''
+          *,
+          order:orders(id, title, order_number, site_address),
+          operation_plan:operation_plans(id, plan_date, start_time, end_time)
+        ''')
+        .eq('user_id', userId)
+        .eq('status', 'started')
+        .maybeSingle();
+  }
+
+  /// Yakın zamanda tamamlanmış seansları getirir (görev kartında başlangıç/bitiş göstermek için)
+  static Future<List<Map<String, dynamic>>> getRecentCompletedSessions(String userId) async {
+    final now = DateTime.now();
+    final past = now.subtract(const Duration(days: 7)).toIso8601String().split('T')[0];
+    final future = now.add(const Duration(days: 14)).toIso8601String().split('T')[0];
+    
+    final data = await _client
+        .from('work_sessions')
+        .select('id, operation_plan_id, actual_start, actual_end')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .gte('actual_start', '${past}T00:00:00Z')
+        .lte('actual_start', '${future}T23:59:59Z');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<String> startWorkSession({
+    required String orderId,
+    required String userId,
+    String? operationPlanId,
+    double? minimumHours,
+    double? lat,
+    double? lon,
+    int? delayMinutes,
+  }) async {
+    final result = await _client.from('work_sessions').insert({
+      'order_id': orderId,
+      'user_id': userId,
+      'operation_plan_id': operationPlanId,
+      'actual_start': DateTime.now().toUtc().toIso8601String(),
+      'minimum_hours': minimumHours,
+      'status': 'started',
+      'start_latitude': lat,
+      'start_longitude': lon,
+      if (delayMinutes != null && delayMinutes > 0) 'delay_minutes': delayMinutes,
+    }).select().single();
+
+    try {
+      final order = await _client.from('orders').select('status').eq('id', orderId).single();
+      final status = order['status'];
+      if (status != 'in_progress' && status != 'completed' && status != 'invoiced') {
+        await updateOrderStatus(orderId, 'in_progress', 'Çalışma başlatıldı', userId);
+      }
+    } catch (e) {
+      print('Status change to in_progress error: $e');
+    }
+
+    return result['id'];
+  }
+
+  static Future<void> endWorkSession(String sessionId, {String? note, double? lat, double? lon}) async {
+    await _client.from('work_sessions').update({
+      'actual_end': DateTime.now().toUtc().toIso8601String(),
+      'note': note,
+      'end_latitude': lat,
+      'end_longitude': lon,
+      'status': 'completed',
+    }).eq('id', sessionId);
+  }
+
+  static Future<void> adjustWorkSession(
+    String sessionId, {
+    required String adjustedBy,
+    DateTime? actualStart,
+    DateTime? actualEnd,
+    String? adjustmentReason,
+  }) async {
+    final updates = <String, dynamic>{
+      'is_manually_adjusted': true,
+      'adjusted_by': adjustedBy,
+      if (adjustmentReason != null) 'adjustment_reason': adjustmentReason,
+      if (actualStart != null) 'actual_start': actualStart.toIso8601String(),
+      if (actualEnd != null) 'actual_end': actualEnd.toIso8601String(),
+    };
+    await _client.from('work_sessions').update(updates).eq('id', sessionId);
+  }
+
+  static Future<List<Map<String, dynamic>>> getWorkSessionsForOrder(String orderId) async {
+    final data = await _client.from('work_sessions').select('''
+      *,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name)
+    ''').eq('order_id', orderId).order('actual_start');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId}) async {
+    var query = _client.from('work_sessions').select('''
+      *,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name),
+      order:orders(
+        id, title, order_number, department_id,
+        extra_works:extra_works!extra_works_order_id_fkey(
+          *,
+          recorded_by_user:users!extra_works_recorded_by_fkey(first_name, last_name)
+        )
+      ),
+      operation_plan:operation_plans(id, estimated_duration_h, start_time, end_time)
+    ''').eq('status', 'completed').eq('approval_status', 'pending');
+    
+    if (departmentId != null) {
+      query = query.eq('orders.department_id', departmentId) as dynamic;
+    }
+    
+    final data = await query.order('actual_end', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> approveWorkSession(String sessionId, double approvedHours, String approvedBy) async {
+    // 1. Durumu güncelle
+    await _client.from('work_sessions').update({
+      'approval_status': 'approved',
+      'approved_billable_hours': approvedHours,
+      'approved_by': approvedBy,
+      'approved_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
+
+    // 2. Fatura Taslağına Senkronize et
+    await _syncSessionToInvoiceDraft(sessionId);
+
+    // 3. Muhasebeye Bildirim Gönder
+    await sendNotificationToAccounting(
+      title: 'Yeni Mesai Onaylandı',
+      body: 'Bir çalışma seansı onaylandı ve fatura taslağına eklendi.',
+      sentBy: approvedBy,
+    );
+  }
+
+  static Future<void> _syncSessionToInvoiceDraft(String sessionId) async {
+    try {
+      // Oturum ve İş bilgilerini getir
+      final session = await _client.from('work_sessions').select('''
+        *,
+        user:users(id, first_name, last_name),
+        order:orders(*)
+      ''').eq('id', sessionId).single();
+
+      final order = session['order'];
+      final user = session['user'];
+      final orderId = order['id'];
+
+      // 1. Taslağı bul veya oluştur
+      var draft = await _client.from('invoice_drafts').select().eq('order_id', orderId).maybeSingle();
+      
+      if (draft == null) {
+        final data = {
+          'order_id': orderId,
+          'issuing_company_id': order['company_id'],
+          'customer_id': order['customer_id'],
+          'billing_name': order['title'] ?? 'Hizmet Bedeli',
+          'status': 'auto_generated',
+          'service_date_from': order['planned_start_date'],
+          'service_date_to': order['planned_end_date'],
+        };
+        draft = await _client.from('invoice_drafts').insert(data).select().single();
+      }
+
+      // 2. Kalemi ekle (Eğer zaten eklenmemişse)
+      final existingItem = await _client.from('invoice_draft_items')
+          .select()
+          .eq('invoice_draft_id', draft['id'])
+          .eq('work_session_id', sessionId)
+          .maybeSingle();
+
+      if (existingItem == null) {
+        final start = session['actual_start'] != null ? DateTime.parse(session['actual_start']).toLocal() : DateTime.now();
+        final dateStr = DateFormat('dd.MM.yyyy').format(start);
+        final description = '${user['first_name']} ${user['last_name']} - $dateStr Çalışma Bedeli';
+        
+        await _client.from('invoice_draft_items').insert({
+          'invoice_draft_id': draft['id'],
+          'work_session_id': sessionId,
+          'item_type': 'main',
+          'description': description,
+          'quantity': session['approved_billable_hours'],
+          'unit': 'Std.',
+        });
+      }
+    } catch (e) {
+      print('Sync Error: $e');
+    }
+  }
+
+  static Future<void> rejectWorkSession(String sessionId, String reason, String rejectedBy) async {
+    await _client.from('work_sessions').update({
+      'approval_status': 'rejected',
+      'rejection_reason': reason,
+      'approved_by': rejectedBy,
+      'approved_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
+  }
+
+  static Future<List<Map<String, dynamic>>> getApprovedWorkSessionsForAccounting() async {
+    final data = await _client.from('work_sessions').select('''
+      *,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
+      order:orders(
+        id, title, order_number, 
+        customer:customers(name),
+        invoice_drafts(total_amount, subtotal),
+        extra_works(estimated_material_cost, estimated_labor_cost),
+        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
+      ),
+      approved_by_user:users!work_sessions_approved_by_fkey(id, first_name, last_name)
+    ''').eq('approval_status', 'approved').order('approved_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── Ek İşler ──────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getExtraWorks(String orderId) async {
+    final data = await _client
+        .from('extra_works')
+        .select('*, recorded_by_user:users!extra_works_recorded_by_fkey(first_name, last_name)')
+        .eq('order_id', orderId)
+        .order('work_date', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createExtraWork(Map<String, dynamic> data) async {
+    await _client.from('extra_works').insert({
+      ...data,
+      'status': data['status'] ?? 'pending',
+    });
+  }
+
+  static Future<void> approveExtraWork(String extraWorkId, String approvedBy) async {
+    // 1. Durumu güncelle
+    await _client.from('extra_works').update({
+      'status': 'approved',
+      'approved_by': approvedBy,
+      'approved_at': DateTime.now().toIso8601String(),
+    }).eq('id', extraWorkId);
+
+    // 2. Fatura Taslağına Senkronize et
+    final extraWork = await _client.from('extra_works').select('*, order:orders(*)').eq('id', extraWorkId).single();
+    await _syncExtraWorkToInvoiceDraft(extraWork);
+
+    // 3. Muhasebeye Bildirim Gönder
+    await sendNotificationToAccounting(
+      title: 'Yeni Ek İş Onaylandı',
+      body: '${extraWork['title']} başlıklı ek iş onaylandı ve faturaya eklendi.',
+      sentBy: approvedBy,
+    );
+  }
+
+  // ── Muhasebeye Bildirim Gönderme Yardımı ───────────────────
+  static Future<void> sendNotificationToAccounting({
+    required String title,
+    required String body,
+    required String sentBy,
+  }) async {
+    try {
+      // Muhasebe rolündeki tüm kullanıcıları bul
+      final accountingUsers = await _client.from('users').select('id').eq('role', 'buchhaltung');
+      
+      for (var u in accountingUsers) {
+        await sendTaskNotification(
+          recipientId: u['id'],
+          title: title,
+          body: body,
+          sentBy: sentBy,
+          notificationType: 'invoice_ready',
+        );
+      }
+    } catch (e) {
+      print('Notification Error: $e');
+    }
+  }
+
+  static Future<void> _syncExtraWorkToInvoiceDraft(Map<String, dynamic> extraWork) async {
+    try {
+      final order = extraWork['order'];
+      final orderId = order['id'];
+
+      // 1. Taslağı bul veya oluştur
+      var draft = await _client.from('invoice_drafts').select().eq('order_id', orderId).maybeSingle();
+      if (draft == null) {
+        final data = {
+          'order_id': orderId,
+          'issuing_company_id': order['company_id'],
+          'customer_id': order['customer_id'],
+          'billing_name': order['title'] ?? 'Hizmet Bedeli',
+          'status': 'auto_generated',
+          'service_date_from': order['planned_start_date'],
+          'service_date_to': order['planned_end_date'],
+        };
+        draft = await _client.from('invoice_drafts').insert(data).select().single();
+      }
+
+      // 2. Kalemi ekle (Eğer zaten eklenmemişse)
+      final existingItem = await _client.from('invoice_draft_items')
+          .select()
+          .eq('invoice_draft_id', draft['id'])
+          .eq('extra_work_id', extraWork['id'])
+          .maybeSingle();
+
+      if (existingItem == null) {
+        final description = 'Ek İş: ${extraWork['title']} (${extraWork['work_date']})';
+        
+        await _client.from('invoice_draft_items').insert({
+          'invoice_draft_id': draft['id'],
+          'extra_work_id': extraWork['id'],
+          'item_type': 'extra',
+          'description': description,
+          'quantity': extraWork['duration_h'] ?? 1,
+          'unit': 'Std.',
+        });
+      }
+    } catch (e) {
+      print('Extra Work Sync Error: $e');
+    }
+  }
+
+  static Future<void> rejectExtraWork(String extraWorkId, String reason, String rejectedBy) async {
+    await _client.from('extra_works').update({
+      'status': 'rejected',
+      'rejection_reason': reason,
+      'approved_by': rejectedBy,
+      'approved_at': DateTime.now().toIso8601String(),
+    }).eq('id', extraWorkId);
+  }
+
+  // ── Bildirimler ───────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
+    final data = await _client
+        .from('notifications')
+        .select()
+        .eq('recipient_id', userId)
+        .order('created_at', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<int> getUnreadNotificationCount(String userId) async {
+    final data = await _client
+        .from('notifications')
+        .select('id')
+        .eq('recipient_id', userId)
+        .eq('is_read', false);
+    return (data as List).length;
+  }
+
+  static Future<void> markNotificationRead(String notificationId) async {
+    await _client.from('notifications').update({
+      'is_read': true,
+      'read_at': DateTime.now().toIso8601String(),
+    }).eq('id', notificationId);
+  }
+
+  static Future<void> sendTaskNotification({
+    required String recipientId,
+    required String title,
+    required String body,
+    String? orderId,
+    String? operationPlanId,
+    String notificationType = 'task_assignment',
+    required String sentBy,
+  }) async {
+    await _client.from('notifications').insert({
+      'recipient_id': recipientId,
+      'notification_type': notificationType,
+      'title': title,
+      'body': body,
+      'order_id': orderId,
+      'operation_plan_id': operationPlanId,
+      'sent_by': sentBy,
+    });
+  }
+
+  static Future<void> deleteNotificationsByPlanId(String planId) async {
+    await _client.from('notifications').delete().eq('operation_plan_id', planId);
+  }
+
+  static Future<List<String>> getPlanPersonnelIds(String planId) async {
+    final data = await _client.from('operation_plan_personnel').select('user_id').eq('operation_plan_id', planId);
+    return (data as List).map((e) => e['user_id'] as String).toList();
+  }
+
+  // ── Departmanlar ──────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getDepartments({String? companyId}) async {
+    var query = _client.from('departments').select().eq('is_active', true);
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    final data = await query.order('name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── Hizmet Alanları ────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getServiceAreas() async {
+    final data = await _client
+        .from('service_areas')
+        .select('*, department:departments(id, name, company_id)')
+        .eq('is_active', true)
+        .order('name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── İş Sonu Raporu ────────────────────────────────────────
+  static Future<Map<String, dynamic>?> getWorkReport(String orderId) async {
+    return await _client
+        .from('work_reports')
+        .select()
+        .eq('order_id', orderId)
+        .maybeSingle();
+  }
+
+  static Future<void> upsertWorkReport(Map<String, dynamic> data) async {
+    await _client.from('work_reports').upsert(data);
+  }
+
+  // ── Ön Fatura Taslağı ─────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getInvoiceDrafts({String? status}) async {
+    var query = _client.from('invoice_drafts').select('''
+      *,
+      order:orders(
+        id, title, order_number, 
+        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
+      ),
+      customer:customers(id, name),
+      issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name)
+    ''');
+    if (status != null) query = query.eq('status', status) as dynamic;
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertInvoiceDraft(Map<String, dynamic> data) async {
+    await _client.from('invoice_drafts').upsert(data);
+  }
+
+  static Future<void> updateInvoiceDraftStatus(String id, String status, {String? note}) async {
+    await _client.from('invoice_drafts').update({
+      'status': status,
+      if (note != null) 'accounting_note': note,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
+  }
+
+  static Future<Map<String, dynamic>?> getInvoiceDraftByOrder(String orderId) async {
+    return await _client.from('invoice_drafts').select('''
+      *,
+      invoice_draft_items(*)
+    ''').eq('order_id', orderId).maybeSingle();
+  }
+
+  static Future<List<Map<String, dynamic>>> getInvoiceDraftItems(String draftId) async {
+    final data = await _client.from('invoice_draft_items')
+        .select()
+        .eq('invoice_draft_id', draftId)
+        .order('sort_order');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertInvoiceDraftItem(Map<String, dynamic> data) async {
+    await _client.from('invoice_draft_items').upsert(data);
+  }
+
+  static Future<void> deleteInvoiceDraftItem(String itemId) async {
+    await _client.from('invoice_draft_items').delete().eq('id', itemId);
+  }
+
+  static Future<List<Map<String, dynamic>>> getDocuments({
+    String? orderId,
+    String? customerId,
+    String? companyId,
+    String? documentType,
+    String? departmentId,
+  }) async {
+    final deptInner = departmentId != null ? '!inner' : '';
+    var query = _client.from('documents').select('''
+      *,
+      uploaded_by_user:users!documents_uploaded_by_fkey(first_name, last_name),
+      order:orders$deptInner(department_id)
+    ''');
+    if (orderId != null) query = query.eq('order_id', orderId) as dynamic;
+    if (customerId != null) query = query.eq('customer_id', customerId) as dynamic;
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (documentType != null) query = query.eq('document_type', documentType) as dynamic;
+    if (departmentId != null) query = query.eq('orders.department_id', departmentId) as dynamic;
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createDocument(Map<String, dynamic> data) async {
+    await _client.from('documents').insert(data);
+  }
+
+  static Future<String> uploadDocument(String fileName, dynamic fileBytes) async {
+    try {
+      final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
+      final path = '${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
+      
+      await _client.storage.from('document').uploadBinary(
+        path, 
+        fileBytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+      
+      final publicUrl = _client.storage.from('document').getPublicUrl(path);
+      return publicUrl;
+    } catch (e) {
+      print('Document upload error: $e');
+      throw Exception('Dosya yüklenemedi: $e');
+    }
+  }
+
+  static Future<List<int>> downloadDocument(String fileUrl) async {
+    try {
+      debugPrint('[STORAGE] Downloading via Signed URL: $fileUrl');
+      final uri = Uri.parse(fileUrl);
+      final segments = uri.pathSegments;
+      
+      String path = segments.last;
+      if (segments.contains('document')) {
+        final docIdx = segments.indexOf('document');
+        if (docIdx != -1 && docIdx < segments.length - 1) {
+          path = segments.sublist(docIdx + 1).join('/');
+        }
+      }
+
+      // 1. 60 saniyelik güvenli bir link oluştur
+      final signedUrl = await _client.storage.from('document').createSignedUrl(path, 60);
+      debugPrint('[STORAGE] Signed URL received: $signedUrl');
+
+      // 2. Bu özel link üzerinden dosyayı DOĞRUDAN indir (HTTP GET)
+      // SDK'nın download(path) metodu RLS'e takılabildiği için 
+      // imzalı URL'yi doğrudan çekmek en garanti yöntemdir.
+      final response = await http.get(Uri.parse(signedUrl));
+      
+      if (response.statusCode != 200) {
+        throw Exception('Dosya sunucudan çekilemedi (HTTP ${response.statusCode})');
+      }
+
+      return response.bodyBytes;
+    } catch (e) {
+      debugPrint('[STORAGE] Download error: $e');
+      throw Exception('Dosya indirilemedi ($e)');
+    }
+  }
+
+  // ── Arşiv ─────────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getArchiveRecords() async {
+    final data = await _client.from('archive_records').select('''
+      *,
+      order:orders(id, title, order_number)
+    ''').order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertArchiveRecord(Map<String, dynamic> data) async {
+    await _client.from('archive_records').upsert(data, onConflict: 'order_id');
+  }
+
+  // ── Yetki Yönetimi ────────────────────────────────────────
+  static Future<void> updateUserRole(String userId, String role) async {
+    await _client.from('users').update({'role': role}).eq('id', userId);
+  }
+
+  static Future<void> updateUserStatus(String userId, String status) async {
+    await _client.from('users').update({'status': status}).eq('id', userId);
+  }
+
+
+  // ── Dashboard İstatistikleri ──────────────────────────────
+  static Future<Map<String, int>> getDashboardStats(String companyId, {String? departmentId}) async {
+    var ordersQ = _client
+        .from('orders')
+        .select('id')
+        .eq('company_id', companyId)
+        .inFilter('status', ['approved', 'planning', 'in_progress']);
+    if (departmentId != null) ordersQ = ordersQ.eq('department_id', departmentId);
+    final activeOrders = await ordersQ;
+
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    var plansQ = _client
+        .from('operation_plans')
+        .select('id, orders!inner(department_id)')
+        .eq('plan_date', todayStr);
+    if (departmentId != null) plansQ = plansQ.eq('orders.department_id', departmentId);
+    final todayPlans = await plansQ;
+
+    var personnelQ = _client
+        .from('users')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('status', 'active');
+    if (departmentId != null) personnelQ = personnelQ.eq('department_id', departmentId);
+    final activePersonnel = await personnelQ;
+
+    final pendingDrafts = await _client
+        .from('invoice_drafts')
+        .select('id')
+        .inFilter('status', ['auto_generated', 'under_review']);
+
+    return {
+      'activeOrders': (activeOrders as List).length,
+      'todayPlans': (todayPlans as List).length,
+      'activePersonnel': (activePersonnel as List).length,
+      'pendingDrafts': (pendingDrafts as List).length,
+    };
+  }
+
+  // ── Takvim Etkinlikleri ───────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getCalendarEvents({
+    DateTime? from,
+    DateTime? to,
+    String? orderId,
+  }) async {
+    var query = _client.from('calendar_events').select('''
+      *,
+      order:orders(id, title, order_number),
+      responsible_user:users!calendar_events_responsible_user_id_fkey(id, first_name, last_name)
+    ''');
+    if (orderId != null) query = query.eq('order_id', orderId) as dynamic;
+    if (from != null) query = query.gte('event_date', from.toIso8601String().split('T')[0]) as dynamic;
+    if (to != null) query = query.lte('event_date', to.toIso8601String().split('T')[0]) as dynamic;
+    final data = await query.order('event_date').order('start_time');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createCalendarEvent(Map<String, dynamic> data) async {
+    await _client.from('calendar_events').insert(data);
+  }
+
+  static Future<void> deleteCalendarEvent(String id) async {
+    await _client.from('calendar_events').delete().eq('id', id);
+  }
+
+  // ── Muhasebe Özeti ────────────────────────────────────────
+  static Future<Map<String, dynamic>> getAccountingSummary() async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1).toIso8601String().split('T')[0];
+
+    final invoiced = await _client.from('invoice_drafts').select('total_amount').eq('status', 'invoiced').gte('created_at', monthStart);
+    final pending = await _client.from('invoice_drafts').select('total_amount').inFilter('status', ['auto_generated', 'under_review']).gte('created_at', monthStart);
+    final completedOrders = await _client.from('orders').select('id').eq('status', 'completed').gte('updated_at', monthStart);
+    final pendingDrafts = await _client.from('invoice_drafts').select('id').inFilter('status', ['auto_generated', 'under_review']);
+
+    double invoicedTotal = 0;
+    for (final r in (invoiced as List)) { invoicedTotal += double.tryParse(r['total_amount']?.toString() ?? '0') ?? 0; }
+    double pendingTotal = 0;
+    for (final r in (pending as List)) { pendingTotal += double.tryParse(r['total_amount']?.toString() ?? '0') ?? 0; }
+
+    return {
+      'invoiced_total': invoicedTotal,
+      'pending_total': pendingTotal,
+      'completed_orders': (completedOrders as List).length,
+      'pending_drafts': (pendingDrafts as List).length,
+    };
+  }
+
+  // ── Personel Görev Listesi (saha çalışanı için) ───────────
+  static Future<List<Map<String, dynamic>>> getMyAssignedPlans(String userId) async {
+    final data = await _client.from('operation_plan_personnel').select('''
+      operation_plan_id, is_supervisor,
+      operation_plans(
+        id, plan_date, start_time, end_time, status, site_instructions, equipment_notes,
+        order:orders(id, title, order_number, site_address, status, customer:customers(id, name))
+      )
+    ''').eq('user_id', userId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── Departman Performansı ──────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getDepartmentalPerformance() async {
+    final depts = await _client.from('departments').select('id, name');
+    final List<Map<String, dynamic>> results = [];
+    
+    for (var d in depts) {
+      final deptId = d['id'];
+      
+      // Completed orders count
+      final ordersDone = await _client.from('orders')
+          .select('id')
+          .eq('department_id', deptId)
+          .eq('status', 'completed');
+          
+      // Total hours
+      final sessions = await _client.from('work_sessions')
+          .select('billable_hours, order!inner(department_id)')
+          .eq('order.department_id', deptId);
+          
+      double totalHours = 0;
+      for (var s in sessions) {
+        totalHours += (s['billable_hours'] as num?)?.toDouble() ?? 0.0;
+      }
+      
+      results.add({
+        'id': deptId,
+        'name': d['name'],
+        'completed_orders': (ordersDone as List).length,
+        'total_hours': totalHours,
+      });
+    }
+    return results;
+  }
+
+  // ── Plan Silme (Bölüm 7) ──────────────────────────────────
+  static Future<void> deleteOperationPlan(String planId) async {
+    // Önce bağlı personelleri siliyoruz (on delete cascade yoksa diye)
+    await _client.from('operation_plan_personnel').delete().eq('plan_id', planId);
+    // Sonra planı siliyoruz
+    await _client.from('operation_plans').delete().eq('id', planId);
+  }
+
+  // ── Saha Güncellemeleri / Fotoğraflı Rapor (Yeni) ──────────
+  static Future<void> uploadSiteUpdate({
+    required String orderId,
+    required String? planId,
+    required String userId,
+    required String description,
+    required Uint8List? photoBytes,
+  }) async {
+    String? photoUrl;
+
+    if (photoBytes != null) {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final path = 'updates/$orderId/$fileName';
+      
+      await _client.storage.from('site-updates').uploadBinary(
+        path,
+        photoBytes,
+        fileOptions: const FileOptions(contentType: 'image/jpeg'),
+      );
+      
+      photoUrl = _client.storage.from('site-updates').getPublicUrl(path);
+    }
+
+    await _client.from('site_updates').insert({
+      'order_id': orderId,
+      'operation_plan_id': planId,
+      'user_id': userId,
+      'description': description,
+      'photo_url': photoUrl,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> getSiteUpdates(String orderId) async {
+    final data = await _client.from('site_updates').select('''
+      *,
+      user:users(id, first_name, last_name, role)
+    ''').eq('order_id', orderId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── Günlük Finansal Veri (Mevcut tablolardan hesaplanır) ───────
+  /// Belirli bir tarih aralığındaki onaylı çalışma seanslarını getirir
+  /// ve günlük bazda gruplama yapılmasını sağlar
+  static Future<List<Map<String, dynamic>>> getApprovedSessionsByDateRange({
+    required String dateFrom,
+    required String dateTo,
+  }) async {
+    final data = await _client.from('work_sessions').select('''
+      *,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
+      order:orders(
+        id, title, order_number,
+        customer:customers(name),
+        invoice_drafts(total_amount, subtotal),
+        extra_works(estimated_material_cost, estimated_labor_cost),
+        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
+      )
+    ''')
+        .eq('approval_status', 'approved')
+        .gte('approved_at', '${dateFrom}T00:00:00')
+        .lte('approved_at', '${dateTo}T23:59:59')
+        .order('approved_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Belirli bir ay için personel saat verilerini getirir
+  static Future<List<Map<String, dynamic>>> getPersonnelHoursForMonth(int year, int month) async {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final dateFrom = '$year-${month.toString().padLeft(2, '0')}-01';
+    final dateTo = '$year-${month.toString().padLeft(2, '0')}-${daysInMonth.toString().padLeft(2, '0')}';
+
+    final data = await _client.from('work_sessions').select('''
+      id, approved_billable_hours, billable_hours, actual_duration_h, approved_at, actual_start,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name, role)
+    ''')
+        .eq('approval_status', 'approved')
+        .gte('approved_at', '${dateFrom}T00:00:00')
+        .lte('approved_at', '${dateTo}T23:59:59')
+        .order('approved_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Belirli bir tarih aralığındaki fatura taslaklarını getirir
+  static Future<List<Map<String, dynamic>>> getInvoiceDraftsByDateRange({
+    required String dateFrom,
+    required String dateTo,
+  }) async {
+    final data = await _client.from('invoice_drafts').select('''
+      *,
+      order:orders(
+        id, title, order_number, 
+        work_reports(*), 
+        extra_works(*), 
+        work_sessions(approved_billable_hours)
+      ),
+      customer:customers(id, name)
+    ''')
+        .gte('created_at', dateFrom)
+        .lte('created_at', '${dateTo} 23:59:59')
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Belirli bir gün için çalışma seanslarını (kim çalışmış) getirir
+  static Future<List<Map<String, dynamic>>> getWorkSessionsByDate(String dateStr) async {
+    final data = await _client.from('work_sessions').select('''
+      *,
+      user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
+      order:orders(id, title, order_number, customer:customers(name))
+    ''')
+        .gte('actual_start', '${dateStr}T00:00:00')
+        .lte('actual_start', '${dateStr}T23:59:59')
+        .order('actual_start');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Belirli bir siparişin work_report verilerini getirir (mali analiz için)
+  static Future<Map<String, dynamic>?> getWorkReportByOrderId(String orderId) async {
+    return await _client
+        .from('work_reports')
+        .select('total_revenue, estimated_labor_cost, estimated_material_cost')
+        .eq('order_id', orderId)
+        .maybeSingle();
+  }
+
+  /// Tüm aktif kullanıcıları getirir (personel saatleri için)
+  static Future<List<Map<String, dynamic>>> getAllActiveUsers() async {
+    final data = await _client.from('users').select('id, first_name, last_name, role')
+        .eq('status', 'active')
+        .order('last_name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+}

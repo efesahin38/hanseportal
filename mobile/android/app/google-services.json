@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "764722344385",
+    "project_id": "ekrempdks",
+    "storage_bucket": "ekrempdks.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764722344385:android:9127c187929a0e61cdbf40",
+        "android_client_info": {
+          "package_name": "com.ekrem.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAA92x8zSUZ25Q9Xa43BVmExR32EtgELIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
