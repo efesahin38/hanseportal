@@ -170,7 +170,15 @@ class SupabaseService {
       department:departments(id, name),
       order_status_history(*),
       documents(*),
-      operation_plans(*)
+      operation_plans(
+        *,
+        site_supervisor:users!operation_plans_site_supervisor_id_fkey(id, first_name, last_name),
+        operation_plan_personnel(
+          user_id,
+          is_supervisor,
+          user:users!operation_plan_personnel_user_id_fkey(id, first_name, last_name, role)
+        )
+      )
     ''').eq('id', id).maybeSingle();
   }
 

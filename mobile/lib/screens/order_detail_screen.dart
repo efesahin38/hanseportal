@@ -210,14 +210,112 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                           itemCount: plans.length,
                           itemBuilder: (_, i) {
                             final p = plans[i];
+                            final personnel = p['operation_plan_personnel'] as List? ?? [];
+                            final startTime = p['start_time'] ?? '';
+                            final endTime = p['end_time'] ?? '';
+                            final supervisor = p['site_supervisor'] as Map<String, dynamic>?;
+
                             return Card(
-                              child: ListTile(
-                                title: Text('${p['plan_date']} ${p['start_time'] ?? ''}', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
-                                subtitle: Text('Durum: ${AppTheme.statusLabel(p['status'] ?? '')}', style: const TextStyle(fontFamily: 'Inter')),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Üst satır: Tarih + Durum
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today, size: 14, color: AppTheme.primary),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          p['plan_date'] ?? '',
+                                          style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.statusColor(p['status'] ?? '').withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            AppTheme.statusLabel(p['status'] ?? ''),
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Inter', color: AppTheme.statusColor(p['status'] ?? '')),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Saat bilgisi
+                                    if (startTime.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(children: [
+                                        const Icon(Icons.access_time, size: 13, color: AppTheme.textSub),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          endTime.isNotEmpty ? '$startTime – $endTime' : startTime,
+                                          style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub),
+                                        ),
+                                      ]),
+                                    ],
+                                    // Saha sorumlusu
+                                    if (supervisor != null) ...[
+                                      const SizedBox(height: 6),
+                                      Row(children: [
+                                        const Icon(Icons.star_outline, size: 13, color: AppTheme.warning),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Saha Sorumlusu: ${supervisor['first_name']} ${supervisor['last_name']}',
+                                          style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.warning, fontWeight: FontWeight.w600),
+                                        ),
+                                      ]),
+                                    ],
+                                    // Personel listesi
+                                    if (personnel.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 8),
+                                      Row(children: [
+                                        const Icon(Icons.people_outline, size: 13, color: AppTheme.textSub),
+                                        const SizedBox(width: 4),
+                                        Text('Atanan Personel (${personnel.length} kişi)', style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontWeight: FontWeight.w600)),
+                                      ]),
+                                      const SizedBox(height: 6),
+                                      ...personnel.map((pp) {
+                                        final u = pp['user'] as Map<String, dynamic>? ?? {};
+                                        final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
+                                        final isSup = pp['is_supervisor'] == true;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Row(children: [
+                                            Icon(
+                                              isSup ? Icons.star : Icons.person_outline,
+                                              size: 13,
+                                              color: isSup ? AppTheme.warning : AppTheme.textSub,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              name,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontFamily: 'Inter',
+                                                fontWeight: isSup ? FontWeight.w600 : FontWeight.normal,
+                                              ),
+                                            ),
+                                          ]),
+                                        );
+                                      }),
+                                    ] else ...[
+                                      const SizedBox(height: 6),
+                                      const Text('Henüz personel atanmadı', style: TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontStyle: FontStyle.italic)),
+                                    ],
+                                  ],
+                                ),
                               ),
                             );
                           },
                         ),
+
                   // Tab 3: Saha Günlüğü
                   _siteUpdates.isEmpty
                       ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
