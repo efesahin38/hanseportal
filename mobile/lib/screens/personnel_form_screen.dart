@@ -119,7 +119,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -140,20 +140,20 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section('Kimlik Bilgileri'),
+                  _section(tr('Kimlik Bilgileri')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField('Ad *', _firstName, required: true)),
-                      SizedBox(width: fieldWidth, child: _textField('Soyad *', _lastName, required: true)),
-                      SizedBox(width: fieldWidth, child: _textField('E-posta *', _email, required: true, type: TextInputType.emailAddress)),
-                      SizedBox(width: fieldWidth, child: _textField('Telefon', _phone, type: TextInputType.phone)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Ad *'), _firstName, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Soyad *'), _lastName, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('E-posta *'), _email, required: true, type: TextInputType.emailAddress)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _phone, type: TextInputType.phone)),
                     ],
                   ),
                   const SizedBox(height: 16),
   
-                  _section('Organizasyon'),
+                  _section(tr('Organizasyon')),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 16,
@@ -164,10 +164,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                           width: fieldWidth,
                           child: DropdownButtonFormField<String>(
                             value: _departmentId,
-                            decoration: const InputDecoration(labelText: 'Bölüm'),
-                            isExpanded: true,
                             items: [
-                              const DropdownMenuItem<String>(value: null, child: Text('Seçilmedi')),
+                              DropdownMenuItem<String>(value: null, child: Text(tr('Seçilmedi'))),
                               ..._departments.map((d) => DropdownMenuItem<String>(
                                 value: d['id'].toString(),
                                 child: Text(d['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
@@ -180,7 +178,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _role,
-                          decoration: const InputDecoration(labelText: 'Rol *'),
+                          decoration: InputDecoration(labelText: tr('Rol *')),
                           items: _roles.entries.map((e) => DropdownMenuItem<String>(
                             value: e.key,
                             child: Text(e.value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
@@ -188,12 +186,12 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                           onChanged: (v) => setState(() => _role = v!),
                         ),
                       ),
-                      SizedBox(width: fieldWidth, child: _textField('Pozisyon Başlığı', _position)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Pozisyon Başlığı'), _position)),
                     ],
                   ),
                   const SizedBox(height: 16),
   
-                  _section('Çalışma Bilgileri'),
+                  _section(tr('Çalışma Bilgileri')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -202,18 +200,18 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _employmentType,
-                          decoration: const InputDecoration(labelText: 'İstihdam Tipi'),
+                          decoration: InputDecoration(labelText: tr('İstihdam Tipi')),
                           items: ['Vollzeit', 'Teilzeit', 'Minijob', 'Werkvertrag', 'Sonstiges'].map((e) =>
                             DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)))).toList(),
                           onChanged: (v) => setState(() => _employmentType = v!),
                         ),
                       ),
-                      SizedBox(width: fieldWidth, child: _textField('Haftalık Saat', _weeklyHours, type: TextInputType.number)),
-                      SizedBox(width: fieldWidth, child: _textField('Aylık Saat', _monthlyHours, type: TextInputType.number)),
-                      SizedBox(width: fieldWidth, child: _dateField('Doğum Tarihi', _birthDate, (d) => setState(() => _birthDate = d))),
-                      SizedBox(width: fieldWidth, child: _dateField('İşe Giriş Tarihi', _entryDate, (d) => setState(() => _entryDate = d))),
-                      SizedBox(width: fieldWidth, child: _textField('Personel No', _employeeNumber)),
-                      SizedBox(width: fieldWidth, child: _textField('PIN (kiosk için)', _pin)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Haftalık Saat'), _weeklyHours, type: TextInputType.number)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Aylık Saat'), _monthlyHours, type: TextInputType.number)),
+                      SizedBox(width: fieldWidth, child: _dateField(tr('Doğum Tarihi'), _birthDate, (d) => setState(() => _birthDate = d))),
+                      SizedBox(width: fieldWidth, child: _dateField(tr('İşe Giriş Tarihi'), _entryDate, (d) => setState(() => _entryDate = d))),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Personel No'), _employeeNumber)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('PIN (kiosk için)'), _pin)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -221,7 +219,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                     onPressed: _saving ? null : _save,
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.userId == null ? 'Personel Oluştur' : 'Kaydet'),
+                        : Text(widget.userId == null ? tr('Personel Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -244,7 +242,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       controller: ctrl,
       keyboardType: type,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 
@@ -263,7 +261,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       child: InputDecorator(
         decoration: InputDecoration(labelText: label),
         child: Text(
-          value == null ? 'Seçilmedi' : '${value.day}.${value.month}.${value.year}',
+          value == null ? tr('Seçilmedi') : '${value.day}.${value.month}.${value.year}',
           style: const TextStyle(fontFamily: 'Inter', fontSize: 14),
         ),
       ),

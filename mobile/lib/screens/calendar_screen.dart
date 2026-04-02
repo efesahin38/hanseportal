@@ -5,6 +5,7 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -111,7 +112,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 8),
                 // Gün başlıkları - Mobile only (Web shows it inside grid)
                 Row(
-                  children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+                  children: [
+                    tr('Pzt'),
+                    tr('Sal'),
+                    tr('Çar'),
+                    tr('Per'),
+                    tr('Cum'),
+                    tr('Cmt'),
+                    tr('Paz')
+                  ]
                       .map((d) => Expanded(
                             child: Text(d,
                                 textAlign: TextAlign.center,
@@ -171,7 +180,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         onPressed: () => _showAddEventDialog(),
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Etkinlik Ekle', style: TextStyle(color: Colors.white, fontFamily: 'Inter')),
+        label: Text(tr('Etkinlik Ekle'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
       ),
     );
   }
@@ -181,7 +190,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
-        children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+        children: [
+          tr('Pzt'),
+          tr('Sal'),
+          tr('Çar'),
+          tr('Per'),
+          tr('Cum'),
+          tr('Cmt'),
+          tr('Paz')
+        ]
             .map((d) => Expanded(
                   child: Text(d,
                       textAlign: TextAlign.center,
@@ -206,7 +223,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
               decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: Text('${selectedItems.length} Etkinlik', style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+              child: Text('${selectedItems.length} ${tr('Etkinlik')}', style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
             ),
           ],
         ],
@@ -221,7 +238,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.event_busy_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.2)),
           const SizedBox(height: 16),
-          const Text('Bu gün için aktivite yok', style: TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
+          Text(tr('Bu gün için aktivite yok'), style: const TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
         ]),
       );
     }
@@ -305,13 +322,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String _monthLabel(DateTime d) {
     const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    return '${months[d.month - 1]} ${d.year}';
+    return '${tr(months[d.month - 1])} ${d.year}';
   }
 
   String _dayLabel(DateTime d) {
     const days = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const months = ['', 'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    return '${days[d.weekday]}, ${d.day} ${months[d.month]}';
+    return '${tr(days[d.weekday])}, ${d.day} ${tr(months[d.month])}';
   }
 
   Future<void> _showAddEventDialog() async {
@@ -320,18 +337,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Yeni Etkinlik', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+        title: Text(tr('Yeni Etkinlik'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(
             controller: titleCtrl,
-            decoration: const InputDecoration(labelText: 'Başlık', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('Başlık'), border: const OutlineInputBorder()),
           ),
           const SizedBox(height: 12),
-          Text('Tarih: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+          Text('${tr('Tarih')}: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
               style: const TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
           ElevatedButton(
             onPressed: () async {
               if (titleCtrl.text.isNotEmpty) {
@@ -343,7 +360,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _load();
               }
             },
-            child: const Text('Kaydet'),
+            child: Text(tr('Kaydet')),
           ),
         ],
       ),
@@ -361,8 +378,8 @@ class _CalendarItemCard extends StatelessWidget {
     final color = isPlan ? AppTheme.accent : AppTheme.primary;
     final icon = isPlan ? Icons.engineering : Icons.event;
     final title = isPlan
-        ? (item['order']?['title'] ?? item['title'] ?? 'Operasyon Planı')
-        : (item['title'] ?? 'Etkinlik');
+        ? (item['order']?['title'] ?? item['title'] ?? tr('Operasyon Planı'))
+        : (item['title'] ?? tr('Etkinlik'));
     final subtitle = isPlan
         ? '${item['start_time'] ?? ''} – ${item['end_time'] ?? ''} | ${item['order']?['customer']?['name'] ?? ''}'
         : (item['description'] ?? '');
@@ -384,7 +401,7 @@ class _CalendarItemCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
           child: Text(
-            isPlan ? 'Plan' : 'Etkinlik',
+            isPlan ? tr('Plan') : tr('Etkinlik'),
             style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
           ),
         ),
