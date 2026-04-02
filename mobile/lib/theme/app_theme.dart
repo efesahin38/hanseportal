@@ -145,9 +145,6 @@ class AppTheme {
   static Color statusColor(String status) {
     switch (status) {
       case 'draft':            return textSub;
-      case 'created':          return info;
-      case 'pending_approval': return warning;
-      case 'approved':         return Colors.teal;
       case 'planning':         return Colors.purple;
       case 'in_progress':      return primary;
       case 'completed':        return success;
@@ -162,9 +159,6 @@ class AppTheme {
   static String statusLabel(String status) {
     switch (status) {
       case 'draft':            return 'Taslak';
-      case 'created':          return 'Oluşturuldu';
-      case 'pending_approval': return 'Onay Bekliyor';
-      case 'approved':         return 'Onaylandı';
       case 'planning':         return 'Planlamada';
       case 'in_progress':      return 'Devam Ediyor';
       case 'completed':        return 'Tamamlandı';

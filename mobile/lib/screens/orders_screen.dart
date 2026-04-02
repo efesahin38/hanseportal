@@ -23,8 +23,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String _search = '';
   String? _statusFilter;
 
-  final _statuses = ['', 'draft', 'created', 'pending_approval', 'approved', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
-  final _statusLabels = ['Tümü', 'Taslak', 'Oluşturuldu', 'Onay Bekliyor', 'Onaylandı', 'Planlamada', 'Devam Ediyor', 'Tamamlandı', 'Faturalandı', 'Arşivlendi'];
+  final _statuses = ['', 'draft', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
+  final _statusLabels = ['Tümü', 'Taslak', 'Planlamada', 'Devam Ediyor', 'Tamamlandı', 'Faturalandı', 'Arşivlendi'];
 
   @override
   void initState() {

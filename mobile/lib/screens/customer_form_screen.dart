@@ -300,7 +300,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
   Widget _statusDropdown() {
     final role = context.read<AppState>().role;
-    final canEditStatus = role == 'geschaeftsfuehrer' || role == 'betriebsleiter';
+    final canEditStatus = context.read<AppState>().canManageCustomers;
 
     return DropdownButtonFormField<String>(
       value: _status,
