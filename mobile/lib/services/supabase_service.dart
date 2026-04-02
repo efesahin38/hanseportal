@@ -22,6 +22,10 @@ class SupabaseService {
     await _client.from('orders').delete().eq('id', id);
   }
 
+  static Future<void> deleteCustomer(String id) async {
+    await _client.from('customers').delete().eq('id', id);
+  }
+
   // ── Mevcut Kullanıcı Profili ──────────────────────────────
   static Future<Map<String, dynamic>?> getUserProfileById(String userId) async {
     final data = await _client

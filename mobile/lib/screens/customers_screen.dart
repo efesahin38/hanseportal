@@ -128,56 +128,97 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           itemCount: _filtered.length,
                           itemBuilder: (_, i) {
                             final c = _filtered[i];
-                            return Card(
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: AppTheme.primary.withOpacity(0.1),
-                                  child: Text(
-                                    (c['name'] ?? '?')[0].toUpperCase(),
-                                    style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                            return Dismissible(
+                              key: Key(c['id']),
+                              direction: canCreate ? DismissDirection.horizontal : DismissDirection.none,
+                              background: Container(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.only(left: 20),
+                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                              ),
+                              secondaryBackground: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                              ),
+                              confirmDismiss: (dir) async {
+                                return await showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Müşteriyi Sil?'),
+                                    content: const Text('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                    ],
                                   ),
-                                ),
-                                title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (c['city'] != null)
-                                      Row(children: [
-                                        const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
-                                        const SizedBox(width: 2),
-                                        Text(c['city'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
-                                      ]),
-                                    if (c['phone'] != null)
-                                      Row(children: [
-                                        const Icon(Icons.phone_outlined, size: 12, color: AppTheme.textSub),
-                                        const SizedBox(width: 2),
-                                        Text(c['phone'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
-                                      ]),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.statusColor(c['status'] ?? '').withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        AppTheme.statusLabel(c['status'] ?? ''),
-                                        style: TextStyle(fontSize: 10, color: AppTheme.statusColor(c['status'] ?? ''), fontFamily: 'Inter', fontWeight: FontWeight.w600),
-                                      ),
+                                );
+                              },
+                              onDismissed: (dir) async {
+                                final customerId = c['id'];
+                                try {
+                                  await SupabaseService.deleteCustomer(customerId);
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müşteri başarıyla silindi')));
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                  _load(); // Restore list on error
+                                }
+                              },
+                              child: Card(
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: AppTheme.primary.withOpacity(0.1),
+                                    child: Text(
+                                      (c['name'] ?? '?')[0].toUpperCase(),
+                                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                                     ),
-                                    const SizedBox(height: 4),
-                                    const Icon(Icons.chevron_right, color: AppTheme.border),
-                                  ],
+                                  ),
+                                  title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (c['city'] != null)
+                                        Row(children: [
+                                          const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
+                                          const SizedBox(width: 2),
+                                          Text(c['city'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
+                                        ]),
+                                      if (c['phone'] != null)
+                                        Row(children: [
+                                          const Icon(Icons.phone_outlined, size: 12, color: AppTheme.textSub),
+                                          const SizedBox(width: 2),
+                                          Text(c['phone'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
+                                        ]),
+                                    ],
+                                  ),
+                                  trailing: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.statusColor(c['status'] ?? '').withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          AppTheme.statusLabel(c['status'] ?? ''),
+                                          style: TextStyle(fontSize: 10, color: AppTheme.statusColor(c['status'] ?? ''), fontFamily: 'Inter', fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Icon(Icons.chevron_right, color: AppTheme.border),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => CustomerDetailScreen(customerId: c['id']),
+                                  )).then((_) => _load()),
                                 ),
-                                isThreeLine: true,
-                                onTap: () => Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => CustomerDetailScreen(customerId: c['id']),
-                                )).then((_) => _load()),
                               ),
                             );
                           },
