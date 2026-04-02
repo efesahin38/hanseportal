@@ -129,8 +129,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                           itemBuilder: (_, i) {
                             final c = _filtered[i];
                             return Dismissible(
-                              key: Key(c['id']),
-                              direction: canCreate ? DismissDirection.horizontal : DismissDirection.none,
+                              key: ValueKey(c['id']),
+                              direction: DismissDirection.horizontal,
                               background: Container(
                                 alignment: Alignment.centerLeft,
                                 padding: const EdgeInsets.only(left: 20),
