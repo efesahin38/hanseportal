@@ -100,8 +100,17 @@ class SupabaseService {
     if (status != null) query = query.eq('status', status) as dynamic;
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) {
-      // Müşteriler direkt departmana bağlı değilse, o departmanın iş yaptığı müşterileri filtreleyebiliriz
-      // Veya şimdilik sadece companyId bazlı kalsın, manuel filtrelemeyi UI'da yapalım
+      // Sadece bu departmana ait işlerde (orders) geçen müşterileri getir
+      final ordersInDept = await _client
+          .from('orders')
+          .select('customer_id')
+          .eq('department_id', departmentId);
+      final customerIds = (ordersInDept as List)
+          .map((o) => o['customer_id'] as String)
+          .toSet()
+          .toList();
+      if (customerIds.isEmpty) return [];
+      query = query.inFilter('id', customerIds) as dynamic;
     }
     final data = await query.order('name');
     return List<Map<String, dynamic>>.from(data);

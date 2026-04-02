@@ -28,8 +28,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   Future<void> _load() async {
+    final appState = context.read<AppState>();
     try {
-      final data = await SupabaseService.getCustomers(status: _statusFilter);
+      // canViewAllCustomers yetkisi yoksa (ör: Bereichsleiter), sadece kendi departmanının müşterilerini getir
+      final depId = !appState.canViewAllCustomers ? appState.departmentId : null;
+
+      final data = await SupabaseService.getCustomers(
+        status: _statusFilter,
+        departmentId: depId,
+      );
       if (mounted) setState(() { _all = data; _applyFilter(); _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);

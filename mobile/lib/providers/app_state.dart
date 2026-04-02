@@ -36,6 +36,7 @@ class AppState extends ChangeNotifier {
   bool get canViewReports => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canManageInvoices => isGeschaeftsfuehrer || isBuchhaltung || isBetriebsleiter || isSystemAdmin;
   bool get canViewAllOrders => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canViewAllCustomers => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
   bool get canManageDocuments => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isBuchhaltung || isSystemAdmin;
   bool get canManageArchive => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canManageRoles => isGeschaeftsfuehrer || isSystemAdmin;
