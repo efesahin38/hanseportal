@@ -194,9 +194,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                 if (customer['address'] != null && customer['address'].toString().isNotEmpty) {
                                   _siteAddress.text = customer['address'];
                                 }
-                                if (customer['notes'] != null && customer['notes'].toString().isNotEmpty) {
-                                  _detailedDesc.text = customer['notes'];
-                                }
                                 if (customer['customer_service_areas'] != null) {
                                   final csa = customer['customer_service_areas'] as List;
                                   if (csa.isNotEmpty) {
@@ -215,7 +212,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown('Hizmet Alanı *', _serviceAreas, _selectedServiceAreaId, 'name', (v) => setState(() => _selectedServiceAreaId = v)),
+                        child: _dropdown('Hizmet Alanı *', _serviceAreas, _selectedServiceAreaId, 'name', (v) {
+                          setState(() {
+                            _selectedServiceAreaId = v;
+                            if (v != null) {
+                              final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == v, orElse: () => <String, dynamic>{});
+                              if (sArea.isNotEmpty) {
+                                _title.text = sArea['name'] ?? '';
+                              }
+                            }
+                          });
+                        }),
                       ),
                     ],
                   ),
