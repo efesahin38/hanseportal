@@ -144,7 +144,21 @@ class _MainShellState extends State<MainShell> {
               children: [
                 Row(
                   children: [
-                    Image.asset('assets/logo/logo_dark.png', height: 40, fit: BoxFit.contain),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(2),
+                        child: Image.asset('assets/icon/hanse.png', width: 44, height: 44, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Hanse Kollektiv',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                      ),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -283,7 +297,24 @@ class _WebSidebar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Image.asset('assets/logo/logo_dark.png', height: 48, fit: BoxFit.contain),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(3),
+                        child: Image.asset('assets/icon/hanse.png', width: 36, height: 36, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Hanse', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          Text('Kollektiv', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
