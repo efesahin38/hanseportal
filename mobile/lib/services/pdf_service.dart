@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 /// Hanse Kollektiv – PDF Üretim Servisi
 /// İş Sonu Raporu ve Ön Fatura Taslağı için PDF çıktısı üretir.
@@ -23,6 +24,9 @@ class PdfService {
 
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
+    
+    final logoData = await rootBundle.load('assets/logo/logo_light.png');
+    final logo = pw.MemoryImage(logoData.buffer.asUint8List(logoData.offsetInBytes, logoData.lengthInBytes));
 
     final customer = order['customer'] as Map<String, dynamic>? ?? {};
     final serviceArea = order['service_area'] as Map<String, dynamic>? ?? {};
@@ -43,7 +47,7 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
+        header: (context) => _buildHeader(fontBold, logo),
         footer: (context) => _buildFooter(context, font),
         build: (context) => [
           // ── Başlık ──
@@ -240,6 +244,9 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
+    final logoData = await rootBundle.load('assets/logo/logo_light.png');
+    final logo = pw.MemoryImage(logoData.buffer.asUint8List(logoData.offsetInBytes, logoData.lengthInBytes));
+
     final customer = draft['customer'] as Map<String, dynamic>? ?? {};
     final company = draft['issuing_company'] as Map<String, dynamic>? ?? {};
     final subtotal = (draft['subtotal'] as num?)?.toDouble() ?? 0;
@@ -255,7 +262,7 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
+        header: (context) => _buildHeader(fontBold, logo),
         footer: (context) => _buildFooter(context, font),
         build: (context) => [
           // ── Başlık ──
@@ -451,7 +458,7 @@ class PdfService {
   // YARDIMCI WIDGET'LAR
   // ─────────────────────────────────────────────────────────
 
-  static pw.Widget _buildHeader(pw.Font fontBold) {
+  static pw.Widget _buildHeader(pw.Font fontBold, pw.ImageProvider logo) {
     return pw.Container(
       decoration: const pw.BoxDecoration(
         border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey200, width: 0.5)),
@@ -460,10 +467,16 @@ class PdfService {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text('Hanse Kollektiv GmbH',
-              style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.blueGrey700)),
+          pw.Row(
+            children: [
+              pw.Image(logo, height: 26),
+              pw.SizedBox(width: 8),
+              pw.Text('Hanse Kollektiv GmbH',
+                  style: pw.TextStyle(font: fontBold, fontSize: 13, color: PdfColors.blueGrey700)),
+            ],
+          ),
           pw.Text('Dijital Yönetim Sistemi',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+              style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
         ],
       ),
     );
@@ -745,20 +758,6 @@ class PdfService {
     }
   }
 
-  static String _fmtEuro(dynamic val) {
-    if (val == null) return '-';
-    final d = double.tryParse(val.toString()) ?? 0;
-    return _euro.format(d);
-  }
-
-  static double? _calcMargin(Map<String, dynamic> report) {
-    final rev = (report['total_revenue'] as num?)?.toDouble();
-    final labor = (report['estimated_labor_cost'] as num?)?.toDouble() ?? 0;
-    final material = (report['estimated_material_cost'] as num?)?.toDouble() ?? 0;
-    if (rev == null) return null;
-    return rev - labor - material;
-  }
-
   // ─────────────────────────────────────────────────────────
   // AYLIK RAPOR PDF
   // ─────────────────────────────────────────────────────────
@@ -775,6 +774,9 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
+    final logoData = await rootBundle.load('assets/logo/logo_light.png');
+    final logo = pw.MemoryImage(logoData.buffer.asUint8List(logoData.offsetInBytes, logoData.lengthInBytes));
+
     final monthNames = ['', 'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
     final monthName = monthNames[month];
 
@@ -783,7 +785,7 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
+        header: (context) => _buildHeader(fontBold, logo),
         footer: (context) => _buildFooter(context, font),
         build: (context) => [
           pw.Container(
@@ -851,6 +853,9 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
+    final logoData = await rootBundle.load('assets/logo/logo_light.png');
+    final logo = pw.MemoryImage(logoData.buffer.asUint8List(logoData.offsetInBytes, logoData.lengthInBytes));
+
     final monthNames = ['', 'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
     final monthName = monthNames[month];
 
@@ -859,7 +864,7 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
+        header: (context) => _buildHeader(fontBold, logo),
         footer: (context) => _buildFooter(context, font),
         build: (context) => [
           pw.Container(

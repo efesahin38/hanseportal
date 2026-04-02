@@ -88,6 +88,8 @@ flutter:
   assets:
     - assets/icon/appico.png
     - assets/icon/hanse.png
+    - assets/logo/logo_light.png
+    - assets/logo/logo_dark.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
