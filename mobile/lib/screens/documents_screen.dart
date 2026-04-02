@@ -137,7 +137,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             padding: const EdgeInsets.all(12),
                             itemCount: _filtered.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 4),
-                            itemBuilder: (_, i) => _DocumentCard(doc: _filtered[i]),
+                            itemBuilder: (_, i) => _DocumentCard(
+                              doc: _filtered[i],
+                              onDeleted: _load,
+                            ),
                           ),
                         ),
             ),
@@ -322,7 +325,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
 class _DocumentCard extends StatelessWidget {
   final Map<String, dynamic> doc;
-  const _DocumentCard({required this.doc});
+  final VoidCallback onDeleted;
+  const _DocumentCard({required this.doc, required this.onDeleted});
 
   String _typeLabel(String? t) {
     switch (t) {
@@ -444,7 +448,7 @@ class _DocumentCard extends StatelessWidget {
             ),
             
             // Aksiyon Butonları
-            _ActionButtons(doc: doc),
+            _ActionButtons(doc: doc, onDeleted: onDeleted),
           ],
         ),
       ),
@@ -454,7 +458,8 @@ class _DocumentCard extends StatelessWidget {
 
 class _ActionButtons extends StatefulWidget {
   final Map<String, dynamic> doc;
-  const _ActionButtons({required this.doc});
+  final VoidCallback onDeleted;
+  const _ActionButtons({required this.doc, required this.onDeleted});
 
   @override
   State<_ActionButtons> createState() => _ActionButtonsState();
@@ -462,6 +467,42 @@ class _ActionButtons extends StatefulWidget {
 
 class _ActionButtonsState extends State<_ActionButtons> {
   bool _loading = false;
+
+  Future<void> _deleteDocument() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Silme Onayı', style: TextStyle(fontFamily: 'Inter')),
+        content: const Text('Bu belgeyi kalıcı olarak silmek istediğinize emin misiniz? Sistemden ve depolama alanından tamamen kaldırılacaktır.', style: TextStyle(fontFamily: 'Inter')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Sil', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final docId = widget.doc['id'].toString();
+      final fileUrl = widget.doc['file_url'].toString();
+      await SupabaseService.deleteDocument(docId, fileUrl);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge başarıyla silindi')));
+        widget.onDeleted();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme işlemi başarısız: $e')));
+        setState(() => _loading = false);
+      }
+    }
+  }
 
   Future<void> _handleAction(BuildContext context, bool isShare) async {
     final url = widget.doc['file_url'] as String?;
@@ -531,6 +572,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
           tooltip: 'Görüntüle / Paylaş',
           onPressed: () => _handleAction(context, true),
         ),
+        if (context.read<AppState>().canManageDocuments)
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.error),
+            tooltip: 'Sil',
+            onPressed: _deleteDocument,
+          ),
       ],
     );
   }

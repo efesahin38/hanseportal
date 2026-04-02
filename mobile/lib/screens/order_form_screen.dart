@@ -178,28 +178,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section('Temel Bilgiler'),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 0,
-                    children: [
-                      SizedBox(width: fieldWidth, child: _textField('İş Başlığı *', _title, required: true)),
-                      SizedBox(width: fieldWidth, child: _textField('Kısa Açıklama', _shortDesc, maxLines: 2)),
-                    ],
-                  ),
-                  _textField('Saha Adresi', _siteAddress),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 0,
-                    children: [
-                      SizedBox(width: fieldWidth, child: _textField('Müşteri Sipariş No', _customerRef)),
-                    ],
-                  ),
-                  _textField('Detaylı İş Açıklaması', _detailedDesc, maxLines: 4),
-                  _textField('Malzeme/Ekipman Gereksinimi', _materialNotes, maxLines: 3),
-                  const SizedBox(height: 16),
-  
-                  _section('Bağlantı'),
+                  _section('1. Müşteri & Hizmet Bilgileri'),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -207,7 +186,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       SizedBox(
                         width: fieldWidth,
                         child: _dropdown('Müşteri *', _customers, _selectedCustomerId, 'name', (v) {
-                          setState(() => _selectedCustomerId = v);
+                          setState(() {
+                            _selectedCustomerId = v;
+                            if (v != null) {
+                              final customer = _customers.firstWhere((c) => c['id'].toString() == v, orElse: () => <String, dynamic>{});
+                              if (customer.isNotEmpty) {
+                                if (customer['address'] != null && customer['address'].toString().isNotEmpty) {
+                                  _siteAddress.text = customer['address'];
+                                }
+                                if (customer['notes'] != null && customer['notes'].toString().isNotEmpty) {
+                                  _detailedDesc.text = customer['notes'];
+                                }
+                                if (customer['customer_service_areas'] != null) {
+                                  final csa = customer['customer_service_areas'] as List;
+                                  if (csa.isNotEmpty) {
+                                    final sId = csa.first['service_area_id']?.toString();
+                                    if (_serviceAreas.any((s) => s['id']?.toString() == sId)) {
+                                      _selectedServiceAreaId = sId;
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          });
                         }),
                       ),
                       SizedBox(
@@ -216,9 +217,33 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 24),
+
+                  _section('2. Temel Bilgiler'),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 0,
+                    children: [
+                      SizedBox(width: fieldWidth, child: _textField('İş Başlığı *', _title, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField('Kısa Açıklama', _shortDesc, maxLines: 2)),
+                    ],
+                  ),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 0,
+                    children: [
+                      SizedBox(width: fieldWidth, child: _textField('Müşteri Sipariş No', _customerRef)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  _section('3. Saha & Operasyon Detayları'),
+                  _textField('Saha Adresi', _siteAddress),
+                  _textField('Detaylı İş Açıklaması', _detailedDesc, maxLines: 4),
+                  _textField('Malzeme/Ekipman Gereksinimi', _materialNotes, maxLines: 3),
                   const SizedBox(height: 16),
   
-                  _section('Öncelik & Tarih'),
+                  _section('4. Planlama & Öncelik'),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -228,11 +253,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         child: DropdownButtonFormField<String>(
                           value: _priority,
                           decoration: const InputDecoration(labelText: 'Öncelik'),
-                          items: [
-                            const DropdownMenuItem(value: 'low', child: Text('Düşük')),
-                            const DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                            const DropdownMenuItem(value: 'high', child: Text('Yüksek')),
-                            const DropdownMenuItem(value: 'urgent', child: Text('🔴 Acil')),
+                          items: const [
+                            DropdownMenuItem(value: 'low', child: Text('Düşük')),
+                            DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                            DropdownMenuItem(value: 'high', child: Text('Yüksek')),
+                            DropdownMenuItem(value: 'urgent', child: Text('🔴 Acil')),
                           ],
                           onChanged: (v) => setState(() => _priority = v!),
                         ),
@@ -254,16 +279,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     const SizedBox(width: 12),
                     Expanded(child: _dateTile('Bitiş', _endDate, () => _pickDate(false))),
                   ]),
-                  const SizedBox(height: 16),
-  
-                  _section('Notlar'),
-                  _textField('Notlar', _notes, maxLines: 4),
                   const SizedBox(height: 24),
+  
+                  _section('5. Ek Notlar'),
+                  _textField('Notlar', _notes, maxLines: 4),
+                  const SizedBox(height: 32),
+                  
                   ElevatedButton(
                     onPressed: _saving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.orderId == null ? 'İş Oluştur' : 'Kaydet'),
+                        : Text(widget.orderId == null ? 'İş Oluştur' : 'Değişiklikleri Kaydet', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
                 ],

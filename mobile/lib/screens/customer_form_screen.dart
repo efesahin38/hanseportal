@@ -34,12 +34,30 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   final _contactPhone2 = TextEditingController();
   String _type = 'company';
   String _status = 'active';
+  String? _selectedServiceAreaId;
+  List<Map<String, dynamic>> _serviceAreas = [];
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.customerId != null) _loadCustomer();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final areas = await SupabaseService.getServiceAreas();
+      if (mounted) {
+        setState(() {
+          _serviceAreas = areas;
+        });
+      }
+    } catch (e) {
+      debugPrint('Hizmet alanları yüklenemedi: $e');
+    }
+    if (widget.customerId != null) {
+      await _loadCustomer();
+    }
   }
 
   Future<void> _loadCustomer() async {
@@ -64,6 +82,16 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         _contactPhone2.text = data['secondary_contact_phone'] ?? '';
         _type = data['customer_type'] ?? 'company';
         _status = data['status'] ?? 'active';
+
+        if (data['customer_service_areas'] != null) {
+          final csa = data['customer_service_areas'] as List;
+          if (csa.isNotEmpty) {
+            final sId = csa.first['service_area_id']?.toString();
+            if (_serviceAreas.any((s) => s['id']?.toString() == sId)) {
+              _selectedServiceAreaId = sId;
+            }
+          }
+        }
       });
     }
   }
@@ -104,7 +132,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         'status': _status,
         'company_id': companyId,
         'country': 'Deutschland',
-      });
+      }, serviceAreaId: _selectedServiceAreaId);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -147,6 +175,18 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                             DropdownMenuItem(value: 'other', child: Text('Diğer', style: TextStyle(fontFamily: 'Inter'))),
                           ],
                           onChanged: (v) => setState(() => _type = v!),
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedServiceAreaId,
+                          decoration: const InputDecoration(labelText: 'Varsayılan Hizmet Alanı'),
+                          items: _serviceAreas.map((s) => DropdownMenuItem(
+                            value: s['id'].toString(),
+                            child: Text(s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
+                          )).toList(),
+                          onChanged: (v) => setState(() => _selectedServiceAreaId = v),
                         ),
                       ),
                     ],

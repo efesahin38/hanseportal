@@ -95,7 +95,8 @@ class SupabaseService {
     var query = _client.from('customers').select('''
       *,
       company:companies(id, name, short_name),
-      customer_contacts(*)
+      customer_contacts(*),
+      customer_service_areas(service_area_id)
     ''');
     if (status != null) query = query.eq('status', status) as dynamic;
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
@@ -125,8 +126,17 @@ class SupabaseService {
     ''').eq('id', id).maybeSingle();
   }
 
-  static Future<void> upsertCustomer(Map<String, dynamic> data) async {
-    await _client.from('customers').upsert(data);
+  static Future<void> upsertCustomer(Map<String, dynamic> data, {String? serviceAreaId}) async {
+    final result = await _client.from('customers').upsert(data).select('id').single();
+    final customerId = result['id'];
+
+    if (serviceAreaId != null) {
+      await _client.from('customer_service_areas').delete().eq('customer_id', customerId);
+      await _client.from('customer_service_areas').insert({
+        'customer_id': customerId,
+        'service_area_id': serviceAreaId,
+      });
+    }
   }
 
   // ── İşler ─────────────────────────────────────────────────
@@ -830,6 +840,24 @@ class SupabaseService {
 
   static Future<void> createDocument(Map<String, dynamic> data) async {
     await _client.from('documents').insert(data);
+  }
+
+  static Future<void> deleteDocument(String id, String fileUrl) async {
+    try {
+      // Storage'dan silme denemesi (örn: url .../document/1234.pdf ise)
+      if (fileUrl.contains('/document/')) {
+        final parts = fileUrl.split('/document/');
+        if (parts.length > 1) {
+          final path = Uri.decodeFull(parts.last.split('?').first);
+          await _client.storage.from('document').remove([path]);
+        }
+      }
+    } catch (e) {
+      debugPrint('Storage file remove error: $e');
+    }
+    
+    // Veritabanından sil
+    await _client.from('documents').delete().eq('id', id);
   }
 
   static Future<String> uploadDocument(String fileName, dynamic fileBytes) async {
