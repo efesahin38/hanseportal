@@ -30,9 +30,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // canViewAllCustomers yetkisi yoksa (ör: Bereichsleiter), sadece kendi departmanının müşterilerini getir
       final depId = !appState.canViewAllCustomers ? appState.departmentId : null;
-
       final data = await SupabaseService.getCustomers(
         status: _statusFilter,
         departmentId: depId,
@@ -61,6 +59,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final canCreate = context.watch<AppState>().canManageCustomers;
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Müşteriler v2.1', style: TextStyle(fontFamily: 'Inter', fontSize: 18)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textMain,
+      ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerFormScreen())).then((_) => _load()),
@@ -71,162 +75,187 @@ class _CustomersScreenState extends State<CustomersScreen> {
       body: WebContentWrapper(
         padding: EdgeInsets.zero,
         child: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Column(
-              children: [
-                TextField(
-                  onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                  decoration: const InputDecoration(
-                    hintText: 'Müşteri adı, şehir, e-posta ara...',
-                    prefixIcon: Icon(Icons.search),
-                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+          children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                children: [
+                  TextField(
+                    onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
+                    decoration: const InputDecoration(
+                      hintText: 'Müşteri adı, şehir, e-posta ara...',
+                      prefixIcon: Icon(Icons.search),
+                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 34,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final entry in {'Tümü': null, 'Aktif': 'active', 'Pasif': 'inactive', 'Potansiyel': 'potential', 'Arşiv': 'archived'}.entries)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(entry.key, style: TextStyle(fontFamily: 'Inter', fontSize: 12,
-                              color: _statusFilter == entry.value ? Colors.white : AppTheme.textSub)),
-                            selected: _statusFilter == entry.value,
-                            selectedColor: AppTheme.primary,
-                            backgroundColor: AppTheme.bg,
-                            onSelected: (_) {
-                              setState(() { _statusFilter = entry.value; _loading = true; });
-                              _load();
-                            },
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        for (final entry in {'Tümü': null, 'Aktif': 'active', 'Pasif': 'inactive', 'Potansiyel': 'potential', 'Arşiv': 'archived'}.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(entry.key, style: TextStyle(fontFamily: 'Inter', fontSize: 12,
+                                color: _statusFilter == entry.value ? Colors.white : AppTheme.textSub)),
+                              selected: _statusFilter == entry.value,
+                              selectedColor: AppTheme.primary,
+                              backgroundColor: AppTheme.bg,
+                              onSelected: (_) {
+                                setState(() { _statusFilter = entry.value; _loading = true; });
+                                _load();
+                              },
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _filtered.isEmpty
-                    ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.business_outlined, size: 56, color: AppTheme.textSub),
-                        SizedBox(height: 12),
-                        Text('Müşteri bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                      ]))
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: _filtered.length,
-                          itemBuilder: (_, i) {
-                            final c = _filtered[i];
-                            return Dismissible(
-                              key: ValueKey(c['id']),
-                              direction: DismissDirection.horizontal,
-                              background: Container(
-                                alignment: Alignment.centerLeft,
-                                padding: const EdgeInsets.only(left: 20),
-                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
-                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
-                              ),
-                              secondaryBackground: Container(
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20),
-                                decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
-                                child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
-                              ),
-                              confirmDismiss: (dir) async {
-                                return await showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Müşteriyi Sil?'),
-                                    content: const Text('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
-                                    ],
-                                  ),
-                                );
-                              },
-                              onDismissed: (dir) async {
-                                final customerId = c['id'];
-                                try {
-                                  await SupabaseService.deleteCustomer(customerId);
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müşteri başarıyla silindi')));
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
-                                  _load(); // Restore list on error
-                                }
-                              },
-                              child: Card(
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: AppTheme.primary.withOpacity(0.1),
-                                    child: Text(
-                                      (c['name'] ?? '?')[0].toUpperCase(),
-                                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filtered.isEmpty
+                      ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.business_outlined, size: 56, color: AppTheme.textSub),
+                          SizedBox(height: 12),
+                          Text('Müşteri bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                        ]))
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: _filtered.length,
+                            itemBuilder: (_, i) {
+                              final c = _filtered[i];
+                              return Dismissible(
+                                key: ValueKey('customer-${c['id']}'),
+                                direction: DismissDirection.horizontal,
+                                background: Container(
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.only(left: 20),
+                                  decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                  child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                                ),
+                                secondaryBackground: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(16)),
+                                  child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                                ),
+                                confirmDismiss: (dir) async {
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Müşteriyi Sil?'),
+                                      content: const Text('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Evet, Sil', style: TextStyle(color: AppTheme.error))),
+                                      ],
                                     ),
-                                  ),
-                                  title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (c['city'] != null)
-                                        Row(children: [
-                                          const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
-                                          const SizedBox(width: 2),
-                                          Text(c['city'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
-                                        ]),
-                                      if (c['phone'] != null)
-                                        Row(children: [
-                                          const Icon(Icons.phone_outlined, size: 12, color: AppTheme.textSub),
-                                          const SizedBox(width: 2),
-                                          Text(c['phone'], style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
-                                        ]),
-                                    ],
-                                  ),
-                                  trailing: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.statusColor(c['status'] ?? '').withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          AppTheme.statusLabel(c['status'] ?? ''),
-                                          style: TextStyle(fontSize: 10, color: AppTheme.statusColor(c['status'] ?? ''), fontFamily: 'Inter', fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Icon(Icons.chevron_right, color: AppTheme.border),
-                                    ],
-                                  ),
-                                  isThreeLine: true,
+                                  );
+                                },
+                                onDismissed: (dir) async {
+                                  final customerId = c['id'];
+                                  try {
+                                    await SupabaseService.deleteCustomer(customerId);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müşteri başarıyla silindi')));
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                    _load(); // Restore list on error
+                                  }
+                                },
+                                child: _CustomerListTile(
+                                  customer: c,
                                   onTap: () => Navigator.push(context, MaterialPageRoute(
                                     builder: (_) => CustomerDetailScreen(customerId: c['id']),
                                   )).then((_) => _load()),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _CustomerListTile extends StatelessWidget {
+  final Map<String, dynamic> customer;
+  final VoidCallback onTap;
+  const _CustomerListTile({required this.customer, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = customer['status'] ?? '';
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppTheme.primary.withOpacity(0.1),
+                child: Text(
+                  (customer['name'] ?? '?')[0].toUpperCase(),
+                  style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer['name'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    if (customer['city'] != null)
+                      Row(children: [
+                        const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
+                        const SizedBox(width: 4),
+                        Text(customer['city'], style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      ]),
+                  ],
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.statusColor(status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.statusColor(status).withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      AppTheme.statusLabel(status),
+                      style: TextStyle(fontSize: 11, color: AppTheme.statusColor(status), fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Icon(Icons.chevron_right, size: 16, color: AppTheme.border),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
