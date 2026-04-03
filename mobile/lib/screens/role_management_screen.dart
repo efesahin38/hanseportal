@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 
 /// Bölüm 15 – Rol ve Yetki Yönetimi
 class RoleManagementScreen extends StatefulWidget {
@@ -49,15 +50,15 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yetki Yönetimi'),
+        title: Text(tr('Yetki Yönetimi')),
         bottom: TabBar(
           controller: _tabs,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           indicatorColor: Colors.white,
-          tabs: const [
-            Tab(text: 'Kullanıcılar'),
-            Tab(text: 'Rol Bilgileri'),
+          tabs: [
+            Tab(text: tr('Kullanıcılar')),
+            Tab(text: tr('Rol Bilgileri')),
           ],
         ),
       ),
@@ -92,14 +93,14 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
       await SupabaseService.updateUserRole(userId, role);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Rol güncellendi'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text(tr('Rol güncellendi')), backgroundColor: AppTheme.success),
         );
         _load();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Rol güncellenirken hata'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text(tr('Rol güncellenirken hata')), backgroundColor: AppTheme.error),
         );
       }
     }
@@ -111,7 +112,7 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(status == 'active' ? '✅ Kullanıcı aktif edildi' : '⏸ Kullanıcı pasife alındı'),
+            content: Text(status == 'active' ? tr('Kullanıcı aktif edildi') : tr('Kullanıcı pasife alındı')),
             backgroundColor: status == 'active' ? AppTheme.success : AppTheme.warning,
           ),
         );
@@ -156,20 +157,20 @@ class _UsersTab extends StatelessWidget {
           child: Row(
             children: [
               _FilterChip(
-                label: 'Aktif',
+                label: tr('Aktif'),
                 selected: statusFilter == 'active',
                 color: AppTheme.success,
                 onTap: () => onFilterChange('active'),
               ),
               const SizedBox(width: 8),
               _FilterChip(
-                label: 'Pasif',
+                label: tr('Pasif'),
                 selected: statusFilter == 'inactive',
                 color: AppTheme.textSub,
                 onTap: () => onFilterChange('inactive'),
               ),
               const SizedBox(width: 8),
-              Text('${users.length} kullanıcı',
+              Text(tr('{count} kullanıcı', args: {'count': users.length.toString()}),
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
             ],
           ),
@@ -180,9 +181,9 @@ class _UsersTab extends StatelessWidget {
           child: loading
               ? const Center(child: CircularProgressIndicator())
               : users.isEmpty
-                  ? const Center(
-                      child: Text('Kullanıcı bulunamadı',
-                          style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                  ? Center(
+                      child: Text(tr('Kullanıcı bulunamadı'),
+                          style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     )
                   : RefreshIndicator(
                       onRefresh: onRefresh,
@@ -301,7 +302,7 @@ class _UserRoleCard extends StatelessWidget {
                         color: AppTheme.accent.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text('Sen', style: TextStyle(fontSize: 10, color: AppTheme.accent, fontFamily: 'Inter')),
+                      child: Text(tr('Sen'), style: const TextStyle(fontSize: 10, color: AppTheme.accent, fontFamily: 'Inter')),
                     ),
                   ],
                 ]),
@@ -343,11 +344,11 @@ class _UserRoleCard extends StatelessWidget {
                       border: Border.all(color: AppTheme.border),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.swap_horiz, size: 16, color: AppTheme.primary),
-                      SizedBox(width: 4),
-                      Text('Rol Değiştir',
-                          style: TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      const Icon(Icons.swap_horiz, size: 16, color: AppTheme.primary),
+                      const SizedBox(width: 4),
+                      Text(tr('Rol Değiştir'),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                     ]),
                   ),
                   itemBuilder: (_) => _roles
@@ -364,7 +365,7 @@ class _UserRoleCard extends StatelessWidget {
                 onPressed: () => onChangeStatus(isActive ? 'inactive' : 'active'),
                 icon: Icon(isActive ? Icons.pause_outlined : Icons.play_arrow_outlined, size: 16),
                 label: Text(
-                  isActive ? 'Pasife Al' : 'Aktif Et',
+                  isActive ? tr('Pasife Al') : tr('Aktif Et'),
                   style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
                 ),
                 style: OutlinedButton.styleFrom(
@@ -411,25 +412,26 @@ class _InfoChip extends StatelessWidget {
 class _RoleInfoTab extends StatelessWidget {
   const _RoleInfoTab();
 
-  static const _roleInfo = [
-    _RoleRow('geschaeftsfuehrer', 'Geschäftsführer', 'Tüm modüller, tüm şirketler, tam yetki.', AppTheme.primary),
-    _RoleRow('betriebsleiter', 'Betriebsleiter', 'Operasyon, planlama, raporlar, tüm işler.', Color(0xFF1565C0)),
-    _RoleRow('bereichsleiter', 'Bereichsleiter', 'Kendi bölümü: iş açma, planlama, ek iş, kapanış.', Color(0xFF6A1B9A)),
-    _RoleRow('vorarbeiter', 'Vorarbeiter', 'Kendi görevleri + bağlı ekip görünümü.', Color(0xFF2E7D32)),
-    _RoleRow('mitarbeiter', 'Mitarbeiter', 'Yalnızca atanmış görevler ve saha ekranı.', AppTheme.textSub),
-    _RoleRow('buchhaltung', 'Buchhaltung', 'Tamamlanan işler, ön fatura taslakları, muhasebe.', Color(0xFFF57F17)),
-    _RoleRow('backoffice', 'Backoffice', 'Müşteri kaydı, belge, iş açılışı desteği.', Color(0xFF00838F)),
-    _RoleRow('system_admin', 'System Admin', 'Teknik ayarlar, kullanıcı yönetimi, log.', Color(0xFFC62828)),
+  static List<_RoleRow> get _roleInfo => [
+    _RoleRow('geschaeftsfuehrer', 'Geschäftsführer', tr('Tüm modüller, tüm şirketler, tam yetki.'), AppTheme.primary),
+    _RoleRow('betriebsleiter', 'Betriebsleiter', tr('Operasyon, planlama, raporlar, tüm işler.'), const Color(0xFF1565C0)),
+    _RoleRow('bereichsleiter', 'Bereichsleiter', tr('Kendi bölümü: iş açma, planlama, ek iş, kapanış.'), const Color(0xFF6A1B9A)),
+    _RoleRow('vorarbeiter', 'Vorarbeiter', tr('Kendi görevleri + bağlı ekip görünümü.'), const Color(0xFF2E7D32)),
+    _RoleRow('mitarbeiter', 'Mitarbeiter', tr('Yalnızca atanmış görevler ve saha ekranı.'), AppTheme.textSub),
+    _RoleRow('buchhaltung', 'Buchhaltung', tr('Tamamlanan işler, ön fatura taslakları, muhasebe.'), const Color(0xFFF57F17)),
+    _RoleRow('backoffice', 'Backoffice', tr('Müşteri kaydı, belge, iş açılışı desteği.'), const Color(0xFF00838F)),
+    _RoleRow('system_admin', 'System Admin', tr('Teknik ayarlar, kullanıcı yönetimi, log.'), const Color(0xFFC62828)),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final info = _roleInfo;
     return ListView.separated(
       padding: const EdgeInsets.all(12),
-      itemCount: _roleInfo.length,
+      itemCount: info.length,
       separatorBuilder: (_, __) => const SizedBox(height: 6),
       itemBuilder: (_, i) {
-        final r = _roleInfo[i];
+        final r = info[i];
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(14),

@@ -37,9 +37,14 @@ reporter.startCronJobs();
 // ============================================================
 async function sendFcmToUsers(userIds, title, body) {
   try {
-    const { data: users } = await supabase.from('users').select('fcm_token').in('id', userIds);
+    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return;
+    const { data: users } = await supabase.from('users').select('fcm_token').in('id', uniqueIds);
     const tokens = (users || []).map(u => u.fcm_token).filter(t => t && t.length > 0);
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) {
+      console.log('[FCM] Bildirim gönderilecek token bulunamadı.');
+      return;
+    }
     const result = await admin.messaging().sendEachForMulticast({
       notification: { title, body },
       android: { priority: 'high', notification: { sound: 'default', channelId: 'high_importance_channel' } },
@@ -49,6 +54,63 @@ async function sendFcmToUsers(userIds, title, body) {
     console.log(`[FCM] ${result.successCount} başarı, ${result.failureCount} hata`);
   } catch (e) {
     console.error('[FCM] Hata:', e.message);
+  }
+}
+
+// YARDIMCI: Bir iş için yöneticileri bildir (Betriebsleiter + ilgili Bereichsleiter)
+async function notifyOrderManagers(orderId, title, body, excludeUserId = null) {
+  try {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('responsible_user_id, department_id, company_id')
+      .eq('id', orderId)
+      .single();
+    if (!order) return;
+
+    // Betriebsleiter (şirketteki tüm)
+    const { data: betriebsleiterList } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'betriebsleiter')
+      .eq('company_id', order.company_id)
+      .eq('status', 'active');
+
+    const recipientIds = new Set();
+    (betriebsleiterList || []).forEach(u => recipientIds.add(u.id));
+
+    // Sorumlu Bereichsleiter
+    if (order.responsible_user_id) recipientIds.add(order.responsible_user_id);
+
+    // Aynı departmandaki Bereichsleiter
+    if (order.department_id) {
+      const { data: bereichsleiterList } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'bereichsleiter')
+        .eq('department_id', order.department_id)
+        .eq('status', 'active');
+      (bereichsleiterList || []).forEach(u => recipientIds.add(u.id));
+    }
+
+    // Bildirimi gönderen kişiyi çıkar
+    if (excludeUserId) recipientIds.delete(excludeUserId);
+
+    // DB'ye bildirim kaydet
+    const insertRows = [...recipientIds].map(uid => ({
+      recipient_id: uid,
+      notification_type: 'task_update',
+      title,
+      body,
+      order_id: orderId,
+    }));
+    if (insertRows.length > 0) {
+      await supabase.from('notifications').insert(insertRows);
+    }
+
+    // FCM push
+    await sendFcmToUsers([...recipientIds], title, body);
+  } catch (e) {
+    console.error('[notifyOrderManagers] Hata:', e.message);
   }
 }
 
@@ -90,6 +152,174 @@ app.post('/api/users/:id/fcm-token', async (req, res) => {
     await supabase.from('users').update({ fcm_token }).eq('id', id);
     res.json({ message: 'Token kaydedildi.' });
   } catch (err) {
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// ============================================================
+// ORDERS – BİLDİRİM ENTEGRASYONLU
+// ============================================================
+
+// POST /api/orders/notify-new – Yeni iş oluşturulduğunda çağrılır (Flutter'dan)
+app.post('/api/orders/notify-new', async (req, res) => {
+  try {
+    const { order_id, created_by } = req.body;
+    if (!order_id) return res.status(400).json({ error: 'order_id zorunludur.' });
+
+    const { data: order } = await supabase
+      .from('orders')
+      .select('title, order_number, customer:customers(name)')
+      .eq('id', order_id)
+      .single();
+
+    if (!order) return res.status(404).json({ error: 'İş bulunamadı.' });
+
+    const customerName = order.customer?.name || '';
+    const title = '📋 Neuer Auftrag';
+    const body = `${order.title}${customerName ? ' – ' + customerName : ''} (${order.order_number || ''})`.trim();
+
+    await notifyOrderManagers(order_id, title, body, created_by);
+    res.json({ message: 'Bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// POST /api/orders/:id/notify-status – İş durumu değiştiğinde çağrılır
+app.post('/api/orders/:id/notify-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { new_status, changed_by } = req.body;
+    if (!new_status) return res.status(400).json({ error: 'new_status zorunludur.' });
+
+    const { data: order } = await supabase
+      .from('orders')
+      .select('title, order_number, customer:customers(name)')
+      .eq('id', id)
+      .single();
+
+    if (!order) return res.status(404).json({ error: 'İş bulunamadı.' });
+
+    const statusLabels = {
+      draft: 'Entwurf', created: 'Erstellt', pending_approval: 'Wartet auf Genehmigung',
+      approved: 'Genehmigt', planning: 'In Planung', in_progress: 'In Bearbeitung',
+      completed: 'Abgeschlossen', invoiced: 'Fakturiert', archived: 'Archiviert',
+    };
+    const statusLabel = statusLabels[new_status] || new_status;
+    const title = '🔄 Auftrag aktualisiert';
+    const body = `${order.title} → ${statusLabel} (${order.order_number || ''})`;
+
+    await notifyOrderManagers(id, title, body, changed_by);
+    res.json({ message: 'Bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// POST /api/extra-works/notify-new – Ek iş eklendiğinde çağrılır
+app.post('/api/extra-works/notify-new', async (req, res) => {
+  try {
+    const { extra_work_id, recorded_by } = req.body;
+    if (!extra_work_id) return res.status(400).json({ error: 'extra_work_id zorunludur.' });
+
+    const { data: ew } = await supabase
+      .from('extra_works')
+      .select('title, order_id, duration_h')
+      .eq('id', extra_work_id)
+      .single();
+
+    if (!ew) return res.status(404).json({ error: 'Ek iş bulunamadı.' });
+
+    const title = '➕ Zusatzarbeit erfasst';
+    const body = `${ew.title}${ew.duration_h ? ' – ' + ew.duration_h + ' Std.' : ''} – Genehmigung erforderlich`;
+
+    await notifyOrderManagers(ew.order_id, title, body, recorded_by);
+    res.json({ message: 'Bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// POST /api/work-sessions/notify-start – Çalışma başlatıldığında çağrılır
+app.post('/api/work-sessions/notify-start', async (req, res) => {
+  try {
+    const { session_id } = req.body;
+    if (!session_id) return res.status(400).json({ error: 'session_id zorunludur.' });
+
+    const { data: session } = await supabase
+      .from('work_sessions')
+      .select('user_id, order_id, operation_plan_id, order:orders(title), user:users(first_name, last_name)')
+      .eq('id', session_id)
+      .single();
+
+    if (!session) return res.status(404).json({ error: 'Seans bulunamadı.' });
+
+    const workerName = `${session.user?.first_name || ''} ${session.user?.last_name || ''}`.trim();
+    const title = '🟢 Arbeit gestartet';
+    const body = `${workerName} hat mit der Arbeit begonnen – ${session.order?.title || ''}`;
+
+    // Saha sorumlusunu bul (varsa)
+    const recipientIds = new Set();
+    if (session.operation_plan_id) {
+      const { data: plan } = await supabase
+        .from('operation_plans')
+        .select('site_supervisor_id')
+        .eq('id', session.operation_plan_id)
+        .single();
+      if (plan?.site_supervisor_id && plan.site_supervisor_id !== session.user_id) {
+        recipientIds.add(plan.site_supervisor_id);
+      }
+    }
+
+    // DB bildirimi
+    if (recipientIds.size > 0) {
+      const insertRows = [...recipientIds].map(uid => ({
+        recipient_id: uid,
+        notification_type: 'task_update',
+        title,
+        body,
+        order_id: session.order_id,
+        operation_plan_id: session.operation_plan_id,
+      }));
+      await supabase.from('notifications').insert(insertRows);
+      await sendFcmToUsers([...recipientIds], title, body);
+    }
+
+    // Yöneticilere de bildir
+    await notifyOrderManagers(session.order_id, title, body, session.user_id);
+    res.json({ message: 'Bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// POST /api/work-sessions/notify-end – Çalışma bittiğinde çağrılır
+app.post('/api/work-sessions/notify-end', async (req, res) => {
+  try {
+    const { session_id } = req.body;
+    if (!session_id) return res.status(400).json({ error: 'session_id zorunludur.' });
+
+    const { data: session } = await supabase
+      .from('work_sessions')
+      .select('user_id, order_id, actual_duration_h, order:orders(title), user:users(first_name, last_name)')
+      .eq('id', session_id)
+      .single();
+
+    if (!session) return res.status(404).json({ error: 'Seans bulunamadı.' });
+
+    const workerName = `${session.user?.first_name || ''} ${session.user?.last_name || ''}`.trim();
+    const hours = session.actual_duration_h ? parseFloat(session.actual_duration_h).toFixed(1) : '?';
+    const title = '🔴 Arbeit beendet';
+    const body = `${workerName} hat die Arbeit beendet – ${hours} Std. – ${session.order?.title || ''}`;
+
+    await notifyOrderManagers(session.order_id, title, body, session.user_id);
+    res.json({ message: 'Bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });

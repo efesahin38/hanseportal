@@ -2,11 +2,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'localization_service.dart';
+
+// Backend URL – sunucunun çalıştığı adres
+const String _kBackendBase = 'http://localhost:3000/api';
 
 class SupabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
   static SupabaseClient get client => _client;
+
+  /// Backend notification endpoint'ini sessizce tetikler (hata olursa atlatır)
+  static Future<void> _notifyBackend(String path, Map<String, dynamic> body) async {
+    try {
+      await http.post(
+        Uri.parse('$_kBackendBase$path'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('[Notify] $path hatası: $e');
+    }
+  }
 
   // ── Auth (LOKAL SQL KONTROLÜ) ─────────────────────────────
   static Future<Map<String, dynamic>?> signIn(String email, String password) async {
@@ -23,7 +40,7 @@ class SupabaseService {
   }
 
   static Future<void> deleteCustomer(String id) async {
-    await _client.from('customers').delete().eq('id', id);
+    await _client.from('customers').update({'status': 'archived'}).eq('id', id);
   }
 
   // ── Mevcut Kullanıcı Profili ──────────────────────────────
@@ -198,7 +215,13 @@ class SupabaseService {
 
   static Future<String> createOrder(Map<String, dynamic> data) async {
     final result = await _client.from('orders').insert(data).select().single();
-    return result['id'];
+    final orderId = result['id'] as String;
+    // Yeni iş bildirimi (arka planda, hata olursa atlatır)
+    _notifyBackend('/orders/notify-new', {
+      'order_id': orderId,
+      'created_by': data['created_by'],
+    });
+    return orderId;
   }
 
   static Future<void> updateOrderStatus(String orderId, String newStatus, String? note, String changedById) async {
@@ -217,6 +240,12 @@ class SupabaseService {
     });
     
     await _client.from('orders').update({'status': newStatus}).eq('id', orderId);
+
+    // Durum değişikliği bildirimi (arka planda)
+    _notifyBackend('/orders/$orderId/notify-status', {
+      'new_status': newStatus,
+      'changed_by': changedById,
+    });
 
     // Otomatik Taslak Oluşturma (Eğer arka planda trigger çalışmıyorsa yedek)
     if (newStatus == 'completed' && oldStatus != 'completed') {
@@ -397,18 +426,11 @@ class SupabaseService {
       'start_longitude': lon,
       if (delayMinutes != null && delayMinutes > 0) 'delay_minutes': delayMinutes,
     }).select().single();
+    final sessionId = result['id'] as String;
+    // Çalışma başladı bildirimi (saha sorumlusu + yöneticiler)
+    _notifyBackend('/work-sessions/notify-start', {'session_id': sessionId});
 
-    try {
-      final order = await _client.from('orders').select('status').eq('id', orderId).single();
-      final status = order['status'];
-      if (status != 'in_progress' && status != 'completed' && status != 'invoiced') {
-        await updateOrderStatus(orderId, 'in_progress', tr('Çalışma başlatıldı'), userId);
-      }
-    } catch (e) {
-      print('Status change to in_progress error: $e');
-    }
-
-    return result['id'];
+    return sessionId;
   }
 
   static Future<void> endWorkSession(String sessionId, {String? note, double? lat, double? lon}) async {
@@ -419,6 +441,8 @@ class SupabaseService {
       'end_longitude': lon,
       'status': 'completed',
     }).eq('id', sessionId);
+    // Çalışma bitiş bildirimi
+    _notifyBackend('/work-sessions/notify-end', {'session_id': sessionId});
   }
 
   static Future<void> adjustWorkSession(
@@ -579,9 +603,14 @@ class SupabaseService {
   }
 
   static Future<void> createExtraWork(Map<String, dynamic> data) async {
-    await _client.from('extra_works').insert({
+    final result = await _client.from('extra_works').insert({
       ...data,
       'status': data['status'] ?? 'pending',
+    }).select('id').single();
+    // Ek iş bildirimi (arka planda)
+    _notifyBackend('/extra-works/notify-new', {
+      'extra_work_id': result['id'],
+      'recorded_by': data['recorded_by'],
     });
   }
 
@@ -777,8 +806,8 @@ class SupabaseService {
         id, title, order_number, 
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
-      customer:customers(id, name),
-      issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name)
+      customer:customers(id, name, email, phone, address, tax_number, vat_number),
+      issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, address, iban, bic, tax_number)
     ''');
     if (status != null) query = query.eq('status', status) as dynamic;
     final data = await query.order('created_at', ascending: false);

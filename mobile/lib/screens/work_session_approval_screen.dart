@@ -5,6 +5,7 @@ import '../theme/web_utils.dart'; // WebUtils ekle
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import 'package:intl/intl.dart';
+import '../services/localization_service.dart';
 
 class WorkSessionApprovalScreen extends StatefulWidget {
   const WorkSessionApprovalScreen({super.key});
@@ -44,7 +45,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _loading = false);
       }
     }
@@ -56,12 +57,12 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       final appState = context.read<AppState>();
       await SupabaseService.approveExtraWork(extraWorkId, appState.userId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Ek iş onaylandı.'), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Ek iş onaylandı.')), backgroundColor: AppTheme.success));
         _load();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
         setState(() => _loading = false);
       }
     }
@@ -86,7 +87,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
           try {
             final order = await SupabaseService.client.from('orders').select('status').eq('id', orderId).single();
             if (order['status'] != 'completed' && order['status'] != 'invoiced') {
-              await SupabaseService.updateOrderStatus(orderId, 'completed', 'Mesailer onaylandı', appState.userId);
+              await SupabaseService.updateOrderStatus(orderId, 'completed', tr('Mesailer onaylandı'), appState.userId);
             }
           } catch (e) {
             print('Status complete error: $e');
@@ -96,12 +97,12 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ ${sessions.length} personelin mesaisi onaylandı.'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text(tr('{count} personelin mesaisi onaylandı.', args: {'count': sessions.length.toString()})), backgroundColor: AppTheme.success),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
       }
     }
   }
@@ -111,7 +112,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Toplu Mesai Onayı', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+        title: Text(tr('Toplu Mesai Onayı'), style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
@@ -146,7 +147,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
         children: [
           Icon(Icons.fact_check_outlined, size: 64, color: Colors.blue.withOpacity(0.3)),
           const SizedBox(height: 16),
-          const Text('Onay bekleyen proje bulunmuyor.', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+          Text(tr('Onay bekleyen proje bulunmuyor.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
         ],
       ),
     );
@@ -207,9 +208,9 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order?['title'] ?? 'İsimsiz Proje', 
+                      Text(order?['title'] ?? tr('İsimsiz Proje'), 
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
-                      Text('Tarih: $dateStr • ${widget.sessions.length} Çalışan', 
+                      Text(tr('Tarih: {date} • {count} Çalışan', args: { 'date': dateStr, 'count': widget.sessions.length.toString() }), 
                           style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
                     ],
                   ),
@@ -238,19 +239,19 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text('${user?['first_name'] ?? 'Bilinmeyen'} ${user?['last_name'] ?? ''}', 
+                        child: Text('${user?['first_name'] ?? tr('Bilinmeyen')} ${user?['last_name'] ?? ''}', 
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                        child: Text('P: ${planned.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                        child: Text('${tr('P:')} ${planned.toStringAsFixed(1)}h', style: const TextStyle(fontSize: 11, color: Colors.blue)),
                       ),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(color: Colors.orange.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                        child: Text('G: ${actual.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, color: Colors.orange)),
+                        child: Text('${tr('G:')} ${actual.toStringAsFixed(1)}h', style: const TextStyle(fontSize: 11, color: Colors.orange)),
                       ),
                     ],
                   ),
@@ -267,11 +268,11 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.add_circle_outline, size: 16, color: Colors.orange),
-                      SizedBox(width: 8),
-                      Text('Onay Bekleyen Ek İşler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange)),
+                      const Icon(Icons.add_circle_outline, size: 16, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Text(tr('Onay Bekleyen Ek İşler'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -291,7 +292,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(ew['title'] ?? 'Ek İş', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text(ew['title'] ?? tr('Ek İş'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                 if (ew['description'] != null && ew['description'].isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2, bottom: 4),
@@ -299,14 +300,14 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                                   ),
                                 Row(
                                   children: [
-                                    Text('Kaydeden: ${recordedBy?['first_name'] ?? ''} ${recordedBy?['last_name'] ?? ''}', 
+                                    Text(tr('Kaydeden: {name}', args: {'name': '${recordedBy?['first_name'] ?? ''} ${recordedBy?['last_name'] ?? ''}'}), 
                                         style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
                                     const Spacer(),
                                     if (ew['duration_h'] != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                        child: Text('${ew['duration_h']} sa', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                        child: Text('${ew['duration_h']} ${tr('sa')}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
                                       ),
                                   ],
                                 ),
@@ -331,7 +332,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: const Text('Onayla', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                child: Text(tr('Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               ),
                         ],
                       ),
@@ -360,7 +361,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         icon: const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
-                        label: const Text('Onaylandı', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.success, fontFamily: 'Inter')),
+                        label: Text(tr('Onaylandı'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.success, fontFamily: 'Inter')),
                       ),
                     ),
                   ],
@@ -381,7 +382,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                               side: const BorderSide(color: AppTheme.primary),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: const Text('Planlananla Onayla', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                            child: Text(tr('Planlananla Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -397,7 +398,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                               backgroundColor: Colors.orange,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: const Text('Gerçekleşenle Onayla', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                            child: Text(tr('Gerçekleşenle Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                           ),
                         ),
                       ],

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+
+// Backend URL – 0.0.0.0:3000'de çalışan Node.js sunucusu
+const String _backendBase = 'http://localhost:3000/api';
 
 class AppState extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
@@ -62,6 +68,8 @@ class AppState extends ChangeNotifier {
         if (profile != null) {
           _currentUser = profile;
           _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
+          // FCM token'i arka planda güncelle
+          _registerFcmToken(userId);
         } else {
           await prefs.remove('custom_user_id');
           await prefs.remove('stay_logged_in');
@@ -101,6 +109,8 @@ class AppState extends ChangeNotifier {
       }
       
       _unreadNotifications = await SupabaseService.getUnreadNotificationCount(userId);
+      // FCM token'ı backend'e kaydet (kimin telefonu hangi cihaz)
+      _registerFcmToken(user['id']);
       _isLoading = false;
       notifyListeners();
       return null;
@@ -109,6 +119,32 @@ class AppState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return '${tr('Bağlantı hatası')}: ${e.toString()}';
+    }
+  }
+
+  /// FCM token'i al ve backend'e kaydet
+  Future<void> _registerFcmToken(String uid) async {
+    try {
+      // Bildirim izni iste (iOS için zorunlu, Android'de iyi pratik)
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(
+        alert: true, badge: true, sound: true,
+      );
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        debugPrint('[FCM] Token alındı: ${token.substring(0, 20)}...');
+        final url = Uri.parse('$_backendBase/users/$uid/fcm-token');
+        await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'fcm_token': token}),
+        ).timeout(const Duration(seconds: 10));
+        debugPrint('[FCM] Token backend\'e kaydedildi.');
+      } else {
+        debugPrint('[FCM] Token alınamadı (null/empty).');
+      }
+    } catch (e) {
+      debugPrint('[FCM] Token kayıt hatası: $e');
     }
   }
 

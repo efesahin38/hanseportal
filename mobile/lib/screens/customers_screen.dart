@@ -166,7 +166,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   try {
                                     await SupabaseService.deleteCustomer(customerId);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla silindi'))));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla arşivlendi'))));
                                   } catch (e) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
