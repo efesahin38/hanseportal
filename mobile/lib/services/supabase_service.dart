@@ -362,6 +362,12 @@ class SupabaseService {
     }).toList();
     await _client.from('operation_plan_personnel').upsert(items);
 
+    // Personellere yeni görev bildirimi gönder (arka planda)
+    _notifyBackend('/operation-plans/notify-new', {
+      'plan_id': planId,
+      'user_ids': userIds,
+    });
+
     try {
       final plan = await _client.from('operation_plans').select('order_id').eq('id', planId).single();
       final orderId = plan['order_id'];

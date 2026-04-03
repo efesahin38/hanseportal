@@ -324,6 +324,46 @@ app.post('/api/work-sessions/notify-end', async (req, res) => {
   }
 });
 
+// POST /api/operation-plans/notify-new – Yeni plan atandığında personellere bildir
+app.post('/api/operation-plans/notify-new', async (req, res) => {
+  try {
+    const { plan_id, user_ids } = req.body;
+    if (!plan_id || !user_ids || !Array.isArray(user_ids)) {
+      return res.status(400).json({ error: 'plan_id ve user_ids (array) zorunludur.' });
+    }
+
+    const { data: plan } = await supabase
+      .from('operation_plans')
+      .select('plan_date, start_time, order:orders(title)')
+      .eq('id', plan_id)
+      .single();
+
+    if (!plan) return res.status(404).json({ error: 'Plan bulunamadı.' });
+
+    const dateStr = plan.plan_date ? new Date(plan.plan_date).toLocaleDateString('de-DE') : '';
+    const title = '📅 Neuer Einsatzplan';
+    const body = `${plan.order?.title || 'Auftrag'} – ${dateStr} ${plan.start_time || ''}`;
+
+    // DB'ye bildirim kaydet
+    const insertRows = user_ids.map(uid => ({
+      recipient_id: uid,
+      notification_type: 'task_update',
+      title,
+      body,
+      operation_plan_id: plan_id,
+    }));
+    await supabase.from('notifications').insert(insertRows);
+
+    // FCM push
+    await sendFcmToUsers(user_ids, title, body);
+
+    res.json({ message: 'Personellere bildirimler gönderildi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
 // ============================================================
 // COMPANIES
 // ============================================================
