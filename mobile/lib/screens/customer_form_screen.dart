@@ -185,7 +185,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                           decoration: InputDecoration(labelText: tr('Varsayılan Hizmet Alanı')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
-                            child: Text(s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
+                            child: Text(tr(s['name'] ?? ''), style: const TextStyle(fontFamily: 'Inter')),
                           )).toList(),
                           onChanged: (v) => setState(() => _selectedServiceAreaId = v),
                         ),

@@ -150,7 +150,9 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                   children: [
                                     Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
                                     if (u['position_title'] != null)
-                                      Text(u['position_title'], style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                      Text(tr(u['position_title']), style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                    const SizedBox(height: 4),
+                                    const Icon(Icons.chevron_right, color: AppTheme.border),
                                   ],
                                 ),
                                 trailing: Column(

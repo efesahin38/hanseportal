@@ -36,7 +36,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_customer == null) return Scaffold(appBar: AppBar(title: const Text('Müşteri')), body: const Center(child: Text('Bulunamadı')));
+    if (_customer == null) return Scaffold(appBar: AppBar(title: Text(tr('Müşteri'))), body: Center(child: Text(tr('Bulunamadı'))));
 
     final c = _customer!;
     final contacts = c['customer_contacts'] as List? ?? [];
@@ -97,24 +97,24 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               const SizedBox(height: 12),
   
               // ── İletişim ───────────────────────────────────
-              _InfoSection('İletişim', [
-                _InfoRow(Icons.phone_outlined, 'Telefon', c['phone']),
-                _InfoRow(Icons.email_outlined, 'E-posta', c['email']),
-                _InfoRow(Icons.language_outlined, 'Web', c['website']),
+              _InfoSection(tr('İletişim'), [
+                _InfoRow(Icons.phone_outlined, tr('Telefon'), c['phone']),
+                _InfoRow(Icons.email_outlined, tr('E-posta'), c['email']),
+                _InfoRow(Icons.language_outlined, tr('Web'), c['website']),
               ]),
               const SizedBox(height: 12),
   
               // ── Adres ──────────────────────────────────────
-              _InfoSection('Adres', [
-                _InfoRow(Icons.location_on_outlined, 'Adres', c['address']),
-                _InfoRow(Icons.location_city_outlined, 'Şehir', c['city']),
-                _InfoRow(Icons.map_outlined, 'Saha Adresi', c['site_address']),
+              _InfoSection(tr('Adres'), [
+                _InfoRow(Icons.location_on_outlined, tr('Adres'), c['address']),
+                _InfoRow(Icons.location_city_outlined, tr('Şehir'), c['city']),
+                _InfoRow(Icons.map_outlined, tr('Saha Adresi'), c['site_address']),
               ]),
               const SizedBox(height: 12),
   
               // ── Muhataplar ─────────────────────────────────
               if (contacts.isNotEmpty) ...[
-                _InfoSection('Muhataplar', [
+                _InfoSection(tr('Muhataplar'), [
                   for (final contact in contacts)
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -146,29 +146,29 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   
               // ── Finansal Bilgiler (Yetkili) ────────────────
               if (context.read<AppState>().canSeeFinancialDetails) ...[
-                _InfoSection('Finansal Bilgiler (Hassas)', [
-                  _InfoRow(Icons.account_balance_outlined, 'Banka', c['bank_name']),
-                  _InfoRow(Icons.credit_card_outlined, 'IBAN', c['iban']),
-                  _InfoRow(Icons.account_tree_outlined, 'BIC/SWIFT', c['bic']),
-                  _InfoRow(Icons.confirmation_num_outlined, 'USt-IdNr.', c['vat_number']),
+                _InfoSection(tr('Finansal Bilgiler (Hassas)'), [
+                  _InfoRow(Icons.account_balance_outlined, tr('Banka'), c['bank_name']),
+                  _InfoRow(Icons.credit_card_outlined, tr('IBAN'), c['iban']),
+                  _InfoRow(Icons.account_tree_outlined, tr('BIC/SWIFT'), c['bic']),
+                  _InfoRow(Icons.confirmation_num_outlined, tr('USt-IdNr.'), c['vat_number']),
                 ]),
                 const SizedBox(height: 12),
               ],
   
               // ── İkinci İletişim Kişisi ─────────────────────
               if (c['secondary_contact_name'] != null && (c['secondary_contact_name'] as String).isNotEmpty) ...[
-                _InfoSection('İkinci İletişim Kişisi', [
-                  _InfoRow(Icons.person_outline, 'İsim Soyisim', c['secondary_contact_name']),
-                  _InfoRow(Icons.phone_outlined, 'Telefon', c['secondary_contact_phone']),
+                _InfoSection(tr('İkinci İletişim Kişisi'), [
+                  _InfoRow(Icons.person_outline, tr('İsim Soyisim'), c['secondary_contact_name']),
+                  _InfoRow(Icons.phone_outlined, tr('Telefon'), c['secondary_contact_phone']),
                 ]),
                 const SizedBox(height: 12),
               ],
   
               // ── Ek Bilgiler ────────────────────────────────
               if (c['notes'] != null || c['special_access_info'] != null)
-                _InfoSection('Özel Notlar', [
-                  if (c['notes'] != null) _InfoRow(Icons.note_outlined, 'Not', c['notes']),
-                  if (c['special_access_info'] != null) _InfoRow(Icons.security_outlined, 'Saha Erişim', c['special_access_info']),
+                _InfoSection(tr('Özel Notlar'), [
+                  if (c['notes'] != null) _InfoRow(Icons.note_outlined, tr('Not'), c['notes']),
+                  if (c['special_access_info'] != null) _InfoRow(Icons.security_outlined, tr('Saha Erişim'), c['special_access_info']),
                 ]),
             ],
           ),

@@ -168,7 +168,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                               DropdownMenuItem<String>(value: null, child: Text(tr('Seçilmedi'))),
                               ..._departments.map((d) => DropdownMenuItem<String>(
                                 value: d['id'].toString(),
-                                child: Text(d['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
+                                child: Text(tr(d['name'] ?? ''), style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
                               )),
                             ],
                             onChanged: (v) => setState(() => _departmentId = v),

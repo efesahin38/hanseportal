@@ -40,7 +40,7 @@ class SupabaseService {
   }
 
   static Future<void> deleteCustomer(String id) async {
-    await _client.from('customers').update({'status': 'archived'}).eq('id', id);
+    await _client.from('customers').delete().eq('id', id);
   }
 
   // ── Mevcut Kullanıcı Profili ──────────────────────────────
@@ -812,8 +812,8 @@ class SupabaseService {
         id, title, order_number, 
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
-      customer:customers(id, name, email, phone, address, tax_number, vat_number),
-      issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, address, iban, bic, tax_number)
+      customer:customers(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
+      issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, address, iban, bic, tax_number, vat_number)
     ''');
     if (status != null) query = query.eq('status', status) as dynamic;
     final data = await query.order('created_at', ascending: false);
