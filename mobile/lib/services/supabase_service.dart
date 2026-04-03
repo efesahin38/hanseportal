@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'localization_service.dart';
 
-// Backend URL – sunucunun çalıştığı adres
-const String _kBackendBase = 'http://localhost:3000/api';
+// Backend URL – Render production sunucusu
+const String _kBackendBase = 'https://ekrem.onrender.com/api';
 
 class SupabaseService {
   static final SupabaseClient _client = Supabase.instance.client;

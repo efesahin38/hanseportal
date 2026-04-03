@@ -6,8 +6,8 @@ import 'dart:convert';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 
-// Backend URL – 0.0.0.0:3000'de çalışan Node.js sunucusu
-const String _backendBase = 'http://localhost:3000/api';
+// Backend URL – Render production sunucusu
+const String _backendBase = 'https://ekrem.onrender.com/api';
 
 class AppState extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
