@@ -176,19 +176,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         final newPlanId = result['id'] as String;
         if (_selectedPersonnelIds.isNotEmpty) {
           await SupabaseService.assignPersonnelToPlan(newPlanId, _selectedPersonnelIds, appState.userId);
-          
-          // Bildirim Gönder (Yeni Atama)
-          for (var uid in _selectedPersonnelIds) {
-            await SupabaseService.sendTaskNotification(
-              recipientId: uid,
-              title: tr('Yeni Görev Atandı'),
-              body: '$_orderTitle ${tr('için yeni bir operasyon planı oluşturuldu.')}',
-              orderId: widget.orderId,
-              operationPlanId: newPlanId,
-              notificationType: 'task_assignment',
-              sentBy: appState.userId,
-            );
-          }
         }
       } else {
         await SupabaseService.client.from('operation_plans').update(planData).eq('id', widget.planId!);
@@ -196,19 +183,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         await SupabaseService.client.from('operation_plan_personnel').delete().eq('operation_plan_id', widget.planId!);
         if (_selectedPersonnelIds.isNotEmpty) {
           await SupabaseService.assignPersonnelToPlan(widget.planId!, _selectedPersonnelIds, appState.userId);
-          
-          // Bildirim Gönder (Güncelleme)
-          for (var uid in _selectedPersonnelIds) {
-            await SupabaseService.sendTaskNotification(
-              recipientId: uid,
-              title: tr('Görev Güncellendi'),
-              body: '$_orderTitle ${tr('operasyon planında değişiklik yapıldı.')}',
-              orderId: widget.orderId,
-              operationPlanId: widget.planId,
-              notificationType: 'task_update',
-              sentBy: appState.userId,
-            );
-          }
         }
       }
 
