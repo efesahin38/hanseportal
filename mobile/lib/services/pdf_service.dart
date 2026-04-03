@@ -4,6 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'localization_service.dart';
+import '../theme/app_theme.dart';
 
 
 /// Hanse Kollektiv – PDF Üretim Servisi

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
+import '../services/localization_service.dart';
 import '../services/supabase_service.dart';
 import '../providers/app_state.dart';
 import 'customer_form_screen.dart';

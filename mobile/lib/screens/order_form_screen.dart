@@ -179,7 +179,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section(tr('1. Müşteri & Hizmet Bilgileri')),
+                  _section(tr('Müşteri & Hizmet Bilgileri')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -229,7 +229,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  _section(tr('2. Temel Bilgiler')),
+                  _section(tr('Temel Bilgiler')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
@@ -247,13 +247,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _section(tr('3. Saha & Operasyon Detayları')),
+                  _section(tr('Saha & Operasyon Detayları')),
                   _textField(tr('Saha Adresi'), _siteAddress),
                   _textField(tr('Detaylı İş Açıklaması'), _detailedDesc, maxLines: 4),
                   _textField(tr('Malzeme/Ekipman Gereksinimi'), _materialNotes, maxLines: 3),
                   const SizedBox(height: 16),
   
-                  _section(tr('4. Planlama & Öncelik')),
+                  _section(tr('Planlama & Öncelik')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -291,7 +291,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ]),
                   const SizedBox(height: 24),
   
-                  _section(tr('5. Ek Notlar')),
+                  _section(tr('Ek Notlar')),
                   _textField(tr('Notlar'), _notes, maxLines: 4),
                   const SizedBox(height: 32),
                   

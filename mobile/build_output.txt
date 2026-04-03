@@ -1,0 +1,190 @@
+Resolving dependencies...
+Downloading packages...
+  _flutterfire_internals 1.3.59 (1.3.68 available)
+  async 2.13.0 (2.13.1 available)
+  csv 7.2.0 (8.0.0 available)
+  cupertino_icons 1.0.8 (1.0.9 available)
+  firebase_core 3.15.2 (4.6.0 available)
+  firebase_core_platform_interface 6.0.2 (6.0.3 available)
+  firebase_core_web 2.24.1 (3.5.1 available)
+  firebase_messaging 15.2.10 (16.1.3 available)
+  firebase_messaging_platform_interface 4.6.10 (4.7.8 available)
+  firebase_messaging_web 3.10.10 (4.1.4 available)
+  flutter_launcher_icons 0.13.1 (0.14.4 available)
+  matcher 0.12.18 (0.12.19 available)
+  meta 1.17.0 (1.18.2 available)
+  path_provider_android 2.2.22 (2.2.23 available)
+  share_plus 12.0.1 (12.0.2 available)
+  shared_preferences 2.5.4 (2.5.5 available)
+  shared_preferences_android 2.4.21 (2.4.23 available)
+  shared_preferences_platform_interface 2.4.1 (2.4.2 available)
+  test_api 0.7.9 (0.7.11 available)
+  vector_math 2.2.0 (2.3.0 available)
+  win32 5.15.0 (6.0.0 available)
+Got dependencies!
+21 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Compiling lib/main.dart for the Web...                          
+Wasm dry run succeeded. Consider building and testing your application with the `--wasm` flag. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
+Use --no-wasm-dry-run to disable these warnings.
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/screens/customer_detail_screen.dart:39:71:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+    if (_customer == null) return Scaffold(appBar: AppBar(title: Text(tr('Müşteri'))), body: Center(child: Text(tr('Bulunamadı'))));
+                                                                      ^^
+lib/screens/customer_detail_screen.dart:39:113:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+    if (_customer == null) return Scaffold(appBar: AppBar(title: Text(tr('Müşteri'))), body: Center(child: Text(tr('Bulunamadı'))));
+                                                                                          ^^
+lib/screens/customer_detail_screen.dart:100:28:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+              _InfoSection(tr('İletişim'), [
+                           ^^
+lib/screens/customer_detail_screen.dart:101:48:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.phone_outlined, tr('Telefon'), c['phone']),
+                                               ^^
+lib/screens/customer_detail_screen.dart:102:48:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.email_outlined, tr('E-posta'), c['email']),
+                                               ^^
+lib/screens/customer_detail_screen.dart:103:51:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.language_outlined, tr('Web'), c['website']),
+                                                  ^^
+lib/screens/customer_detail_screen.dart:108:28:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+              _InfoSection(tr('Adres'), [
+                           ^^
+lib/screens/customer_detail_screen.dart:109:54:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.location_on_outlined, tr('Adres'), c['address']),
+                                                     ^^
+lib/screens/customer_detail_screen.dart:110:56:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.location_city_outlined, tr('Şehir'), c['city']),
+                                                       ^^
+lib/screens/customer_detail_screen.dart:111:46:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoRow(Icons.map_outlined, tr('Saha Adresi'), c['site_address']),
+                                             ^^
+lib/screens/customer_detail_screen.dart:117:30:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoSection(tr('Muhataplar'), [
+                             ^^
+lib/screens/customer_detail_screen.dart:149:30:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoSection(tr('Finansal Bilgiler (Hassas)'), [
+                             ^^
+lib/screens/customer_detail_screen.dart:150:60:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.account_balance_outlined, tr('Banka'), c['bank_name']),
+                                                           ^^
+lib/screens/customer_detail_screen.dart:151:56:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.credit_card_outlined, tr('IBAN'), c['iban']),
+                                                       ^^
+lib/screens/customer_detail_screen.dart:152:57:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.account_tree_outlined, tr('BIC/SWIFT'), c['bic']),
+                                                        ^^
+lib/screens/customer_detail_screen.dart:153:61:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.confirmation_num_outlined, tr('USt-IdNr.'), c['vat_number']),
+                                                            ^^
+lib/screens/customer_detail_screen.dart:160:30:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoSection(tr('İkinci İletişim Kişisi'), [
+                             ^^
+lib/screens/customer_detail_screen.dart:161:50:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.person_outline, tr('İsim Soyisim'), c['secondary_contact_name']),
+                                                 ^^
+lib/screens/customer_detail_screen.dart:162:50:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  _InfoRow(Icons.phone_outlined, tr('Telefon'), c['secondary_contact_phone']),
+                                                 ^^
+lib/screens/customer_detail_screen.dart:169:30:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                _InfoSection(tr('Özel Notlar'), [
+                             ^^
+lib/screens/customer_detail_screen.dart:170:73:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  if (c['notes'] != null) _InfoRow(Icons.note_outlined, tr('Not'), c['notes']),
+                                                                        ^^
+lib/screens/customer_detail_screen.dart:171:91:
+Error: The method 'tr' isn't defined for the type '_CustomerDetailScreenState'.
+ - '_CustomerDetailScreenState' is from 'package:mobile/screens/customer_detail_screen.dart' ('lib/screens/customer_detail_screen.dart').
+                  if (c['special_access_info'] != null) _InfoRow(Icons.security_outlined, tr('Saha Erişim'), c['special_access_info']),
+                                                                                          ^^
+lib/services/pdf_service.dart:901:82:
+Error: Undefined name 'AppTheme'.
+                  pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(AppTheme.roleLabel(p['role'] ?? ''), style: pw.TextStyle(font: font, fontSize: 10))),
+                                                                                 ^^^^^^^^
+Error: Compilation failed.
+  Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.41.2 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=90673a4eef -DFLUTTER_ENGINE_REVISION=6c0baaebf7 -DFLUTTER_DART_VERSION=3.11.0 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/6c0baaebf70e0148f485f27d5616b3d3382da7bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/efesahin/Desktop/Projects/ekrem/mobile/.dart_tool/flutter_build/28035aa217003efb0f78aa4fa904f754/app.dill --packages=/Users/efesahin/Desktop/Projects/ekrem/mobile/.dart_tool/package_config.json --cfe-only /Users/efesahin/Desktop/Projects/ekrem/mobile/.dart_tool/flutter_build/28035aa217003efb0f78aa4fa904f754/main.dart
+#0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
+#1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
+<asynchronous suspension>
+#2      Dart2JSTarget.build (package:flutter_tools/src/build_system/targets/web.dart:208:5)
+<asynchronous suspension>
+#3      _BuildInstance._invokeInternal (package:flutter_tools/src/build_system/build_system.dart:937:9)
+<asynchronous suspension>
+#4      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+<asynchronous suspension>
+#5      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:875:32)
+<asynchronous suspension>
+#6      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+<asynchronous suspension>
+#7      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:875:32)
+<asynchronous suspension>
+#8      FlutterBuildSystem.build (package:flutter_tools/src/build_system/build_system.dart:684:16)
+<asynchronous suspension>
+#9      WebBuilder.buildWeb (package:flutter_tools/src/web/compile.dart:107:34)
+<asynchronous suspension>
+#10     BuildWebCommand.runCommand (package:flutter_tools/src/commands/build_web.dart:300:5)
+<asynchronous suspension>
+#11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1590:27)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:496:9)
+<asynchronous suspension>
+#15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+<asynchronous suspension>
+#17     FlutterCommandRunner.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:307:33)
+<asynchronous suspension>
+#18     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+<asynchronous suspension>
+#19     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#20     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>
+
+Compiling lib/main.dart for the Web...                             62,3s
+Error: Failed to compile application for the Web.

@@ -132,10 +132,10 @@ class _InvoiceDraftTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (drafts.isEmpty) {
-      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.receipt_long_outlined, size: 56, color: AppTheme.textSub),
-        SizedBox(height: 12),
-        Text('Ön fatura taslağı yok', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.receipt_long_outlined, size: 56, color: AppTheme.textSub),
+        const SizedBox(height: 12),
+        Text(tr('Ön fatura taslağı yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
       ]));
     }
     return RefreshIndicator(
@@ -187,7 +187,7 @@ class _InvoiceDraftTab extends StatelessWidget {
                           MaterialPageRoute(builder: (_) => InvoiceDraftDetailScreen(draftId: d['id'])),
                         ).then((_) => onRefresh()),
                         icon: const Icon(Icons.visibility_outlined, size: 16),
-                        label: const Text('İncele', style: TextStyle(fontFamily: 'Inter', fontSize: 12)),
+                        label: Text(tr('İncele'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           minimumSize: Size.zero,
@@ -201,7 +201,7 @@ class _InvoiceDraftTab extends StatelessWidget {
                             MaterialPageRoute(builder: (_) => InvoiceDraftDetailScreen(draftId: d['id'])),
                           ).then((_) => onRefresh()),
                           icon: const Icon(Icons.check_circle_outline, size: 16),
-                          label: const Text('Onayla', style: TextStyle(fontFamily: 'Inter', fontSize: 12)),
+                          label: Text(tr('Onayla'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.success,
                             side: const BorderSide(color: AppTheme.success),
@@ -227,12 +227,12 @@ class _DraftStatusChip extends StatelessWidget {
 
   String get label {
     switch (status) {
-      case 'auto_generated':    return 'Oluşturuldu';
-      case 'under_review':      return 'İncelemede';
-      case 'correction_needed': return 'Düzeltme';
-      case 'approved':          return 'Onaylandı';
-      case 'invoiced':          return 'Faturalandı';
-      case 'cancelled':         return 'İptal';
+      case 'auto_generated':    return tr('Oluşturuldu');
+      case 'under_review':      return tr('İncelemede');
+      case 'correction_needed': return tr('Düzeltme');
+      case 'approved':          return tr('Onaylandı');
+      case 'invoiced':          return tr('Faturalandı');
+      case 'cancelled':         return tr('İptal');
       default:                  return status;
     }
   }
@@ -452,7 +452,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
 
           DateTime? parsedDate;
           try { parsedDate = DateTime.parse(dateStr); } catch (_) {}
-          final displayDate = parsedDate != null ? DateFormat('dd MMMM yyyy', 'tr_TR').format(parsedDate) : dateStr;
+          final displayDate = parsedDate != null ? DateFormat('dd MMMM yyyy', 'de_DE').format(parsedDate) : dateStr;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
