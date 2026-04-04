@@ -4,8 +4,9 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
-import 'order_detail_screen.dart';
 import '../services/localization_service.dart';
+import 'customer_detail_screen.dart';
+import 'order_detail_screen.dart';
 
 /// Bölüm 14 – Dijital Arşiv (Tamamlanan / Faturalanan)
 class ArchiveScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class ArchiveScreen extends StatefulWidget {
 class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _completedOrders = [];
   List<Map<String, dynamic>> _invoicedOrders = [];
+  List<Map<String, dynamic>> _archivedCustomers = [];
   bool _loading = true;
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
@@ -26,7 +28,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _load();
   }
 
@@ -45,13 +47,15 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
       
       final completed = await SupabaseService.getOrders(status: 'completed', departmentId: departmentId);
       final invoiced = await SupabaseService.getOrders(status: 'invoiced', departmentId: departmentId);
-      final archived = await SupabaseService.getOrders(status: 'archived', departmentId: departmentId);
+      final archivedOrders = await SupabaseService.getOrders(status: 'archived', departmentId: departmentId);
+      final archivedCustomers = await SupabaseService.getCustomers(status: 'archived');
       
       if (mounted) {
         setState(() {
           _completedOrders = completed;
           // Eski arşiv kayıtları varsa onları da faturalanan listesine dahil edelim.
-          _invoicedOrders = [...invoiced, ...archived]; 
+          _invoicedOrders = [...invoiced, ...archivedOrders]; 
+          _archivedCustomers = archivedCustomers;
           _loading = false;
         });
       }
@@ -64,8 +68,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
     if (_searchQuery.isEmpty) return list;
     final q = _searchQuery.toLowerCase();
     return list.where((o) {
-      final title = (o['title'] ?? '').toLowerCase();
-      final number = (o['order_number'] ?? '').toLowerCase();
+      final title = (o['title'] ?? o['name'] ?? '').toLowerCase();
+      final number = (o['order_number'] ?? o['tax_number'] ?? '').toLowerCase();
       final customer = (o['customer']?['name'] ?? '').toLowerCase();
       return title.contains(q) || number.contains(q) || customer.contains(q);
     }).toList();
@@ -75,6 +79,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final filteredCompleted = _filterList(_completedOrders);
     final filteredInvoiced = _filterList(_invoicedOrders);
+    final filteredCustomers = _filterList(_archivedCustomers);
 
     return Scaffold(
       appBar: AppBar(
@@ -115,9 +120,11 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                isScrollable: true,
                 tabs: [
                   Tab(text: tr('Tamamlanan İşler')),
                   Tab(text: tr('Faturalanan İşler')),
+                  Tab(text: tr('Arşivlenen Müşteriler')),
                 ],
               ),
             ],
@@ -133,6 +140,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 children: [
                   _buildList(filteredCompleted, tr('Tamamlanan iş bulunamadı'), 'completed'),
                   _buildList(filteredInvoiced, tr('Faturalanan iş bulunamadı'), 'invoiced'),
+                  _buildCustomerList(filteredCustomers),
                 ],
               ),
       ),
@@ -164,6 +172,80 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 },
               ),
             ),
+    );
+  }
+
+  Widget _buildCustomerList(List<Map<String, dynamic>> items) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: items.isEmpty
+          ? Center(
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.business_center_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.4)),
+                const SizedBox(height: 16),
+                Text(tr('Arşivlenen müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
+              ]),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: items.length,
+              itemBuilder: (_, i) => _CustomerArchiveCard(
+                customer: items[i],
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => CustomerDetailScreen(customerId: items[i]['id'])),
+                  ).then((_) => _load());
+                },
+              ),
+            ),
+    );
+  }
+}
+
+class _CustomerArchiveCard extends StatelessWidget {
+  final Map<String, dynamic> customer;
+  final VoidCallback onTap;
+  const _CustomerArchiveCard({required this.customer, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.textSub.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.business, color: AppTheme.textSub, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(customer['name'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(customer['city'] ?? tr('Şehir belirtilmemiş'),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+              ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: AppTheme.textSub.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              child: Text(tr('Arşivlendi'), style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }

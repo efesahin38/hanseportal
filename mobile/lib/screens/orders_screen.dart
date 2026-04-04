@@ -183,22 +183,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               confirmDismiss: (dir) async {
                                 return await showDialog(
                                   context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: Text(tr('İşi Sil?')),
-                                    content: Text(tr('Bu işi ve bağlı olan tüm plan/raporları silmek istediğinize emin misiniz?')),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
-                                    ],
-                                  ),
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text(tr('İşi Kalıcı Olarak Sil?')),
+                                      content: Text(tr('Bu iş kaydını silmek istediğinize emin misiniz? (Bağlı çalışma saatleri ve faturalar muhasebe için saklı kalacaktır.)')),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
+                                      ],
+                                    ),
                                 );
                               },
                               onDismissed: (dir) async {
                                 final orderId = order['id'];
-                                try {
-                                  await SupabaseService.deleteOrder(orderId);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş başarıyla silindi'))));
-                                } catch (e) {
+                                  try {
+                                    await SupabaseService.deleteOrder(orderId);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş başarıyla silindi'))));
+                                  } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
                                 }
                                 _load();

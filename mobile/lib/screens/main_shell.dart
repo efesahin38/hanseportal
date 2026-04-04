@@ -22,6 +22,7 @@ import 'archive_screen.dart';
 import 'role_management_screen.dart';
 import 'work_session_approval_screen.dart';
 import 'accounting_overview_screen.dart';
+import 'employee_folder_screen.dart';
 
 /// Yönetim rollerinin ana kabuk ekranı.
 /// Web'de: sabit sol sidebar + içerik alanı.
@@ -56,6 +57,8 @@ class _MainShellState extends State<MainShell> {
         _NavItem(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: tr('Muhasebe'), screen: const AccountingOverviewScreen()),
       if (appState.canPlanOperations)
         _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: tr('Mesai Onay'), screen: const WorkSessionApprovalScreen()),
+      if (appState.canManageEmployeeDocuments)
+        _NavItem(icon: Icons.folder_shared_outlined, activeIcon: Icons.folder_shared, label: tr('Mitarbeiterdokumente'), screen: const EmployeeFolderScreen()),
       if (appState.canManageArchive)
         _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: tr('Arşiv'), screen: const ArchiveScreen()),
       if (appState.canManageRoles)

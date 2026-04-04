@@ -152,8 +152,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   return await showDialog(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: Text(tr('Müşteriyi Sil?')),
-                                      content: Text(tr('Bu müşteriyi ve bağlı olan tüm verileri silmek istediğinize emin misiniz?')),
+                                      title: Text(tr('Müşteriyi Kalıcı Olarak Sil?')),
+                                      content: Text(tr('Bu müşteriyi sistemden silmek istediğinize emin misiniz? (Geçmiş işler ve faturalar saklı kalacaktır.)')),
                                       actions: [
                                         TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
                                         TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
@@ -166,7 +166,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   try {
                                     await SupabaseService.deleteCustomer(customerId);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla arşivlendi'))));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla silindi'))));
                                   } catch (e) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));

@@ -36,11 +36,13 @@ class SupabaseService {
   }
 
   static Future<void> deleteOrder(String id) async {
-    await _client.from('orders').delete().eq('id', id);
+    // SİLME İŞLEMİ: Statüyü 'passive' yapıyoruz. Bu statü tüm sistemden (Arşiv dahil) gizlenir.
+    await _client.from('orders').update({'status': 'passive'}).eq('id', id);
   }
 
   static Future<void> deleteCustomer(String id) async {
-    await _client.from('customers').delete().eq('id', id);
+    // SİLME İŞLEMİ: Statüyü 'passive' yapıyoruz. Sistemin hiçbir yerinde görünmez hale gelir.
+    await _client.from('customers').update({'status': 'passive'}).eq('id', id);
   }
 
   // ── Mevcut Kullanıcı Profili ──────────────────────────────
@@ -60,9 +62,16 @@ class SupabaseService {
 
   // ── Şirketler ─────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> getCompanies({String? status}) async {
-    final base = _client.from('companies').select();
-    final data = await (status != null ? base.eq('status', status).order('name') : base.order('name'));
-    return List<Map<String, dynamic>>.from(data);
+    var query = _client.from('companies').select();
+    if (status != null) {
+      query = query.eq('status', status) as dynamic;
+    }
+    final data = await query.order('name');
+    final list = List<Map<String, dynamic>>.from(data);
+    if (status == null) {
+      return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
+    }
+    return list;
   }
 
   static Future<Map<String, dynamic>?> getCompany(String id) async {
@@ -89,9 +98,17 @@ class SupabaseService {
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
     if (role != null) query = query.eq('role', role) as dynamic;
-    if (status != null) query = query.eq('status', status) as dynamic;
+    if (status != null) {
+      query = query.eq('status', status) as dynamic;
+    }
+    
     final data = await query.order('last_name');
-    return List<Map<String, dynamic>>.from(data);
+    final list = List<Map<String, dynamic>>.from(data);
+    // Eğer spesifik bir statü istenmediyse hem 'passive' (silinen) hem 'archived' (arşivlenen) gizlenir.
+    if (status == null) {
+       return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
+    }
+    return list;
   }
 
   static Future<Map<String, dynamic>?> getUserById(String id) async {
@@ -119,7 +136,10 @@ class SupabaseService {
       customer_contacts(*),
       customer_service_areas(service_area_id)
     ''');
-    if (status != null) query = query.eq('status', status) as dynamic;
+    if (status != null) {
+      query = query.eq('status', status) as dynamic;
+    }
+
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) {
       // Sadece bu departmana ait işlerde (orders) geçen müşterileri getir
@@ -135,7 +155,11 @@ class SupabaseService {
       query = query.inFilter('id', customerIds) as dynamic;
     }
     final data = await query.order('name');
-    return List<Map<String, dynamic>>.from(data);
+    final list = List<Map<String, dynamic>>.from(data);
+    if (status == null) {
+      return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
+    }
+    return list;
   }
 
   static Future<Map<String, dynamic>?> getCustomer(String id) async {
@@ -177,7 +201,10 @@ class SupabaseService {
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
       department:departments(id, name)
     ''');
-    if (status != null) query = query.eq('status', status) as dynamic;
+    if (status != null) {
+      query = query.eq('status', status) as dynamic;
+    }
+
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (customerId != null) query = query.eq('customer_id', customerId) as dynamic;
     if (responsibleUserId != null) query = query.eq('responsible_user_id', responsibleUserId) as dynamic;
@@ -187,7 +214,11 @@ class SupabaseService {
     if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
 
     final data = await query.order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(data);
+    final list = List<Map<String, dynamic>>.from(data);
+    if (status == null) {
+      return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
+    }
+    return list;
   }
 
   static Future<Map<String, dynamic>?> getOrder(String id) async {
@@ -815,9 +846,15 @@ class SupabaseService {
       customer:customers(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
       issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, address, iban, bic, tax_number, vat_number)
     ''');
-    if (status != null) query = query.eq('status', status) as dynamic;
+    if (status != null) {
+      query = query.eq('status', status) as dynamic;
+    }
     final data = await query.order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(data);
+    final list = List<Map<String, dynamic>>.from(data);
+    if (status == null) {
+      return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
+    }
+    return list;
   }
 
   static Future<void> upsertInvoiceDraft(Map<String, dynamic> data) async {
@@ -1249,5 +1286,108 @@ class SupabaseService {
         .eq('status', 'active')
         .order('last_name');
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  // ── Mitarbeiter Dokumenten-Verwaltung ─────────────────────
+
+  /// Çalışanın 10 standart klasörünü getirir.
+  /// Eğer klasörler yoksa önce oluşturur (lazy init).
+  static Future<List<Map<String, dynamic>>> getEmployeeFolders(String employeeId) async {
+    // Önce mevcut klasörleri getir
+    var data = await _client
+        .from('employee_document_folders')
+        .select()
+        .eq('employee_id', employeeId)
+        .order('sort_order');
+
+    var list = List<Map<String, dynamic>>.from(data);
+
+    // Eğer klasörler yoksa SQL fonksiyonunu çağır
+    if (list.isEmpty) {
+      try {
+        await _client.rpc('create_employee_standard_folders', params: {
+          'p_employee_id': employeeId,
+        });
+        // Tekrar getir
+        data = await _client
+            .from('employee_document_folders')
+            .select()
+            .eq('employee_id', employeeId)
+            .order('sort_order');
+        list = List<Map<String, dynamic>>.from(data);
+      } catch (e) {
+        debugPrint('[EmpFolders] Klasör oluşturma hatası: $e');
+      }
+    }
+    return list;
+  }
+
+  /// Belirli bir klasördeki belgeleri getirir (uploader bilgisi dahil)
+  static Future<List<Map<String, dynamic>>> getEmployeeDocuments(String folderId) async {
+    final data = await _client
+        .from('employee_documents')
+        .select('''
+          *,
+          uploaded_by_user:users!employee_documents_uploaded_by_fkey(first_name, last_name)
+        ''')
+        .eq('folder_id', folderId)
+        .order('uploaded_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Bir çalışanın her klasöründeki belge sayısını döndürür
+  /// { folderId: count } şeklinde map döner
+  static Future<Map<String, int>> getEmployeeDocumentCounts(String employeeId) async {
+    final data = await _client
+        .from('employee_documents')
+        .select('folder_id')
+        .eq('employee_id', employeeId);
+
+    final Map<String, int> counts = {};
+    for (final row in (data as List)) {
+      final fId = row['folder_id'].toString();
+      counts[fId] = (counts[fId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// Yeni çalışan belgesi kaydı oluşturur
+  static Future<void> createEmployeeDocument(Map<String, dynamic> data) async {
+    await _client.from('employee_documents').insert(data);
+  }
+
+  /// Çalışan belgesini siler (storage + db)
+  static Future<void> deleteEmployeeDocument(String id, String fileUrl) async {
+    try {
+      if (fileUrl.contains('/employee-documents/')) {
+        final parts = fileUrl.split('/employee-documents/');
+        if (parts.length > 1) {
+          final path = Uri.decodeFull(parts.last.split('?').first);
+          await _client.storage.from('employee-documents').remove([path]);
+        }
+      }
+    } catch (e) {
+      debugPrint('Employee doc storage remove error: $e');
+    }
+    await _client.from('employee_documents').delete().eq('id', id);
+  }
+
+  /// Çalışan belgesini Supabase Storage'a yükler ve URL döner
+  static Future<String> uploadEmployeeDocument(String fileName, dynamic fileBytes) async {
+    try {
+      final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final path = '${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
+
+      await _client.storage.from('employee-documents').uploadBinary(
+        path,
+        fileBytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+
+      return _client.storage.from('employee-documents').getPublicUrl(path);
+    } catch (e) {
+      debugPrint('Employee doc upload error: $e');
+      throw Exception('Datei konnte nicht hochgeladen werden: $e');
+    }
   }
 }

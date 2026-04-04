@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
+import '../services/localization_service.dart';
 import 'field_my_tasks_screen.dart';
 import 'notifications_screen.dart';
+import 'my_documents_screen.dart';
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
 class FieldWorkerShell extends StatefulWidget {
@@ -18,22 +20,28 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
 
   final _screens = const [
     FieldMyTasksScreen(),
+    MyDocumentsScreen(),
     NotificationsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    final titles = [
+      tr('Meine Aufgaben'),
+      tr('Meine Dokumente'),
+      tr('Benachrichtigungen'),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedIndex == 0 ? 'Görevlerim' : 'Bildirimler'),
+        title: Text(titles[_selectedIndex]),
         actions: [
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => setState(() => _selectedIndex = 1),
+                onPressed: () => setState(() => _selectedIndex = 2),
               ),
               if (appState.unreadNotifications > 0)
                 Positioned(
@@ -98,7 +106,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
             ),
             ListTile(
               leading: Icon(_selectedIndex == 0 ? Icons.task : Icons.task_outlined, color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textSub),
-              title: Text('Görevlerim', style: TextStyle(color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 0 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              title: Text(tr('Meine Aufgaben'), style: TextStyle(color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 0 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 0,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -107,8 +115,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 1 ? Icons.notifications : Icons.notifications_outlined, color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textSub),
-              title: Text('Bildirimler', style: TextStyle(color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 1 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 1 ? Icons.folder_shared : Icons.folder_shared_outlined, color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Meine Dokumente'), style: TextStyle(color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 1 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 1,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -116,11 +124,21 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: Icon(_selectedIndex == 2 ? Icons.notifications : Icons.notifications_outlined, color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Benachrichtigungen'), style: TextStyle(color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 2 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              selected: _selectedIndex == 2,
+              selectedTileColor: AppTheme.primary.withOpacity(0.1),
+              onTap: () {
+                setState(() => _selectedIndex = 2);
+                Navigator.pop(context);
+              },
+            ),
             const Spacer(),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.error),
-              title: const Text('Çıkış Yap', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+              title: Text(tr('Abmelden'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
               onTap: () async {
                 Navigator.pop(context);
                 await context.read<AppState>().signOut();

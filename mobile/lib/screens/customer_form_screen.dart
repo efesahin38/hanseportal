@@ -307,10 +307,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       value: _status,
       decoration: InputDecoration(labelText: tr('Müşteri Durumu')),
       items: [
-        DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')} (Active)', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')} (Passive)', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')} (Potential)', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')} (Archived)', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')}', style: const TextStyle(fontFamily: 'Inter'))),
       ],
       onChanged: canEditStatus ? (v) => setState(() => _status = v!) : null,
     );
