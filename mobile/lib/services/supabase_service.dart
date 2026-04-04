@@ -1359,11 +1359,11 @@ class SupabaseService {
   /// Çalışan belgesini siler (storage + db)
   static Future<void> deleteEmployeeDocument(String id, String fileUrl) async {
     try {
-      if (fileUrl.contains('/EMPLOYEE-DOCUMENTS/')) {
-        final parts = fileUrl.split('/EMPLOYEE-DOCUMENTS/');
+      if (fileUrl.contains('/employee-documents/')) {
+        final parts = fileUrl.split('/employee-documents/');
         if (parts.length > 1) {
           final path = Uri.decodeFull(parts.last.split('?').first);
-          await _client.storage.from('EMPLOYEE-DOCUMENTS').remove([path]);
+          await _client.storage.from('employee-documents').remove([path]);
         }
       }
     } catch (e) {
@@ -1378,13 +1378,13 @@ class SupabaseService {
       final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
       final path = '${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
 
-      await _client.storage.from('EMPLOYEE-DOCUMENTS').uploadBinary(
+      await _client.storage.from('employee-documents').uploadBinary(
         path,
         fileBytes,
         fileOptions: const FileOptions(upsert: true),
       );
 
-      return _client.storage.from('EMPLOYEE-DOCUMENTS').getPublicUrl(path);
+      return _client.storage.from('employee-documents').getPublicUrl(path);
     } catch (e) {
       debugPrint('Employee doc upload error: $e');
       throw Exception('Datei konnte nicht hochgeladen werden: $e');
