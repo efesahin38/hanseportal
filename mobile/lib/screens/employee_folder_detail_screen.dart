@@ -265,7 +265,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       itemCount: _docs.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _DocumentItem(
@@ -423,85 +423,77 @@ class _DocumentItemState extends State<_DocumentItem> {
 
     return Card(
       elevation: 0,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppTheme.divider),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: AppTheme.divider.withOpacity(0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
             // Dosya ikonu
             Container(
-              width: 46, height: 46,
+              width: 40, height: 40,
               decoration: BoxDecoration(
-                color: _mimeColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: _mimeColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(_mimeIcon, color: _mimeColor, size: 22),
+              child: Icon(_mimeIcon, color: _mimeColor, size: 20),
             ),
             const SizedBox(width: 12),
-
             // Başlık + meta
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.doc['title'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter', color: AppTheme.textMain),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Text(
-                    widget.doc['file_name'] ?? '',
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter'),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Row(children: [
                     if (uploaderName.isNotEmpty) ...[
-                      const Icon(Icons.person_outline, size: 11, color: AppTheme.textSub),
+                      const Icon(Icons.person_outline, size: 10, color: AppTheme.textSub),
                       const SizedBox(width: 3),
-                      Text(uploaderName, style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(uploaderName, style: const TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter')),
                       const SizedBox(width: 8),
                     ],
                     if (dateStr.isNotEmpty) ...[
-                      const Icon(Icons.calendar_today_outlined, size: 11, color: AppTheme.textSub),
+                      const Icon(Icons.calendar_today_outlined, size: 10, color: AppTheme.textSub),
                       const SizedBox(width: 3),
-                      Text(dateStr, style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(dateStr, style: const TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter')),
                     ],
                   ]),
-                  if (widget.doc['notes'] != null && (widget.doc['notes'] as String).isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(widget.doc['notes'], style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter', fontStyle: FontStyle.italic),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
                 ],
               ),
             ),
-
             // Aksiyonlar
             if (_loading)
-              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
             else
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.open_in_browser_outlined, size: 20, color: AppTheme.primary),
-                    tooltip: tr('Öffnen / Anzeigen'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    icon: const Icon(Icons.open_in_browser_outlined, size: 18, color: AppTheme.primary),
+                    tooltip: tr('Öffnen'),
                     onPressed: _open,
                   ),
                   if (widget.canDelete)
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.error),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
                       tooltip: tr('Löschen'),
                       onPressed: _delete,
-                    ),
-                ],
-              ),
-          ],
-        ),
+                  ),
+              ],
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

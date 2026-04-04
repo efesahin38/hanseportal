@@ -112,22 +112,20 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
   }
 
   Widget _buildWideLayout() {
-    return Scaffold(
-      body: Row(
-        children: [
-          // Sol panel – Çalışan listesi
-          Container(
-            width: 300,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(right: BorderSide(color: AppTheme.divider)),
-            ),
-            child: _buildEmployeeList(),
+    return Row(
+      children: [
+        // Sol panel – Çalışan listesi
+        Container(
+          width: 300,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(right: BorderSide(color: AppTheme.divider)),
           ),
-          // Sağ panel – Klasörler
-          Expanded(child: _buildFolderPanel()),
-        ],
-      ),
+          child: _buildEmployeeList(),
+        ),
+        // Sağ panel – Klasörler
+        Expanded(child: _buildFolderPanel()),
+      ],
     );
   }
 
@@ -289,11 +287,11 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: kIsWeb && WebUtils.isWide(context) ? 3 : 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.15,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: kIsWeb && WebUtils.isWide(context) ? 4 : 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 1.3,
                       ),
                       itemCount: _folders.length,
                       itemBuilder: (_, i) {
@@ -363,7 +361,7 @@ class _FolderCard extends StatelessWidget {
           border: Border.all(color: color.withOpacity(0.15)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -371,23 +369,23 @@ class _FolderCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, color: color, size: 24),
+                    child: Icon(icon, color: color, size: 20),
                   ),
                   if (docCount > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: color,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '$docCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                       ),
                     ),
                 ],
@@ -395,16 +393,16 @@ class _FolderCard extends StatelessWidget {
               const Spacer(),
               Text(
                 folder['folder_name'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, fontFamily: 'Inter', color: AppTheme.textMain),
-                maxLines: 2,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, fontFamily: 'Inter', color: AppTheme.textMain),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 docCount == 0
                     ? tr('Keine Dokumente')
                     : '$docCount ${tr('Dokument(e)')}',
-                style: TextStyle(fontSize: 11, color: AppTheme.textSub.withOpacity(0.8), fontFamily: 'Inter'),
+                style: TextStyle(fontSize: 9, color: AppTheme.textSub.withOpacity(0.8), fontFamily: 'Inter'),
               ),
             ],
           ),

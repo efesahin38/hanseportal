@@ -107,6 +107,67 @@ class _MyDocumentsScreenState extends State<MyDocumentsScreen> {
 
   Widget _buildFolderList() {
     final appState = context.watch<AppState>();
+    
+    // Eğer webtesek ve shell içindeysen başlık gösterme (MainShell zaten gösteriyor)
+    final bool showHeader = !kIsWeb;
+
+    Widget content = WebContentWrapper(
+      padding: const EdgeInsets.all(16),
+      child: _folders.isEmpty
+          ? Center(
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.folder_off_outlined, size: 72, color: AppTheme.textSub.withOpacity(0.3)),
+                const SizedBox(height: 16),
+                Text(tr('Keine Ordner vorhanden'),
+                    style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 15)),
+                const SizedBox(height: 8),
+                Text(tr('Bitte wenden Sie sich an Ihren Vorgesetzten.'),
+                    style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13)),
+              ]),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showHeader) ...[
+                  Text(tr('Meine Dokumentordner'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter', color: AppTheme.textMain)),
+                  const SizedBox(height: 4),
+                  Text(tr('Tippen Sie auf einen Ordner, um die Dokumente anzuzeigen.'),
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                  const SizedBox(height: 16),
+                ],
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: kIsWeb && WebUtils.isWide(context) ? 6 : 2, // Web'de 6 sütun
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 1.3, // Daha basık, zarif kartlar
+                    ),
+                    itemCount: _folders.length,
+                    itemBuilder: (_, i) {
+                      final folder = _folders[i];
+                      final key = folder['folder_key'] as String;
+                      final color = _folderColors[key] ?? AppTheme.primary;
+                      final icon = _folderIcons[key] ?? Icons.folder_outlined;
+                      final count = _docCounts[folder['id'].toString()] ?? 0;
+
+                      return _MyFolderCard(
+                        folder: folder,
+                        color: color,
+                        icon: icon,
+                        docCount: count,
+                        onTap: () => _openFolder(folder),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+    );
+
+    if (!showHeader) return content;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(tr('Meine Dokumente')),
@@ -129,58 +190,7 @@ class _MyDocumentsScreenState extends State<MyDocumentsScreen> {
           ),
         ),
       ),
-      body: WebContentWrapper(
-        padding: const EdgeInsets.all(16),
-        child: _folders.isEmpty
-            ? Center(
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.folder_off_outlined, size: 72, color: AppTheme.textSub.withOpacity(0.3)),
-                  const SizedBox(height: 16),
-                  Text(tr('Keine Ordner vorhanden'),
-                      style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 15)),
-                  const SizedBox(height: 8),
-                  Text(tr('Bitte wenden Sie sich an Ihren Vorgesetzten.'),
-                      style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13)),
-                ]),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(tr('Meine Dokumentordner'),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter', color: AppTheme.textMain)),
-                  const SizedBox(height: 4),
-                  Text(tr('Tippen Sie auf einen Ordner, um die Dokumente anzuzeigen.'),
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: kIsWeb && WebUtils.isWide(context) ? 4 : 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.1,
-                      ),
-                      itemCount: _folders.length,
-                      itemBuilder: (_, i) {
-                        final folder = _folders[i];
-                        final key = folder['folder_key'] as String;
-                        final color = _folderColors[key] ?? AppTheme.primary;
-                        final icon = _folderIcons[key] ?? Icons.folder_outlined;
-                        final count = _docCounts[folder['id'].toString()] ?? 0;
-
-                        return _MyFolderCard(
-                          folder: folder,
-                          color: color,
-                          icon: icon,
-                          docCount: count,
-                          onTap: () => _openFolder(folder),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-      ),
+      body: content,
     );
   }
 
@@ -224,7 +234,7 @@ class _MyDocumentsScreenState extends State<MyDocumentsScreen> {
                 : RefreshIndicator(
                     onRefresh: () => _openFolder(folder),
                     child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       itemCount: _docs.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _MyDocumentItem(doc: _docs[i]),
@@ -263,7 +273,7 @@ class _MyFolderCard extends StatelessWidget {
           border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -271,33 +281,33 @@ class _MyFolderCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(9),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, color: color, size: 22),
+                    child: Icon(icon, color: color, size: 20),
                   ),
                   if (docCount > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-                      child: Text('$docCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+                      child: Text('$docCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                     ),
                 ],
               ),
               const Spacer(),
               Text(folder['folder_name'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, fontFamily: 'Inter', color: AppTheme.textMain),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 3),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, fontFamily: 'Inter', color: AppTheme.textMain),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
               Row(children: [
                 Icon(docCount > 0 ? Icons.description_outlined : Icons.folder_open_outlined,
-                    size: 11, color: AppTheme.textSub),
+                    size: 10, color: AppTheme.textSub),
                 const SizedBox(width: 3),
                 Text(
                   docCount == 0 ? tr('Leer') : '$docCount ${tr('Dokument(e)')}',
-                  style: TextStyle(fontSize: 10, color: AppTheme.textSub.withOpacity(0.8), fontFamily: 'Inter'),
+                  style: TextStyle(fontSize: 9, color: AppTheme.textSub.withOpacity(0.8), fontFamily: 'Inter'),
                 ),
               ]),
             ],
@@ -389,68 +399,65 @@ class _MyDocumentItemState extends State<_MyDocumentItem> {
 
     return Card(
       elevation: 0,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppTheme.divider),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: AppTheme.divider.withOpacity(0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Row(
           children: [
             Container(
-              width: 44, height: 44,
+              width: 36, height: 36,
               decoration: BoxDecoration(
-                color: _mimeColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: _mimeColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(_mimeIcon, color: _mimeColor, size: 22),
+              child: Icon(_mimeIcon, color: _mimeColor, size: 18),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.doc['title'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter'),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'Inter'),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   Row(children: [
                     if (dateStr.isNotEmpty) ...[
-                      const Icon(Icons.calendar_today_outlined, size: 10, color: AppTheme.textSub),
+                      const Icon(Icons.calendar_today_outlined, size: 9, color: AppTheme.textSub),
                       const SizedBox(width: 3),
-                      Text(dateStr, style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      Text(dateStr, style: const TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter')),
                     ],
                     if (sizeKb != null) ...[
-                      const SizedBox(width: 8),
-                      Text('$sizeKb KB', style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                      const SizedBox(width: 6),
+                      Text('$sizeKb KB', style: const TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter')),
                     ],
                   ]),
                 ],
               ),
             ),
             if (_loading)
-              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
             else
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Görüntüle
                   IconButton(
-                    icon: const Icon(Icons.visibility_outlined, size: 20, color: AppTheme.primary),
-                    tooltip: tr('Öffnen / Anzeigen'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    icon: const Icon(Icons.visibility_outlined, size: 18, color: AppTheme.primary),
+                    tooltip: tr('Öffnen'),
                     onPressed: _handleOpen,
                   ),
-                  // İndir
                   IconButton(
-                    icon: const Icon(Icons.download_outlined, size: 20, color: AppTheme.success),
-                    tooltip: tr('Herunterladen'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    icon: const Icon(Icons.download_outlined, size: 18, color: AppTheme.success),
+                    tooltip: tr('Laden'),
                     onPressed: _handleDownload,
-                  ),
-                  // Paylaş
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, size: 20, color: AppTheme.textSub),
-                    tooltip: tr('Teilen'),
-                    onPressed: _handleShare,
                   ),
                 ],
               ),
