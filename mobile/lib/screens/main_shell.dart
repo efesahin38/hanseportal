@@ -23,6 +23,9 @@ import 'role_management_screen.dart';
 import 'work_session_approval_screen.dart';
 import 'accounting_overview_screen.dart';
 import 'employee_folder_screen.dart';
+import 'stammdaten_screen.dart';
+import 'verwaltung_screen.dart';
+import 'chat_screen.dart';
 
 /// Yönetim rollerinin ana kabuk ekranı.
 /// Web'de: sabit sol sidebar + içerik alanı.
@@ -61,8 +64,13 @@ class _MainShellState extends State<MainShell> {
         _NavItem(icon: Icons.folder_shared_outlined, activeIcon: Icons.folder_shared, label: tr('Mitarbeiterdokumente'), screen: const EmployeeFolderScreen()),
       if (appState.canManageArchive)
         _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: tr('Arşiv'), screen: const ArchiveScreen()),
+      if (appState.canManageCompanies)
+        _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
+      if (appState.canManageDocuments)
+        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Verwaltung'), screen: const VerwaltungScreen()),
+      _NavItem(icon: Icons.chat_outlined, activeIcon: Icons.chat, label: tr('Chatten'), screen: const ChatScreen()),
       if (appState.canManageRoles)
-        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Yetki'), screen: const RoleManagementScreen()),
+        _NavItem(icon: Icons.security_outlined, activeIcon: Icons.security, label: tr('Yetki'), screen: const RoleManagementScreen()),
     ];
   }
 

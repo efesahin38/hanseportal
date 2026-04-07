@@ -3,6 +3,8 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 
+import '../services/localization_service.dart';
+
 /// Şirket Oluşturma / Düzenleme Formu (Bölüm 1)
 class CompanyFormScreen extends StatefulWidget {
   final Map<String, dynamic>? company; // null = yeni
@@ -33,6 +35,13 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
   final _bic = TextEditingController();
   final _serviceDesc = TextEditingController();
   final _notes = TextEditingController();
+  final _street = TextEditingController();
+  final _houseNumber = TextEditingController();
+  final _ceoFirstName = TextEditingController();
+  final _ceoLastName = TextEditingController();
+  final _ceoAddress = TextEditingController();
+  final _ceoPhone = TextEditingController();
+  final _ceoEmail = TextEditingController();
 
   String _companyType = 'GmbH';
   String _status = 'active';
@@ -66,6 +75,13 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
     _bic.text = c['bic'] ?? '';
     _serviceDesc.text = c['service_description'] ?? '';
     _notes.text = c['notes'] ?? '';
+    _street.text = c['street'] ?? '';
+    _houseNumber.text = c['house_number'] ?? '';
+    _ceoFirstName.text = c['ceo_first_name'] ?? '';
+    _ceoLastName.text = c['ceo_last_name'] ?? '';
+    _ceoAddress.text = c['ceo_address'] ?? '';
+    _ceoPhone.text = c['ceo_phone'] ?? '';
+    _ceoEmail.text = c['ceo_email'] ?? '';
     _companyType = c['company_type'] ?? 'GmbH';
     _status = c['status'] ?? 'active';
     _relationshipType = c['relation_type'] ?? 'subsidiary';
@@ -98,6 +114,13 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
         'company_type': _companyType,
         'status': _status,
         'relation_type': _relationshipType,
+        'street': _street.text.trim(),
+        'house_number': _houseNumber.text.trim(),
+        'ceo_first_name': _ceoFirstName.text.trim(),
+        'ceo_last_name': _ceoLastName.text.trim(),
+        'ceo_address': _ceoAddress.text.trim(),
+        'ceo_phone': _ceoPhone.text.trim(),
+        'ceo_email': _ceoEmail.text.trim(),
       };
       await SupabaseService.upsertCompany(data);
       if (mounted) Navigator.pop(context, true);
@@ -113,7 +136,8 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
   void dispose() {
     for (final c in [_name, _shortName, _address, _postalCode, _city, _phone,
       _email, _website, _taxNumber, _vatNumber, _tradeRegNumber, _tradeRegCourt,
-      _bankName, _iban, _bic, _serviceDesc, _notes]) {
+      _bankName, _iban, _bic, _serviceDesc, _notes, _street, _houseNumber,
+      _ceoFirstName, _ceoLastName, _ceoAddress, _ceoPhone, _ceoEmail]) {
       c.dispose();
     }
     super.dispose();
@@ -123,30 +147,30 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
   Widget build(BuildContext context) {
     final isEdit = widget.company != null;
     return Scaffold(
-      appBar: AppBar(title: Text(isEdit ? 'Şirketi Düzenle' : 'Yeni Şirket')),
+      appBar: AppBar(title: Text(isEdit ? tr('Firma bearbeiten') : tr('Neue Firma'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _section('Temel Bilgiler'),
-              _field('Ticari Unvan *', _name, required: true),
-              _field('Kısa İsim / Sistem Adı', _shortName),
+              _section(tr('Grunddaten')),
+              _field(tr('Handelsname *'), _name, required: true),
+              _field(tr('Kurzname / Systemname'), _shortName),
               Row(children: [
                 Expanded(child: DropdownButtonFormField<String>(
                   value: _companyType,
-                  decoration: const InputDecoration(labelText: 'Şirket Türü'),
+                  decoration: InputDecoration(labelText: tr('Unternehmenstyp')),
                   items: _companyTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontFamily: 'Inter')))).toList(),
                   onChanged: (v) => setState(() => _companyType = v!),
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: DropdownButtonFormField<String>(
                   value: _status,
-                  decoration: const InputDecoration(labelText: 'Durum'),
-                  items: const [
-                    DropdownMenuItem(value: 'active', child: Text('Aktif', style: TextStyle(fontFamily: 'Inter'))),
-                    DropdownMenuItem(value: 'inactive', child: Text('Pasif', style: TextStyle(fontFamily: 'Inter'))),
+                  decoration: InputDecoration(labelText: tr('Status')),
+                  items: [
+                    DropdownMenuItem(value: 'active', child: Text(tr('Aktiv'), style: const TextStyle(fontFamily: 'Inter'))),
+                    DropdownMenuItem(value: 'inactive', child: Text(tr('Inaktiv'), style: const TextStyle(fontFamily: 'Inter'))),
                   ],
                   onChanged: (v) => setState(() => _status = v!),
                 )),
@@ -154,68 +178,81 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _relationshipType,
-                decoration: const InputDecoration(labelText: 'Grup İlişkisi'),
+                decoration: InputDecoration(labelText: tr('Gruppenbeziehung')),
                 items: [
-                  const DropdownMenuItem(value: 'parent', child: Text('Ana Şirket', style: TextStyle(fontFamily: 'Inter'))),
-                  const DropdownMenuItem(value: 'subsidiary', child: Text('Bağlı Şirket', style: TextStyle(fontFamily: 'Inter'))),
-                  const DropdownMenuItem(value: 'affiliate', child: Text('İlişkili Şirket', style: TextStyle(fontFamily: 'Inter'))),
+                  DropdownMenuItem(value: 'parent', child: Text(tr('Muttergesellschaft'), style: const TextStyle(fontFamily: 'Inter'))),
+                  DropdownMenuItem(value: 'subsidiary', child: Text(tr('Tochtergesellschaft'), style: const TextStyle(fontFamily: 'Inter'))),
+                  DropdownMenuItem(value: 'affiliate', child: Text(tr('Beteiligung'), style: const TextStyle(fontFamily: 'Inter'))),
                 ],
                 onChanged: (v) => setState(() => _relationshipType = v!),
               ),
               const SizedBox(height: 20),
   
-              _section('Adres'),
-              _field('Adres', _address, maxLines: 2),
+              _section(tr('Adresse')),
               Row(children: [
-                Expanded(flex: 2, child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextFormField(controller: _postalCode, decoration: const InputDecoration(labelText: 'PLZ')),
-                )),
+                Expanded(flex: 3, child: _field(tr('Straße'), _street)),
                 const SizedBox(width: 12),
-                Expanded(flex: 3, child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextFormField(controller: _city, decoration: const InputDecoration(labelText: 'Şehir')),
-                )),
+                Expanded(flex: 1, child: _field(tr('Hausnr.'), _houseNumber)),
+              ]),
+              _field(tr('Adresse (Zusatz)'), _address, maxLines: 2),
+              Row(children: [
+                Expanded(flex: 2, child: Padding(padding: const EdgeInsets.only(bottom: 12), child: TextFormField(controller: _postalCode, decoration: InputDecoration(labelText: tr('PLZ'))))),
+                const SizedBox(width: 12),
+                Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(bottom: 12), child: TextFormField(controller: _city, decoration: InputDecoration(labelText: tr('Stadt'))))),
               ]),
               const SizedBox(height: 8),
-  
-              _section('İletişim'),
+
+              _section(tr('Geschäftsführer')),
               Row(children: [
-                Expanded(child: _field('Telefon', _phone)),
+                Expanded(child: _field(tr('Vorname'), _ceoFirstName)),
                 const SizedBox(width: 12),
-                Expanded(child: _field('E-posta', _email)),
+                Expanded(child: _field(tr('Nachname'), _ceoLastName)),
               ]),
-              _field('Web Sitesi', _website),
-              const SizedBox(height: 8),
-  
-              _section('Vergi & Hukuki Bilgiler'),
+              _field(tr('Adresse'), _ceoAddress),
               Row(children: [
-                Expanded(child: _field('Vergi No', _taxNumber)),
+                Expanded(child: _field(tr('Telefon'), _ceoPhone)),
                 const SizedBox(width: 12),
-                Expanded(child: _field('USt-IdNr.', _vatNumber)),
-              ]),
-              Row(children: [
-                Expanded(child: _field('Ticaret Tescil No', _tradeRegNumber)),
-                const SizedBox(width: 12),
-                Expanded(child: _field('Tescil Mahkemesi', _tradeRegCourt)),
+                Expanded(child: _field(tr('E-Mail'), _ceoEmail)),
               ]),
               const SizedBox(height: 8),
-  
-              _section('Banka Bilgileri'),
-              _field('Banka Adı', _bankName),
-              _field('IBAN', _iban),
-              _field('BIC / SWIFT', _bic),
+
+              _section(tr('Kontakt')),
+              Row(children: [
+                Expanded(child: _field(tr('Telefon'), _phone)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(tr('E-Mail'), _email)),
+              ]),
+              _field(tr('Website'), _website),
               const SizedBox(height: 8),
-  
-              _section('Faaliyet & Notlar'),
-              _field('Hizmet Açıklaması', _serviceDesc, maxLines: 3),
-              _field('Notlar', _notes, maxLines: 3),
+
+              _section(tr('Steuer- & Rechtliche Daten')),
+              Row(children: [
+                Expanded(child: _field(tr('Steuernummer'), _taxNumber)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(tr('USt-IdNr.'), _vatNumber)),
+              ]),
+              Row(children: [
+                Expanded(child: _field(tr('Handelsregisternummer'), _tradeRegNumber)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(tr('Registergericht'), _tradeRegCourt)),
+              ]),
+              const SizedBox(height: 8),
+
+              _section(tr('Bankdaten')),
+              _field(tr('Bankname'), _bankName),
+              _field(tr('IBAN'), _iban),
+              _field(tr('BIC / SWIFT'), _bic),
+              const SizedBox(height: 8),
+
+              _section(tr('Geschäftstätigkeit & Notizen')),
+              _field(tr('Leistungsbeschreibung'), _serviceDesc, maxLines: 3),
+              _field(tr('Notizen'), _notes, maxLines: 3),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(isEdit ? 'Kaydet' : 'Şirket Oluştur'),
+                    : Text(isEdit ? tr('Speichern') : tr('Firma erstellen')),
               ),
               const SizedBox(height: 24),
             ],
@@ -236,7 +273,7 @@ class _CompanyFormScreenState extends State<CompanyFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Pflichtfeld') : null : null,
     ),
   );
 }

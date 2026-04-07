@@ -25,10 +25,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _detailedDesc = TextEditingController();
   final _materialNotes = TextEditingController();
   final _notes = TextEditingController();
+  final _streetCtrl = TextEditingController();
+  final _houseNumberCtrl = TextEditingController();
+  final _plzCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _personnelNeedCtrl = TextEditingController();
+  final _materialNeedCtrl = TextEditingController();
+  final _netAmountCtrl = TextEditingController();
 
   String? _selectedCustomerId;
   String? _selectedServiceAreaId;
   String _priority = 'normal';
+  String _orderType = 'Standardauftrag';
+  String _negotiationType = 'Pauschal';
   double _minBillableHours = 4.0;
   DateTime? _startDate;
   DateTime? _endDate;
@@ -85,6 +94,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _detailedDesc.text = order['detailed_description'] ?? '';
         _materialNotes.text = order['material_notes'] ?? '';
         _notes.text = order['notes'] ?? '';
+        _streetCtrl.text = order['street'] ?? '';
+        _houseNumberCtrl.text = order['house_number'] ?? '';
+        _plzCtrl.text = order['postal_code'] ?? '';
+        _cityCtrl.text = order['city'] ?? '';
+        _personnelNeedCtrl.text = order['personnel_need']?.toString() ?? '';
+        _materialNeedCtrl.text = order['material_need'] ?? '';
+        _netAmountCtrl.text = order['net_amount']?.toString() ?? '';
+        _orderType = order['order_type'] ?? 'Standardauftrag';
+        _negotiationType = order['negotiation_type'] ?? 'Pauschal';
         _selectedCustomerId = order['customer_id'];
         _selectedServiceAreaId = order['service_area_id'];
         _priority = order['priority'] ?? 'normal';
@@ -145,6 +163,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         'customer_id': _selectedCustomerId,
         'service_area_id': _selectedServiceAreaId,
         'priority': _priority,
+        'order_type': _orderType,
+        'negotiation_type': _negotiationType,
+        'street': _streetCtrl.text.trim(),
+        'house_number': _houseNumberCtrl.text.trim(),
+        'postal_code': _plzCtrl.text.trim(),
+        'city': _cityCtrl.text.trim(),
+        'personnel_need': int.tryParse(_personnelNeedCtrl.text),
+        'material_need': _materialNeedCtrl.text.trim(),
+        'net_amount': double.tryParse(_netAmountCtrl.text),
         'minimum_billable_hours': _minBillableHours,
         'status': 'draft',
         if (_startDate != null) 'planned_start_date': _startDate!.toIso8601String().split('T')[0],
@@ -249,8 +276,37 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
                   _section(tr('Saha & Operasyon Detayları')),
                   _textField(tr('Saha Adresi'), _siteAddress),
+                  Wrap(spacing: 16, runSpacing: 0, children: [
+                    SizedBox(width: fieldWidth, child: _textField(tr('Straße'), _streetCtrl)),
+                    SizedBox(width: fieldWidth * 0.4, child: _textField(tr('Hausnr.'), _houseNumberCtrl)),
+                    SizedBox(width: fieldWidth * 0.35, child: _textField(tr('PLZ'), _plzCtrl)),
+                    SizedBox(width: fieldWidth * 0.6, child: _textField(tr('Ort'), _cityCtrl)),
+                  ]),
                   _textField(tr('Detaylı İş Açıklaması'), _detailedDesc, maxLines: 4),
                   _textField(tr('Malzeme/Ekipman Gereksinimi'), _materialNotes, maxLines: 3),
+                  const SizedBox(height: 16),
+
+                  _section(tr('Auftragsart & Verhandlung')),
+                  Wrap(spacing: 16, runSpacing: 12, children: [
+                    SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
+                      value: _orderType,
+                      decoration: InputDecoration(labelText: tr('Auftragsart')),
+                      items: ['Standardauftrag', 'Rahmenvertrag', 'Einzelauftrag', 'Notfall', 'Sonderauftrag']
+                          .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (v) => setState(() => _orderType = v!),
+                    )),
+                    SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
+                      value: _negotiationType,
+                      decoration: InputDecoration(labelText: tr('Verhandlungsart')),
+                      items: ['Pauschal', 'Stundenverrechnungssatz', 'Summe netto']
+                          .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (v) => setState(() => _negotiationType = v!),
+                    )),
+                    if (_negotiationType == 'Summe netto')
+                      SizedBox(width: fieldWidth, child: _textField(tr('Summe netto (€)'), _netAmountCtrl)),
+                    SizedBox(width: fieldWidth, child: _textField(tr('Personalbedarf (Anzahl)'), _personnelNeedCtrl)),
+                    SizedBox(width: fieldWidth, child: _textField(tr('Materialbedarf'), _materialNeedCtrl, maxLines: 2)),
+                  ]),
                   const SizedBox(height: 16),
   
                   _section(tr('Planlama & Öncelik')),

@@ -1390,4 +1390,175 @@ class SupabaseService {
       throw Exception('Datei konnte nicht hochgeladen werden: $e');
     }
   }
+
+  // ── Vertragsmanagement ────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getContracts({String? companyId}) async {
+    var query = _client.from('contracts').select();
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    final data = await query.order('end_date');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertContract(Map<String, dynamic> data) async {
+    await _client.from('contracts').upsert(data);
+  }
+
+  static Future<void> deleteContract(String id) async {
+    await _client.from('contracts').delete().eq('id', id);
+  }
+
+  // ── Fuhrpark ──────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getVehicles({String? companyId}) async {
+    var query = _client.from('vehicles').select();
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    final data = await query.order('license_plate');
+    final list = List<Map<String, dynamic>>.from(data);
+    return list.where((v) => v['status'] != 'deleted').toList();
+  }
+
+  static Future<void> upsertVehicle(Map<String, dynamic> data) async {
+    await _client.from('vehicles').upsert(data);
+  }
+
+  static Future<void> deleteVehicle(String id) async {
+    await _client.from('vehicles').update({'status': 'deleted'}).eq('id', id);
+  }
+
+  // ── Company Bank Accounts ─────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getCompanyBankAccounts(String companyId) async {
+    final data = await _client.from('company_bank_accounts').select().eq('company_id', companyId).order('created_at');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertCompanyBankAccount(Map<String, dynamic> data) async {
+    await _client.from('company_bank_accounts').upsert(data);
+  }
+
+  static Future<void> deleteCompanyBankAccount(String id) async {
+    await _client.from('company_bank_accounts').delete().eq('id', id);
+  }
+
+  // ── PQ Dokumente ──────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getPqDocuments({String? companyId, String? category}) async {
+    var query = _client.from('pq_documents').select('*, uploaded_by_user:users!pq_documents_uploaded_by_fkey(first_name, last_name)');
+    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (category != null) query = query.eq('category', category) as dynamic;
+    final data = await query.order('category').order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createPqDocument(Map<String, dynamic> data) async {
+    await _client.from('pq_documents').insert(data);
+  }
+
+  static Future<void> deletePqDocument(String id, String fileUrl) async {
+    try {
+      if (fileUrl.contains('/pq-documents/')) {
+        final parts = fileUrl.split('/pq-documents/');
+        if (parts.length > 1) {
+          final path = Uri.decodeFull(parts.last.split('?').first);
+          await _client.storage.from('pq-documents').remove([path]);
+        }
+      }
+    } catch (e) {
+      debugPrint('PQ doc storage remove error: $e');
+    }
+    await _client.from('pq_documents').delete().eq('id', id);
+  }
+
+  static Future<String> uploadPqDocument(String fileName, dynamic fileBytes) async {
+    final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final path = '${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
+    await _client.storage.from('pq-documents').uploadBinary(path, fileBytes, fileOptions: const FileOptions(upsert: true));
+    return _client.storage.from('pq-documents').getPublicUrl(path);
+  }
+
+  // ── Service Areas CRUD ────────────────────────────────────
+  static Future<void> upsertServiceArea(Map<String, dynamic> data) async {
+    await _client.from('service_areas').upsert(data);
+  }
+
+  static Future<void> deleteServiceArea(String id) async {
+    await _client.from('service_areas').update({'is_active': false}).eq('id', id);
+  }
+
+  // ── Chat System ───────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getChatRooms(String userId) async {
+    final data = await _client.from('chat_room_members').select('''
+      room_id,
+      chat_rooms(
+        id, name, room_type, created_at,
+        chat_messages(id, message, sender_id, created_at, is_read)
+      )
+    ''').eq('user_id', userId).order('joined_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<String> createChatRoom({
+    required String name,
+    required String roomType,
+    required String createdBy,
+    required List<String> memberIds,
+    String? orderId,
+    String? departmentId,
+  }) async {
+    final result = await _client.from('chat_rooms').insert({
+      'name': name,
+      'room_type': roomType,
+      'created_by': createdBy,
+      if (orderId != null) 'order_id': orderId,
+      if (departmentId != null) 'department_id': departmentId,
+    }).select('id').single();
+    final roomId = result['id'] as String;
+
+    // Add members
+    final members = memberIds.map((uid) => {
+      'room_id': roomId,
+      'user_id': uid,
+    }).toList();
+    // Also add creator
+    members.add({'room_id': roomId, 'user_id': createdBy});
+    await _client.from('chat_room_members').upsert(members);
+    return roomId;
+  }
+
+  static Future<List<Map<String, dynamic>>> getChatMessages(String roomId, {int limit = 50}) async {
+    final data = await _client.from('chat_messages').select('''
+      *,
+      sender:users!chat_messages_sender_id_fkey(id, first_name, last_name)
+    ''').eq('room_id', roomId).order('created_at', ascending: false).limit(limit);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> sendChatMessage({
+    required String roomId,
+    required String senderId,
+    String? message,
+    String? fileUrl,
+    String? fileName,
+  }) async {
+    await _client.from('chat_messages').insert({
+      'room_id': roomId,
+      'sender_id': senderId,
+      if (message != null) 'message': message,
+      if (fileUrl != null) 'file_url': fileUrl,
+      if (fileName != null) 'file_name': fileName,
+    });
+  }
+
+  static Future<void> markChatMessagesRead(String roomId, String userId) async {
+    await _client.from('chat_messages')
+        .update({'is_read': true})
+        .eq('room_id', roomId)
+        .neq('sender_id', userId);
+  }
+
+  static Future<List<Map<String, dynamic>>> getAvailableChatUsers(String currentUserId) async {
+    final data = await _client.from('users')
+        .select('id, first_name, last_name, role, department:departments(name)')
+        .eq('status', 'active')
+        .neq('id', currentUserId)
+        .order('last_name');
+    return List<Map<String, dynamic>>.from(data);
+  }
 }
