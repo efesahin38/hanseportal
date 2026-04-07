@@ -11,7 +11,8 @@ import 'employee_folder_detail_screen.dart';
 /// Yönetici Ekranı – Mitarbeiterdokumente
 /// Çalışanları listeler, seçilen çalışanın 10 klasörünü gösterir.
 class EmployeeFolderScreen extends StatefulWidget {
-  const EmployeeFolderScreen({super.key});
+  final Map<String, dynamic>? initialEmployee;
+  const EmployeeFolderScreen({super.key, this.initialEmployee});
 
   @override
   State<EmployeeFolderScreen> createState() => _EmployeeFolderScreenState();
@@ -57,6 +58,9 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialEmployee != null) {
+      _selectEmployee(widget.initialEmployee!);
+    }
     _loadEmployees();
   }
 

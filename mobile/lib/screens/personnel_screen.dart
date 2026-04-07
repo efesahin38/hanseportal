@@ -6,6 +6,7 @@ import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'personnel_form_screen.dart';
+import 'personnel_detail_dashboard.dart';
 
 class PersonnelScreen extends StatefulWidget {
   const PersonnelScreen({super.key});
@@ -165,7 +166,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                 ),
                                 isThreeLine: true,
                                 onTap: () => Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => PersonnelFormScreen(userId: u['id']),
+                                  builder: (_) => PersonnelDetailDashboard(user: u),
                                 )).then((_) => _load()),
                               ),
                             );

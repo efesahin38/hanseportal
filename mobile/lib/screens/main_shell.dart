@@ -8,21 +8,10 @@ import '../services/localization_service.dart';
 
 
 // Tüm sekme ekranları
-import 'dashboard_screen.dart';
-import 'orders_screen.dart';
+import 'notifications_screen.dart';
+import 'orders_hub_screen.dart';
 import 'customers_screen.dart';
 import 'personnel_screen.dart';
-import 'companies_screen.dart';
-import 'planning_screen.dart';
-import 'calendar_screen.dart';
-import 'notifications_screen.dart';
-import 'reports_screen.dart';
-import 'documents_screen.dart';
-import 'archive_screen.dart';
-import 'role_management_screen.dart';
-import 'work_session_approval_screen.dart';
-import 'accounting_overview_screen.dart';
-import 'employee_folder_screen.dart';
 import 'stammdaten_screen.dart';
 import 'verwaltung_screen.dart';
 import 'chat_screen.dart';
@@ -41,36 +30,16 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   List<_NavItem> _buildNavItems(AppState appState) {
+    // Boss Requirements: Exactly 6 modules
     return [
-      _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: tr('Dashboard'), screen: const DashboardScreen()),
-      _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('İşler'), screen: const OrdersScreen()),
-      if (appState.canManageCustomers)
-        _NavItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: tr('Müşteriler'), screen: const CustomersScreen()),
-      if (appState.canPlanOperations)
-        _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: tr('Planlama'), screen: const PlanningScreen()),
-      if (appState.canPlanOperations)
-        _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: tr('Takvim'), screen: const CalendarScreen()),
-      if (appState.canManageUsers)
-        _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: tr('Personel'), screen: const PersonnelScreen()),
-      if (appState.canManageDocuments)
-        _NavItem(icon: Icons.folder_outlined, activeIcon: Icons.folder, label: tr('Belgeler'), screen: const DocumentsScreen()),
-      if (appState.canViewReports)
-        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: tr('Raporlar'), screen: const ReportsScreen()),
-      if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer || appState.isSystemAdmin)
-        _NavItem(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: tr('Muhasebe'), screen: const AccountingOverviewScreen()),
-      if (appState.canPlanOperations)
-        _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: tr('Mesai Onay'), screen: const WorkSessionApprovalScreen()),
-      if (appState.canManageEmployeeDocuments)
-        _NavItem(icon: Icons.folder_shared_outlined, activeIcon: Icons.folder_shared, label: tr('Mitarbeiterdokumente'), screen: const EmployeeFolderScreen()),
-      if (appState.canManageArchive)
-        _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: tr('Arşiv'), screen: const ArchiveScreen()),
-      if (appState.canManageCompanies)
+      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter')
         _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
-      if (appState.canManageDocuments)
+      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter')
         _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Verwaltung'), screen: const VerwaltungScreen()),
+      _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
+      _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('Aufträge'), screen: const OrdersHubScreen()),
+      _NavItem(icon: Icons.badge_outlined, activeIcon: Icons.badge, label: tr('Personal'), screen: const PersonnelScreen()),
       _NavItem(icon: Icons.chat_outlined, activeIcon: Icons.chat, label: tr('Chatten'), screen: const ChatScreen()),
-      if (appState.canManageRoles)
-        _NavItem(icon: Icons.security_outlined, activeIcon: Icons.security, label: tr('Yetki'), screen: const RoleManagementScreen()),
     ];
   }
 
