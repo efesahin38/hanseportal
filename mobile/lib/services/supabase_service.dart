@@ -255,6 +255,7 @@ class SupabaseService {
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (customerId != null) query = query.eq('customer_id', customerId) as dynamic;
     if (responsibleUserId != null) query = query.eq('responsible_user_id', responsibleUserId) as dynamic;
+    if (serviceAreaId != null) query = query.eq('service_area_id', serviceAreaId) as dynamic;
     
     // Bereichsleiter (Bölüm Sorumlusu) ise sadece kendi departmanını görsün
     // Not: departmentId parametre olarak da gelebilir, zorlayalım.

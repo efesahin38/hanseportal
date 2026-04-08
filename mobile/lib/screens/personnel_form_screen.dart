@@ -70,7 +70,12 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   Future<void> _loadServiceAreas() async {
     final data = await SupabaseService.getServiceAreas();
-    if (mounted) setState(() { _serviceAreas = data; });
+    final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+    final filtered = data.where((sa) {
+      final name = (sa['name'] as String? ?? '').toLowerCase();
+      return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+    }).toList();
+    if (mounted) setState(() { _serviceAreas = filtered; });
   }
 
   Future<void> _loadUser() async {

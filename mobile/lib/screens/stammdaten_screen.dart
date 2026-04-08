@@ -37,7 +37,24 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
 
       // Bereichsleiter: sadece kendi primary şirketini görecek, değiştiremeyecek
-      if (!isAdmin && appState.companyId.isNotEmpty) {
+      if (appState.isBereichsleiter) {
+        final assignedDept = appState.currentUser?['department']?['name'] as String?;
+        if (assignedDept != null && assignedDept.isNotEmpty) {
+          final matched = companies.where((c) {
+            final cName = (c['name'] as String? ?? '').toLowerCase();
+            return cName.contains(assignedDept.toLowerCase()) || 
+                   assignedDept.toLowerCase().contains(cName);
+          }).toList();
+          
+          if (matched.isNotEmpty) {
+            companies = matched;
+          } else {
+             companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+          }
+        } else if (appState.companyId.isNotEmpty) {
+          companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+        }
+      } else if (!isAdmin && appState.companyId.isNotEmpty) {
         companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
       }
 

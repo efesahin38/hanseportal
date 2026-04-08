@@ -60,6 +60,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final customers = await SupabaseService.getCustomers();
       final serviceAreas = await SupabaseService.getServiceAreas();
       
+      final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+      final filteredServiceAreas = serviceAreas.where((sa) {
+        final name = (sa['name'] as String? ?? '').toLowerCase();
+        return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+      }).toList();
+      
       String? defaultSAId;
       if (widget.initialServiceAreaId != null) {
         final matching = serviceAreas.where((s) => s['id']?.toString() == widget.initialServiceAreaId).toList();
@@ -71,7 +77,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (mounted) {
         setState(() {
           _customers = customers;
-          _serviceAreas = serviceAreas;
+          _serviceAreas = filteredServiceAreas;
           if (widget.orderId == null && defaultSAId != null) {
             _selectedServiceAreaId = defaultSAId;
           }

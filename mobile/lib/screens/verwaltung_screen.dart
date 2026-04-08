@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/localization_service.dart';
-import 'accounting_overview_screen.dart';
+import 'reports_screen.dart';
 import 'interne_pq_screen.dart';
 import 'vertragsmanagement_screen.dart';
 import 'fuhrpark_screen.dart';
@@ -38,7 +38,7 @@ class VerwaltungScreen extends StatelessWidget {
           title: tr('Buchhaltung'),
           subtitle: tr('Rechnungsentwürfe & Lohnabrechnung'),
           color: const Color(0xFF10B981),
-          screen: const AccountingOverviewScreen(),
+          screen: const ReportsScreen(),
         ),
       _VerwaltungItem(
         icon: Icons.description,

@@ -196,51 +196,56 @@ class _InternePqScreenState extends State<InternePqScreen> {
                         ]))
                       : RefreshIndicator(
                           onRefresh: _load,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _docs.length,
-                            itemBuilder: (_, i) {
-                              final d = _docs[i];
-                              return Card(
-                                child: ListTile(
-                                  leading: Container(
-                                    width: 40, height: 40,
-                                    decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: const Icon(Icons.description, color: AppTheme.primary),
-                                  ),
-                                  title: Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('${d['category'] ?? ''} • ${d['file_name'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
-                                      if (d['department'] != null)
-                                        Container(
-                                          margin: const EdgeInsets.only(top: 4),
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primary.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(d['department'], style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                          child: Builder(builder: (context) {
+                            // Group by department
+                            final groupedDocs = <String, List<Map<String, dynamic>>>{};
+                            for (var d in _docs) {
+                              final dep = d['department'] ?? 'Allgemein (Genel)';
+                              groupedDocs.putIfAbsent(dep, () => []).add(d);
+                            }
+                            
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: groupedDocs.keys.length,
+                              itemBuilder: (_, i) {
+                                final dep = groupedDocs.keys.elementAt(i);
+                                final depDocs = groupedDocs[dep]!;
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  child: ExpansionTile(
+                                    leading: const Icon(Icons.folder, color: AppTheme.primary),
+                                    title: Text(dep, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                    subtitle: Text('${depDocs.length} ${tr('Dokumente')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                                    initiallyExpanded: true,
+                                    children: depDocs.map((d) {
+                                      return ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                        leading: Container(
+                                          width: 40, height: 40,
+                                          decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                          child: const Icon(Icons.insert_drive_file, color: AppTheme.primary, size: 20),
                                         ),
-                                    ],
+                                        title: Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter')),
+                                        subtitle: Text('${d['category'] ?? ''} • ${d['file_name'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
+                                        trailing: PopupMenuButton<String>(
+                                          onSelected: (v) async {
+                                            if (v == 'delete') {
+                                              await SupabaseService.deletePqDocument(d['id'], d['file_url'] ?? '');
+                                              _load();
+                                            }
+                                          },
+                                          itemBuilder: (_) => [
+                                            PopupMenuItem(value: 'delete', child: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error))),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
-                                  isThreeLine: d['department'] != null,
-                                  trailing: PopupMenuButton<String>(
-                                    onSelected: (v) async {
-                                      if (v == 'delete') {
-                                        await SupabaseService.deletePqDocument(d['id'], d['file_url'] ?? '');
-                                        _load();
-                                      }
-                                    },
-                                    itemBuilder: (_) => [
-                                      PopupMenuItem(value: 'delete', child: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error))),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                                );
+                              },
+                            );
+                          }),
                         ),
             ),
           ],
