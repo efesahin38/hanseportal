@@ -5,6 +5,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import 'interne_pq_screen.dart' show kDepartmentOptions;
 
 class VertragsmanagementScreen extends StatefulWidget {
   const VertragsmanagementScreen({super.key});
@@ -16,6 +17,12 @@ class _VState extends State<VertragsmanagementScreen> {
   List<Map<String, dynamic>> _contracts = [];
   bool _loading = true;
 
+  // ── Bereichsleiter-Filterung ──────────────────────────────
+  String? _bereichsleiterDepartment(AppState appState) {
+    if (!appState.isBereichsleiter) return null;
+    return appState.currentUser?['department']?['name'] as String?;
+  }
+
   @override
   void initState() { super.initState(); _load(); }
 
@@ -23,7 +30,11 @@ class _VState extends State<VertragsmanagementScreen> {
     try {
       final appState = context.read<AppState>();
       final companyIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.authorizedCompanyIds;
-      final data = await SupabaseService.getContracts(companyIds: companyIds);
+      final dept = _bereichsleiterDepartment(appState);
+      final data = await SupabaseService.getContracts(
+        companyIds: dept != null ? null : companyIds, // Bereichsleiter filtert via dept
+        department: dept,
+      );
       if (mounted) setState(() { _contracts = data; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
@@ -57,6 +68,11 @@ class _VState extends State<VertragsmanagementScreen> {
     DateTime? rd = contract?['renewal_date'] != null ? DateTime.tryParse(contract!['renewal_date']) : null;
     String ct = contract?['contract_type'] ?? 'Vertrag';
 
+    // Abteilung vorbelegen
+    final appState = context.read<AppState>();
+    final bereichDept = _bereichsleiterDepartment(appState);
+    String? selectedDept = contract?['department'] ?? bereichDept ?? kDepartmentOptions.first;
+
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => StatefulBuilder(
       builder: (ctx, ss) => Container(
         decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -73,6 +89,20 @@ class _VState extends State<VertragsmanagementScreen> {
           DropdownButtonFormField<String>(value: ct, decoration: InputDecoration(labelText: tr('Vertragsart')),
             items: ['Vertrag', 'Mietvertrag', 'Abonnement', 'Mitgliedschaft', 'Versicherung', 'Lizenz', 'Sonstige'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
             onChanged: (v) => ss(() => ct = v!)),
+          const SizedBox(height: 12),
+          // ── Abteilung ─────────────────────────────────────
+          if (bereichDept != null)
+            InputDecorator(
+              decoration: InputDecoration(labelText: tr('Abteilung')),
+              child: Text(bereichDept, style: const TextStyle(fontSize: 14)),
+            )
+          else
+            DropdownButtonFormField<String>(
+              value: selectedDept,
+              decoration: InputDecoration(labelText: '${tr('Abteilung')} *'),
+              items: kDepartmentOptions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+              onChanged: (v) => ss(() => selectedDept = v),
+            ),
           const SizedBox(height: 12),
           Row(children: [
             Expanded(child: _db(ctx, tr('Beginn'), sd, (d) => ss(() => sd = d))),
@@ -97,6 +127,7 @@ class _VState extends State<VertragsmanagementScreen> {
               'end_date': ed?.toIso8601String().split('T')[0], 'renewal_date': rd?.toIso8601String().split('T')[0],
               'cancellation_period': k.text.trim(), 'monthly_cost': double.tryParse(co.text), 'notes': n.text.trim(),
               'created_by': context.read<AppState>().userId,
+              'department': bereichDept ?? selectedDept, // Pflichtfeld
             });
             if (mounted) { Navigator.pop(ctx); _load(); }
           }, child: Text(tr('Speichern'))),
@@ -130,6 +161,14 @@ class _VState extends State<VertragsmanagementScreen> {
                   Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
                     child: Text(_statusLabel(c), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold))),
                   if (c['monthly_cost'] != null) ...[const SizedBox(width: 8), Text('€${c['monthly_cost']}/Mon.', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub))],
+                  if (c['department'] != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                      child: Text(c['department'], style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ]),
               ]),
               onTap: () => _showForm(contract: c), isThreeLine: true,

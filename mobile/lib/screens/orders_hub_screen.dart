@@ -30,7 +30,10 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
       List<Map<String, dynamic>> filtered = areas;
       
       if (appState.isBereichsleiter) {
-        filtered = areas.where((s) => appState.serviceAreaIds.contains(s['id'].toString())).toList();
+        filtered = areas.where((s) => 
+          appState.serviceAreaIds.contains(s['id'].toString()) || 
+          (s['department_id'] != null && s['department_id'].toString() == appState.departmentId)
+        ).toList();
       }
       
       if (mounted) setState(() { _serviceAreas = filtered; _loading = false; });

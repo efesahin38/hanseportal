@@ -31,9 +31,15 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
   Future<void> _load() async {
     try {
       final appState = context.read<AppState>();
-      final serviceAreaIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.serviceAreaIds;
+      final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
+      final serviceAreaIds = isAdmin ? null : appState.serviceAreaIds;
       
-      final companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
+      var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
+      
+      // Strict filter for department managers: they should ONLY see their primary assigned company
+      if (!isAdmin && appState.companyId.isNotEmpty) {
+        companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+      }
       
       if (companies.isNotEmpty) {
         _authorizedCompanies = companies;
@@ -164,13 +170,14 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                 onTap: () => _showBankAccounts(),
               ),
 
-              _SectionCard(
-                icon: Icons.category,
-                title: tr('Branchen / Unternehmensbereiche'),
-                subtitle: _serviceAreas.map((s) => s['name']).join(', '),
-                color: const Color(0xFFEF4444),
-                onTap: () => _showServiceAreas(),
-              ),
+              if (context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isSystemAdmin || context.read<AppState>().isBetriebsleiter)
+                _SectionCard(
+                  icon: Icons.category,
+                  title: tr('Branchen / Unternehmensbereiche'),
+                  subtitle: _serviceAreas.map((s) => s['name']).join(', '),
+                  color: const Color(0xFFEF4444),
+                  onTap: () => _showServiceAreas(),
+                ),
             ],
           ),
         ),

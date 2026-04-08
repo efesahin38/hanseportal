@@ -5,6 +5,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import 'interne_pq_screen.dart' show kDepartmentOptions;
 
 class FuhrparkScreen extends StatefulWidget {
   const FuhrparkScreen({super.key});
@@ -16,6 +17,12 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
   List<Map<String, dynamic>> _vehicles = [];
   bool _loading = true;
 
+  // ── Bereichsleiter-Filterung ──────────────────────────────
+  String? _bereichsleiterDepartment(AppState appState) {
+    if (!appState.isBereichsleiter) return null;
+    return appState.currentUser?['department']?['name'] as String?;
+  }
+
   @override
   void initState() { super.initState(); _load(); }
 
@@ -23,7 +30,11 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
     try {
       final appState = context.read<AppState>();
       final companyIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.authorizedCompanyIds;
-      final data = await SupabaseService.getVehicles(companyIds: companyIds);
+      final dept = _bereichsleiterDepartment(appState);
+      final data = await SupabaseService.getVehicles(
+        companyIds: dept != null ? null : companyIds,
+        department: dept,
+      );
       if (mounted) setState(() { _vehicles = data; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
@@ -56,6 +67,11 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
     DateTime? tc = v?['next_tire_change_date'] != null ? DateTime.tryParse(v!['next_tire_change_date']) : null;
     DateTime? lc = v?['license_check_date'] != null ? DateTime.tryParse(v!['license_check_date']) : null;
 
+    // Abteilung vorbelegen
+    final appState = context.read<AppState>();
+    final bereichDept = _bereichsleiterDepartment(appState);
+    String? selectedDept = v?['department'] ?? bereichDept ?? kDepartmentOptions.first;
+
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => StatefulBuilder(
       builder: (ctx, ss) => Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
@@ -75,6 +91,20 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
           ]),
           const SizedBox(height: 12),
           TextField(controller: vin, decoration: InputDecoration(labelText: tr('Fahrzeug-Identnummer'))),
+          const SizedBox(height: 12),
+          // ── Abteilung ─────────────────────────────────────
+          if (bereichDept != null)
+            InputDecorator(
+              decoration: InputDecoration(labelText: tr('Abteilung')),
+              child: Text(bereichDept, style: const TextStyle(fontSize: 14)),
+            )
+          else
+            DropdownButtonFormField<String>(
+              value: selectedDept,
+              decoration: InputDecoration(labelText: '${tr('Abteilung')} *'),
+              items: kDepartmentOptions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+              onChanged: (v) => ss(() => selectedDept = v),
+            ),
           const SizedBox(height: 12),
           Row(children: [
             Expanded(child: _db(ctx, tr('Erstzulassung'), fr, (d) => ss(() => fr = d))),
@@ -113,6 +143,7 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
               'next_tire_change_date': tc?.toIso8601String().split('T')[0],
               'license_check_date': lc?.toIso8601String().split('T')[0],
               'notes': n.text.trim(),
+              'department': bereichDept ?? selectedDept, // Pflichtfeld
             });
             if (mounted) { Navigator.pop(ctx); _load(); }
           }, child: Text(tr('Speichern'))),
@@ -140,7 +171,16 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
               borderRadius: BorderRadius.circular(12)),
               child: Icon(Icons.directions_car, color: alerts.any((a) => a.overdue) ? AppTheme.error : alerts.isNotEmpty ? AppTheme.warning : AppTheme.primary)),
             title: Text(v['license_plate'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Inter')),
-            subtitle: Text('${v['driver_first_name'] ?? ''} ${v['driver_last_name'] ?? ''}'.trim(), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+            subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${v['driver_first_name'] ?? ''} ${v['driver_last_name'] ?? ''}'.trim(), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+              if (v['department'] != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text(v['department'], style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                ),
+            ]),
             trailing: alerts.isNotEmpty ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(color: (alerts.any((a) => a.overdue) ? AppTheme.error : AppTheme.warning).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),

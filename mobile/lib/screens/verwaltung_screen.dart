@@ -17,6 +17,13 @@ class VerwaltungScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
 
+    // Muhasebe (Buchhaltung) bölümü: yalnızca Geschäftsführer, Betriebsleiter,
+    // Buchhaltung ve system_admin görebilir. Bereichsleiter erişemez!
+    final canSeeBuchhaltung = appState.isGeschaeftsfuehrer ||
+        appState.isBetriebsleiter ||
+        appState.isBuchhaltung ||
+        appState.isSystemAdmin;
+
     final sections = <_VerwaltungItem>[
       _VerwaltungItem(
         icon: Icons.folder_special,
@@ -25,13 +32,14 @@ class VerwaltungScreen extends StatelessWidget {
         color: const Color(0xFF3B82F6),
         screen: const InternePqScreen(),
       ),
-      _VerwaltungItem(
-        icon: Icons.account_balance,
-        title: tr('Buchhaltung'),
-        subtitle: tr('Rechnungsentwürfe & Lohnabrechnung'),
-        color: const Color(0xFF10B981),
-        screen: const AccountingOverviewScreen(),
-      ),
+      if (canSeeBuchhaltung)
+        _VerwaltungItem(
+          icon: Icons.account_balance,
+          title: tr('Buchhaltung'),
+          subtitle: tr('Rechnungsentwürfe & Lohnabrechnung'),
+          color: const Color(0xFF10B981),
+          screen: const AccountingOverviewScreen(),
+        ),
       _VerwaltungItem(
         icon: Icons.description,
         title: tr('Vertragsmanagement'),

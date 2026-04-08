@@ -32,11 +32,18 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final appState = context.read<AppState>();
-    final serviceAreaIds = appState.isBereichsleiter ? appState.serviceAreaIds : null;
-    
+
+    // Bereichsleiter darf Buchhaltung NIEMALS sehen
+    if (appState.isBereichsleiter) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    // Geschäftsführer, Betriebsleiter und Buchhaltung sehen ALLE Einträge (kein Abteilungsfilter)
     try {
       final data = await SupabaseService.getApprovedWorkSessionsForAccounting(
-        serviceAreaIds: serviceAreaIds
+        serviceAreaIds: null,   // keine Filterung – alle Abteilungen
+        departmentId: null,
       );
       
       // Group by order_id
@@ -73,6 +80,34 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
+    // Bereichsleiter – kein Zugang zur Buchhaltung
+    if (appState.isBereichsleiter) {
+      return Scaffold(
+        appBar: AppBar(title: Text(tr('Buchhaltung'))),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: Color(0xFFCBD5E1)),
+              const SizedBox(height: 16),
+              Text(
+                tr('Kein Zugriff'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                tr('Sie haben keine Berechtigung, diese Seite zu sehen.'),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(

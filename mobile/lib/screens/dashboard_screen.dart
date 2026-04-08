@@ -44,8 +44,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       List<Map<String, dynamic>> drafts = [];
-      if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer) {
-        drafts = await SupabaseService.getInvoiceDrafts();
+      if (appState.isBuchhaltung || appState.isGeschaeftsfuehrer || appState.isBereichsleiter) {
+        drafts = await SupabaseService.getInvoiceDrafts(
+          serviceAreaIds: !appState.canViewAllOrders ? appState.serviceAreaIds : null,
+          departmentId: departmentId,
+        );
       }
 
       if (mounted) {

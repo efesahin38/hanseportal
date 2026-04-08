@@ -660,12 +660,13 @@ class SupabaseService {
     }).eq('id', sessionId);
   }
 
-  static Future<List<Map<String, dynamic>>> getApprovedWorkSessionsForAccounting({List<String>? serviceAreaIds}) async {
+  static Future<List<Map<String, dynamic>>> getApprovedWorkSessionsForAccounting({List<String>? serviceAreaIds, String? departmentId}) async {
+    // Basic query with joins
+    // We use inner joins to ensure we only get sessions that have an associated order and customer
     var query = _client.from('work_sessions').select('''
       *,
-      user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
       order:orders!inner(
-        id, title, order_number, service_area_id,
+        id, title, order_number, service_area_id, department_id,
         customer:customers(name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
@@ -676,6 +677,8 @@ class SupabaseService {
     
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
       query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+    } else if (departmentId != null) {
+      query = query.eq('order.department_id', departmentId) as dynamic;
     }
     
     final data = await query.order('approved_at', ascending: false);
@@ -889,11 +892,11 @@ class SupabaseService {
   }
 
   // ── Ön Fatura Taslağı ─────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getInvoiceDrafts({String? status, List<String>? serviceAreaIds}) async {
+  static Future<List<Map<String, dynamic>>> getInvoiceDrafts({String? status, List<String>? serviceAreaIds, String? departmentId}) async {
     var query = _client.from('invoice_drafts').select('''
       *,
       order:orders!inner(
-        id, title, order_number, service_area_id,
+        id, title, order_number, service_area_id, department_id,
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
       customer:customers(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
@@ -904,6 +907,8 @@ class SupabaseService {
     }
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
       query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+    } else if (departmentId != null) {
+      query = query.eq('order.department_id', departmentId) as dynamic;
     }
     final data = await query.order('created_at', ascending: false);
     final list = List<Map<String, dynamic>>.from(data);
@@ -1094,16 +1099,17 @@ class SupabaseService {
     if (departmentId != null) personnelQ = personnelQ.eq('department_id', departmentId);
     final activePersonnel = await personnelQ;
 
-    final pendingDrafts = await _client
-        .from('invoice_drafts')
-        .select('id')
+    var draftsQ = _client.from('invoice_drafts')
+        .select('id, order:orders!inner(department_id)')
         .inFilter('status', ['auto_generated', 'under_review']);
+    if (departmentId != null) draftsQ = draftsQ.eq('order.department_id', departmentId);
+    final pendingDrafts = await draftsQ;
 
     return {
-      'activeOrders': (activeOrders as List).length,
-      'todayPlans': (todayPlans as List).length,
-      'activePersonnel': (activePersonnel as List).length,
-      'pendingDrafts': (pendingDrafts as List).length,
+      'active_orders': (activeOrders as List).length,
+      'today_plans': (todayPlans as List).length,
+      'active_personnel': (activePersonnel as List).length,
+      'pending_drafts': (pendingDrafts as List).length,
     };
   }
 
@@ -1134,14 +1140,32 @@ class SupabaseService {
   }
 
   // ── Muhasebe Özeti ────────────────────────────────────────
-  static Future<Map<String, dynamic>> getAccountingSummary() async {
+  static Future<Map<String, dynamic>> getAccountingSummary({List<String>? serviceAreaIds, String? departmentId}) async {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1).toIso8601String().split('T')[0];
 
-    final invoiced = await _client.from('invoice_drafts').select('total_amount').eq('status', 'invoiced').gte('created_at', monthStart);
-    final pending = await _client.from('invoice_drafts').select('total_amount').inFilter('status', ['auto_generated', 'under_review']).gte('created_at', monthStart);
-    final completedOrders = await _client.from('orders').select('id').eq('status', 'completed').gte('updated_at', monthStart);
-    final pendingDrafts = await _client.from('invoice_drafts').select('id').inFilter('status', ['auto_generated', 'under_review']);
+    // Draft Queries
+    var invoicedQ = _client.from('invoice_drafts').select('total_amount, order!inner(service_area_id, department_id)').eq('status', 'invoiced').gte('created_at', monthStart);
+    var pendingQ = _client.from('invoice_drafts').select('total_amount, order!inner(service_area_id, department_id)').inFilter('status', ['auto_generated', 'under_review']).gte('created_at', monthStart);
+    var allPendingQ = _client.from('invoice_drafts').select('id, order!inner(service_area_id, department_id)').inFilter('status', ['auto_generated', 'under_review']);
+    var completedOrdersQ = _client.from('orders').select('id').eq('status', 'completed').gte('updated_at', monthStart);
+
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      invoicedQ = invoicedQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      pendingQ = pendingQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      allPendingQ = allPendingQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      completedOrdersQ = completedOrdersQ.inFilter('service_area_id', serviceAreaIds) as dynamic;
+    } else if (departmentId != null) {
+      invoicedQ = invoicedQ.eq('order.department_id', departmentId) as dynamic;
+      pendingQ = pendingQ.eq('order.department_id', departmentId) as dynamic;
+      allPendingQ = allPendingQ.eq('order.department_id', departmentId) as dynamic;
+      completedOrdersQ = completedOrdersQ.eq('department_id', departmentId) as dynamic;
+    }
+
+    final invoiced = await invoicedQ;
+    final pending = await pendingQ;
+    final allPending = await allPendingQ;
+    final completedOrders = await completedOrdersQ;
 
     double invoicedTotal = 0;
     for (final r in (invoiced as List)) { invoicedTotal += double.tryParse(r['total_amount']?.toString() ?? '0') ?? 0; }
@@ -1152,7 +1176,7 @@ class SupabaseService {
       'invoiced_total': invoicedTotal,
       'pending_total': pendingTotal,
       'completed_orders': (completedOrders as List).length,
-      'pending_drafts': (pendingDrafts as List).length,
+      'pending_drafts': (allPending as List).length,
     };
   }
 
@@ -1169,23 +1193,26 @@ class SupabaseService {
   }
 
   // ── Departman Performansı ──────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getDepartmentalPerformance() async {
-    final depts = await _client.from('departments').select('id, name');
+  static Future<List<Map<String, dynamic>>> getDepartmentalPerformance({String? departmentId}) async {
+    var query = _client.from('departments').select('id, name');
+    if (departmentId != null) query = query.eq('id', departmentId) as dynamic;
+    
+    final depts = await query;
     final List<Map<String, dynamic>> results = [];
     
-    for (var d in depts) {
-      final deptId = d['id'];
+    for (var d in (depts as List)) {
+      final dId = d['id'];
       
       // Completed orders count
       final ordersDone = await _client.from('orders')
           .select('id')
-          .eq('department_id', deptId)
+          .eq('department_id', dId)
           .eq('status', 'completed');
           
-      // Total hours
+      // Total hours - using correct alias
       final sessions = await _client.from('work_sessions')
-          .select('billable_hours, order!inner(department_id)')
-          .eq('order.department_id', deptId);
+          .select('billable_hours, order:orders!inner(department_id)')
+          .eq('order.department_id', dId);
           
       double totalHours = 0;
       for (var s in sessions) {
@@ -1193,7 +1220,7 @@ class SupabaseService {
       }
       
       results.add({
-        'id': deptId,
+        'id': dId,
         'name': d['name'],
         'completed_orders': (ordersDone as List).length,
         'total_hours': totalHours,
@@ -1257,12 +1284,14 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getApprovedSessionsByDateRange({
     required String dateFrom,
     required String dateTo,
+    List<String>? serviceAreaIds,
+    String? departmentId,
   }) async {
-    final data = await _client.from('work_sessions').select('''
+    var query = _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
       order:orders(
-        id, title, order_number,
+        id, title, order_number, service_area_id, department_id,
         customer:customers(name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
@@ -1271,8 +1300,15 @@ class SupabaseService {
     ''')
         .eq('approval_status', 'approved')
         .gte('approved_at', '${dateFrom}T00:00:00')
-        .lte('approved_at', '${dateTo}T23:59:59')
-        .order('approved_at', ascending: false);
+        .lte('approved_at', '${dateTo}T23:59:59');
+
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+    } else if (departmentId != null) {
+      query = query.eq('order.department_id', departmentId) as dynamic;
+    }
+
+    final data = await query.order('approved_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }
 
@@ -1448,10 +1484,13 @@ class SupabaseService {
   }
 
   // ── Vertragsmanagement ────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getContracts({List<String>? companyIds}) async {
+  static Future<List<Map<String, dynamic>>> getContracts({List<String>? companyIds, String? department}) async {
     var query = _client.from('contracts').select();
     if (companyIds != null && companyIds.isNotEmpty) {
       query = query.inFilter('company_id', companyIds) as dynamic;
+    }
+    if (department != null) {
+      query = query.eq('department', department) as dynamic;
     }
     final data = await query.order('end_date');
     return List<Map<String, dynamic>>.from(data);
@@ -1466,10 +1505,13 @@ class SupabaseService {
   }
 
   // ── Fuhrpark ──────────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getVehicles({List<String>? companyIds}) async {
+  static Future<List<Map<String, dynamic>>> getVehicles({List<String>? companyIds, String? department}) async {
     var query = _client.from('vehicles').select();
     if (companyIds != null && companyIds.isNotEmpty) {
       query = query.inFilter('company_id', companyIds) as dynamic;
+    }
+    if (department != null) {
+      query = query.eq('department', department) as dynamic;
     }
     final data = await query.order('license_plate');
     final list = List<Map<String, dynamic>>.from(data);
@@ -1499,10 +1541,11 @@ class SupabaseService {
   }
 
   // ── PQ Dokumente ──────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getPqDocuments({String? companyId, String? category}) async {
+  static Future<List<Map<String, dynamic>>> getPqDocuments({String? companyId, String? category, String? department}) async {
     var query = _client.from('pq_documents').select('*, uploaded_by_user:users!pq_documents_uploaded_by_fkey(first_name, last_name)');
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (category != null) query = query.eq('category', category) as dynamic;
+    if (department != null) query = query.eq('department', department) as dynamic;
     final data = await query.order('category').order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }

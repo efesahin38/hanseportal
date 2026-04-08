@@ -15,6 +15,14 @@ class InternePqScreen extends StatefulWidget {
   State<InternePqScreen> createState() => _InternePqScreenState();
 }
 
+// Die vier Bereiche (Abteilungen), die bei jedem Eintrag gewählt werden müssen
+const List<String> kDepartmentOptions = [
+  'Gebäudedienstleistungen',
+  'Rail Service',
+  'Gastwirtschaftsservice',
+  'Personalüberlassung',
+];
+
 class _InternePqScreenState extends State<InternePqScreen> {
   List<Map<String, dynamic>> _docs = [];
   bool _loading = true;
@@ -32,15 +40,30 @@ class _InternePqScreenState extends State<InternePqScreen> {
     'Sonstige',
   ];
 
+  // ── Bereichsleiter-spezifische Filterung ─────────────────
+  /// Gibt den Bereichsnamen des angemeldeten Bereichsleiters zurück.
+  /// Für alle anderen Rollen → null (keine Filterung).
+  String? _bereichsleiterDepartment(AppState appState) {
+    if (!appState.isBereichsleiter) return null;
+    // Der Bereichsname kommt aus department.name im Profil
+    return appState.currentUser?['department']?['name'] as String?;
+  }
+
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   Future<void> _load() async {
     try {
-      final companyId = context.read<AppState>().companyId;
+      final appState = context.read<AppState>();
+      final companyId = appState.companyId;
+      final dept = _bereichsleiterDepartment(appState);
       final docs = await SupabaseService.getPqDocuments(
         companyId: companyId,
         category: _selectedCategory == 'Alle' ? null : _selectedCategory,
+        department: dept, // null → alle Abteilungen sichtbar
       );
       if (mounted) setState(() { _docs = docs; _loading = false; });
     } catch (e) {
@@ -55,6 +78,13 @@ class _InternePqScreenState extends State<InternePqScreen> {
     if (file.bytes == null) return;
 
     String? selectedCat = _selectedCategory == 'Alle' ? _categories[1] : _selectedCategory;
+    String? selectedDept = kDepartmentOptions.first;
+    final appState = context.read<AppState>();
+
+    // Falls Bereichsleiter → Abteilung vorbelegen und nicht änderbar
+    final bereichDept = _bereichsleiterDepartment(appState);
+    if (bereichDept != null) selectedDept = bereichDept;
+
     final titleCtrl = TextEditingController(text: file.name.split('.').first);
 
     if (!mounted) return;
@@ -74,6 +104,20 @@ class _InternePqScreenState extends State<InternePqScreen> {
                 items: _categories.where((c) => c != 'Alle').map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (v) => setDState(() => selectedCat = v),
               ),
+              const SizedBox(height: 12),
+              // Abteilung-Auswahl (für Bereichsleiter fest vorbelegt)
+              if (bereichDept != null)
+                InputDecorator(
+                  decoration: InputDecoration(labelText: tr('Abteilung')),
+                  child: Text(bereichDept, style: const TextStyle(fontSize: 14)),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: selectedDept,
+                  decoration: InputDecoration(labelText: '${tr('Abteilung')} *'),
+                  items: kDepartmentOptions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (v) => setDState(() => selectedDept = v),
+                ),
             ],
           ),
           actions: [
@@ -90,13 +134,14 @@ class _InternePqScreenState extends State<InternePqScreen> {
     try {
       final url = await SupabaseService.uploadPqDocument(file.name, file.bytes!);
       await SupabaseService.createPqDocument({
-        'company_id': context.read<AppState>().companyId,
+        'company_id': appState.companyId,
         'category': selectedCat,
         'title': titleCtrl.text.trim(),
         'file_url': url,
         'file_name': file.name,
         'file_size_kb': (file.size / 1024).round(),
-        'uploaded_by': context.read<AppState>().userId,
+        'uploaded_by': appState.userId,
+        'department': selectedDept, // Pflichtfeld
       });
       _load();
     } catch (e) {
@@ -119,7 +164,7 @@ class _InternePqScreenState extends State<InternePqScreen> {
       body: WebContentWrapper(
         child: Column(
           children: [
-            // Category Filter
+            // Kategorie-Filter
             SizedBox(
               height: 48,
               child: ListView.builder(
@@ -164,7 +209,23 @@ class _InternePqScreenState extends State<InternePqScreen> {
                                     child: const Icon(Icons.description, color: AppTheme.primary),
                                   ),
                                   title: Text(d['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                                  subtitle: Text('${d['category'] ?? ''} • ${d['file_name'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('${d['category'] ?? ''} • ${d['file_name'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
+                                      if (d['department'] != null)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 4),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primary.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(d['department'], style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                                        ),
+                                    ],
+                                  ),
+                                  isThreeLine: d['department'] != null,
                                   trailing: PopupMenuButton<String>(
                                     onSelected: (v) async {
                                       if (v == 'delete') {

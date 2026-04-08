@@ -34,8 +34,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   void _initTabs() {
     final appState = context.read<AppState>();
-    final canSeePersonnel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
-    final count = canSeePersonnel ? 5 : 2;
+    // Bereichsleiter darf keine Finanzdaten sehen
+    final canSeeFinancials = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
+    final count = canSeeFinancials ? 5 : 2;
     _tabs = TabController(length: count, vsync: this, initialIndex: widget.initialIndex < count ? widget.initialIndex : 0)
       ..addListener(() { if (mounted) setState(() {}); });
   }
@@ -48,10 +49,19 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final appState = context.read<AppState>();
+
+    // Bereichsleiter darf keine Finanzdaten sehen
+    if (appState.isBereichsleiter) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    // Geschäftsführer, Betriebsleiter, Buchhaltung – keine Abteilungsfilterung
     try {
-      final drafts = await SupabaseService.getInvoiceDrafts();
-      final summary = await SupabaseService.getAccountingSummary();
-      final performance = await SupabaseService.getDepartmentalPerformance();
+      final drafts = await SupabaseService.getInvoiceDrafts(serviceAreaIds: null, departmentId: null);
+      final summary = await SupabaseService.getAccountingSummary(serviceAreaIds: null, departmentId: null);
+      final performance = await SupabaseService.getDepartmentalPerformance(departmentId: null);
       if (mounted) {
         setState(() {
           _invoiceDrafts = drafts;
@@ -68,22 +78,43 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final canSeePersonnel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
+    // Bereichsleiter darf keine Finanzdaten sehen
+    final canSeeFinancials = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
+
+    // Bereichsleiter: Kein Zugang zu Berichte
+    if (appState.isBereichsleiter) {
+      return Scaffold(
+        appBar: AppBar(title: Text(tr('Raporlar ve Analizler'))),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: Color(0xFFCBD5E1)),
+              const SizedBox(height: 16),
+              Text(
+                tr('Kein Zugriff'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final tabs = <Tab>[
       Tab(text: tr('Muhasebe Özeti')),
       Tab(text: tr('Aylık Rapor')),
-      if (canSeePersonnel) Tab(text: tr('Ön Fatura Taslakları')),
-      if (canSeePersonnel) Tab(text: tr('Personel Saatleri')),
-      if (canSeePersonnel) Tab(text: tr('Fatura Geçmişi')),
+      if (canSeeFinancials) Tab(text: tr('Ön Fatura Taslakları')),
+      if (canSeeFinancials) Tab(text: tr('Personel Saatleri')),
+      if (canSeeFinancials) Tab(text: tr('Fatura Geçmişi')),
     ];
 
     final tabViews = <Widget>[
       _DailyAccountingSummaryTab(loading: _loading),
       _MonthlyReportTab(),
-      if (canSeePersonnel) _InvoiceDraftTab(drafts: _invoiceDrafts, loading: _loading, onRefresh: _load),
-      if (canSeePersonnel) _PersonnelHoursTab(),
-      if (canSeePersonnel) _InvoiceHistoryTab(),
+      if (canSeeFinancials) _InvoiceDraftTab(drafts: _invoiceDrafts, loading: _loading, onRefresh: _load),
+      if (canSeeFinancials) _PersonnelHoursTab(),
+      if (canSeeFinancials) _InvoiceHistoryTab(),
     ];
 
     // Ensure tab count matches exactly
@@ -286,9 +317,12 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
       final dateFrom = DateFormat('yyyy-MM-dd').format(from);
       final dateTo = DateFormat('yyyy-MM-dd').format(now);
 
+      final appState = context.read<AppState>();
       final sessions = await SupabaseService.getApprovedSessionsByDateRange(
         dateFrom: dateFrom,
         dateTo: dateTo,
+        serviceAreaIds: null, // Keine Filterung – alle Abteilungen
+        departmentId: null,
       );
 
       // Günlük gruplama
@@ -536,9 +570,12 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
       final dateFrom = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}-01';
       final dateTo = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}-${daysInMonth.toString().padLeft(2, '0')}';
 
+      final appState = context.read<AppState>();
       final sessions = await SupabaseService.getApprovedSessionsByDateRange(
         dateFrom: dateFrom,
         dateTo: dateTo,
+        serviceAreaIds: null, // Keine Filterung – alle Abteilungen
+        departmentId: null,
       );
 
       // Günlük gruplama
