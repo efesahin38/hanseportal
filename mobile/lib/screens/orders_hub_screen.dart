@@ -108,10 +108,10 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
     final appState = context.watch<AppState>();
     final bereichDept = _bereichsleiterDept(appState);
 
-    // Bereichsleiter yalnızca kendi bölümünü görür (100% İzolasyon)
+    // %100 STRICT ISOLATION: Her Bereichsleiter sadece kendi bölümünü görür
     final visibleDefs = appState.isBereichsleiter && bereichDept != null
-        ? kGmbhDefs.where((d) =>
-            bereichDept.toLowerCase().contains(d.departmentKey.toLowerCase()) ||
+        ? kGmbhDefs.where((d) => 
+            bereichDept.toLowerCase().contains(d.departmentKey.toLowerCase()) || 
             d.departmentKey.toLowerCase().contains(bereichDept.toLowerCase())).toList()
         : kGmbhDefs;
 

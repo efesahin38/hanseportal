@@ -36,35 +36,24 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
 
-      // Bereichsleiter: sadece kendi primary şirketini görecek, değiştiremeyecek
+      // %100 STRICT ISOLATION: Tam 5 Şirket Yapısı ve Arşiv Temizliği
+      final filteredCompanies = companies.where((c) {
+        final cName = (c['name'] as String? ?? '').toLowerCase();
+        // Arşiv, UG ve Placeholder'ları kesinlikle at
+        return !cName.contains('ug') && !cName.contains('archiv') && !cName.contains('placeholder');
+      }).toList();
+
       if (appState.isBereichsleiter) {
         final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
         
-        // Bu 5 şirketten hangisine ait olduğunu bulalım (UG'yi her zaman filtreliyoruz)
-        var filteredCompanies = companies.where((c) {
-          final cName = (c['name'] as String? ?? '').toLowerCase();
-          return !cName.contains('ug') && !cName.contains('placeholder');
-        }).toList();
-
         final matched = filteredCompanies.where((c) {
           final cName = (c['name'] as String? ?? '').toLowerCase();
-          // Eğer departman ismi şirket isminin içinde geçiyorsa (örn: Gastwirtschaft)
           return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
         }).toList();
         
-        if (matched.isNotEmpty) {
-          companies = matched;
-        } else {
-          // Eğer isimle bulamazsak, DB'deki company_id'ye güvenelim ama UG değilse
-          companies = filteredCompanies.where((c) => c['id'].toString() == appState.companyId).toList();
-          
-          // Eğer hala boşsa (UG atanmışsa), ama bir şirket gerekiyorsa listeden en mantıklısını seç
-          if (companies.isEmpty && filteredCompanies.isNotEmpty) {
-             companies = [filteredCompanies.first];
-          }
-        }
-      } else if (!isAdmin && appState.companyId.isNotEmpty) {
-        companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+        companies = matched.isNotEmpty ? matched : [filteredCompanies.first];
+      } else {
+        companies = filteredCompanies;
       }
 
       if (companies.isNotEmpty) {
