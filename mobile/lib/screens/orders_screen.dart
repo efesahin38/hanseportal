@@ -40,13 +40,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // Yalnızca tüm SIPARIŞLERI görme yetkisi olmayan yetkililer için (ör: alan yöneticileri) filtrele
-      final saId = widget.serviceAreaId;
+      String? saId = widget.serviceAreaId;
+      String? deptId = widget.departmentId;
+
+      // Bereichsleiter (Bölüm Sorumlusu) ise sadece KENDİ departmanını görsün (Kesin İzolasyon)
+      if (appState.isBereichsleiter) {
+        deptId = appState.departmentId;
+        // Eğer girmeye çalıştığı birim (widget.serviceAreaId) kendi birimi değilse temizleyelim
+        // (OrdersHub'dan bir filtre seçmiş olsa bile)
+      }
       
       final data = await SupabaseService.getOrders(
         status: _statusFilter?.isNotEmpty == true ? _statusFilter : null,
-        serviceAreaId: widget.serviceAreaId,
-        departmentId: widget.departmentId,
+        serviceAreaId: saId,
+        departmentId: deptId,
       );
       if (mounted) setState(() { _orders = data; _applyFilter(); _loading = false; });
     } catch (_) {

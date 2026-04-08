@@ -40,23 +40,60 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
     }
 
     try {
-      // 1. Fetch approved sessions
+      // 1. Fetch approved sessions (can be many per project)
       final approvedSessions = await SupabaseService.getApprovedWorkSessionsForAccounting(
         serviceAreaIds: null,
         departmentId: null,
       );
       
-      // 2. Fetch completed/invoiced orders directly to capture older projects
-      final pastOrders = await SupabaseService.client.from('orders').select('''
-        id, title, order_number, service_area_id, department_id, status, created_at, planned_start_date,
+      // 2. Fetch projects that are in financial phases (completed, invoiced)
+      // This catches projects even if sessions aren't currently "active" in the filter.
+      final pastOrdersQuery = await SupabaseService.client.from('orders').select('''
+        *,
         customer:customers(id, name),
         invoice_drafts(total_amount, subtotal),
-        extra_works(estimated_material_cost, estimated_labor_cost),
-        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost),
+        extra_works(estimated_material_cost, estimated_labor_cost, recorded_material_cost, recorded_labor_cost),
+        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost, actual_labor_cost, actual_material_cost),
         work_sessions(id, actual_start, approved_billable_hours, approved_at, approval_status, user:users(id, first_name, last_name))
       ''').inFilter('status', ['completed', 'invoiced']).order('created_at', ascending: false);
 
+      final List<dynamic> pastOrders = pastOrdersQuery;
       Map<String, List<Map<String, dynamic>>> groups = {};
+      
+      // Add projects from approved sessions
+      for (var s in approvedSessions) {
+        final orderId = s['order_id']?.toString();
+        if (orderId == null) continue;
+        groups.putIfAbsent(orderId, () => []).add(s);
+      }
+
+      // Add projects from past orders (if not already there)
+      for (var o in pastOrders) {
+        final orderId = o['id'].toString();
+        if (!groups.containsKey(orderId)) {
+          // Use sessions from the project if available
+          final sessions = List<Map<String, dynamic>>.from(o['work_sessions'] ?? []);
+          // Normalize sessions to match expected structure if needed
+          final normalized = sessions.map((s) => {
+             ...s,
+             'order_id': orderId,
+             'order': o,
+          }).toList();
+          groups[orderId] = normalized;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _groupedSessions = groups;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Accounting load error: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
       
       // Add from approved sessions first
       for (var s in approvedSessions) {
@@ -336,16 +373,33 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.pie_chart_outline, size: 64, color: AppTheme.textSub.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          const Text('Analiz yapılacak proje bulunmuyor.', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-          const SizedBox(height: 16),
-          Text(tr('Analiz yapılacak proje bulunmuyor.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-        ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 80),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.account_balance_wallet_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.3)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              tr('Henüz Analiz Edilecek Veri Yok'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain, fontFamily: 'Inter'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              tr('Onaylanmış veya tamamlanmış işler burada listelenecektir.'),
+              style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

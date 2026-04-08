@@ -70,8 +70,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
     if (_selectedFolderId != null) {
       list = list.where((d) {
-        final docDeptId = d['department_id']?.toString() ?? d['order']?['department_id']?.toString();
-        return docDeptId == _selectedFolderId;
+        final dDeptId = d['department_id']?.toString() ?? d['order']?['department_id']?.toString();
+        // If the document has no department_id, but we are in a folder, it shouldn't show up here
+        // Unless it's a global document (which we don't have a clear flag for yet, but let's stick to dept)
+        return dDeptId == _selectedFolderId;
       }).toList();
     }
     return list;
@@ -154,16 +156,19 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Widget _buildFoldersGrid(AppState appState) {
-    // Sadece Bereichsleiter ise kendi departmanı, değilse tüm departmanlar
     var visibleDepts = _departments;
     if (appState.isBereichsleiter) {
-        final assignedDeptName = appState.currentUser?['department']?['name'] as String?;
-        final userSACompanies = appState.authorizedCompanyIds;
+        final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
+        
         visibleDepts = _departments.where((d) {
-          final cid = d['company_id']?.toString() ?? '';
-          if (userSACompanies.contains(cid)) return true;
-          return assignedDeptName != null && d['name'].toString().toLowerCase().contains(assignedDeptName.toLowerCase());
+          final dName = (d['name'] as String? ?? '').toLowerCase();
+          // Match by name or exact ID
+          return dName.contains(assignedDeptName) || 
+                 assignedDeptName.contains(dName) ||
+                 d['id'].toString() == appState.departmentId;
         }).toList();
+
+        // If still empty, fall back to the one assigned in department_id
         if (visibleDepts.isEmpty && appState.departmentId.isNotEmpty) {
            visibleDepts = _departments.where((d) => d['id'].toString() == appState.departmentId).toList();
         }
@@ -310,14 +315,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: appState.isBereichsleiter ? appState.departmentId : null,
-                decoration: InputDecoration(labelText: tr('Bölüm / Hizmet Alanı'), border: const OutlineInputBorder()),
+                value: appState.isBereichsleiter ? appState.departmentId : (appState.canManageDocuments ? _selectedFolderId : null),
+                decoration: InputDecoration(labelText: tr('Abteilung / Bereich selection *'), border: const OutlineInputBorder()),
                 hint: Text(tr('Bölüm Seçin')),
                 items: _departments.map((d) => DropdownMenuItem(
                   value: d['id'].toString(),
                   child: Text(d['name'] ?? ''),
                 )).toList(),
                 onChanged: (uploading || appState.isBereichsleiter) ? null : (v) => setM(() => _selectedFolderId = v),
+                validator: (v) => v == null ? tr('Lütfen bir departman seçin') : null,
               ),
               const SizedBox(height: 16),
               

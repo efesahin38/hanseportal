@@ -38,22 +38,20 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       // Bereichsleiter: sadece kendi primary şirketini görecek, değiştiremeyecek
       if (appState.isBereichsleiter) {
-        final assignedDept = appState.currentUser?['department']?['name'] as String?;
-        final userSACompanies = appState.authorizedCompanyIds;
+        final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
         
+        // Bu 5 şirketten hangisine ait olduğunu bulalım
         final matched = companies.where((c) {
-          final cId = c['id'].toString();
           final cName = (c['name'] as String? ?? '').toLowerCase();
-          
-          if (userSACompanies.contains(cId)) return true;
-          if (assignedDept != null && assignedDept.isNotEmpty) {
-            return cName.contains(assignedDept.toLowerCase()) || assignedDept.toLowerCase().contains(cName);
-          }
-          return false;
+          // Eğer departman ismi şirket isminin içinde geçiyorsa (örn: Gastwirtschaft)
+          return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
         }).toList();
         
         if (matched.isNotEmpty) {
           companies = matched;
+        } else {
+          // Eğer isimle bulamazsak, DB'deki company_id'ye güvenelim
+          companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
         }
       } else if (!isAdmin && appState.companyId.isNotEmpty) {
         companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
