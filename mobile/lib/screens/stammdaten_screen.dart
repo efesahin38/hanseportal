@@ -40,8 +40,13 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
       if (appState.isBereichsleiter) {
         final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
         
-        // Bu 5 şirketten hangisine ait olduğunu bulalım
-        final matched = companies.where((c) {
+        // Bu 5 şirketten hangisine ait olduğunu bulalım (UG'yi her zaman filtreliyoruz)
+        var filteredCompanies = companies.where((c) {
+          final cName = (c['name'] as String? ?? '').toLowerCase();
+          return !cName.contains('ug') && !cName.contains('placeholder');
+        }).toList();
+
+        final matched = filteredCompanies.where((c) {
           final cName = (c['name'] as String? ?? '').toLowerCase();
           // Eğer departman ismi şirket isminin içinde geçiyorsa (örn: Gastwirtschaft)
           return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
@@ -50,8 +55,13 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
         if (matched.isNotEmpty) {
           companies = matched;
         } else {
-          // Eğer isimle bulamazsak, DB'deki company_id'ye güvenelim
-          companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+          // Eğer isimle bulamazsak, DB'deki company_id'ye güvenelim ama UG değilse
+          companies = filteredCompanies.where((c) => c['id'].toString() == appState.companyId).toList();
+          
+          // Eğer hala boşsa (UG atanmışsa), ama bir şirket gerekiyorsa listeden en mantıklısını seç
+          if (companies.isEmpty && filteredCompanies.isNotEmpty) {
+             companies = [filteredCompanies.first];
+          }
         }
       } else if (!isAdmin && appState.companyId.isNotEmpty) {
         companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();

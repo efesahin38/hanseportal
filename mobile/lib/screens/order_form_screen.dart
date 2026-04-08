@@ -224,9 +224,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                             if (v != null) {
                               final customer = _customers.firstWhere((c) => c['id'].toString() == v, orElse: () => <String, dynamic>{});
                               if (customer.isNotEmpty) {
-                                if (customer['address'] != null && customer['address'].toString().isNotEmpty) {
-                                  _siteAddress.text = customer['address'];
-                                }
+                                // 1. Auto-fill address
+                                final addr = customer['address']?.toString() ?? '';
+                                final street = addr; // Simple mapping if street isn't separate in customer object
+                                final plz = customer['postal_code']?.toString() ?? '';
+                                final city = customer['city']?.toString() ?? '';
+                                
+                                if (addr.isNotEmpty) _siteAddress.text = addr;
+                                if (plz.isNotEmpty) _plzCtrl.text = plz;
+                                if (city.isNotEmpty) _cityCtrl.text = city;
+                                
+                                // 2. Auto-fill Service Area if customer has one defined
                                 if (customer['customer_service_areas'] != null) {
                                   final csa = customer['customer_service_areas'] as List;
                                   if (csa.isNotEmpty) {
@@ -234,7 +242,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                     final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == sId, orElse: () => <String, dynamic>{});
                                     if (sArea.isNotEmpty) {
                                       _selectedServiceAreaId = sId;
-                                      _title.text = sArea['name'] ?? '';
+                                      if (_title.text.isEmpty) {
+                                        _title.text = sArea['name'] ?? '';
+                                      }
                                     }
                                   }
                                 }

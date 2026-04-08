@@ -48,9 +48,16 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   Future<void> _loadInitialData() async {
     try {
       final areas = await SupabaseService.getServiceAreas();
+      final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+      
+      final filteredAreas = areas.where((sa) {
+        final name = (sa['name'] as String? ?? '').toLowerCase();
+        return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _serviceAreas = areas;
+          _serviceAreas = filteredAreas;
         });
       }
     } catch (e) {
@@ -185,7 +192,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                           decoration: InputDecoration(labelText: tr('Varsayılan Hizmet Alanı')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
-                            child: Text(tr(s['name'] ?? ''), style: const TextStyle(fontFamily: 'Inter')),
+                            child: Text(s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
                           )).toList(),
                           onChanged: (v) => setState(() => _selectedServiceAreaId = v),
                         ),
