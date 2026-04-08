@@ -1613,6 +1613,40 @@ class SupabaseService {
     }
   }
 
+  /// İki kullanıcı arasında zaten bir direkt sohbet odası varsa ID'sini döndürür.
+  /// WhatsApp gibi davranış: tekrar yeni oda oluşturma.
+  static Future<String?> findExistingDirectChat(String user1Id, String user2Id) async {
+    try {
+      // user1 üyesi olduğu tüm direct odaları getir
+      final rooms1 = await _client
+          .from('chat_room_members')
+          .select('room_id, chat_rooms!inner(id, room_type)')
+          .eq('user_id', user1Id)
+          .eq('chat_rooms.room_type', 'direct');
+
+      final roomIds1 = (rooms1 as List)
+          .map((r) => r['room_id'].toString())
+          .toSet();
+
+      if (roomIds1.isEmpty) return null;
+
+      // user2'nin de aynı oda(lar)da üye olup olmadığını kontrol et
+      final rooms2 = await _client
+          .from('chat_room_members')
+          .select('room_id')
+          .eq('user_id', user2Id)
+          .inFilter('room_id', roomIds1.toList());
+
+      if ((rooms2 as List).isNotEmpty) {
+        return rooms2.first['room_id'].toString();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[Chat] findExistingDirectChat hata: $e');
+      return null;
+    }
+  }
+
   static Future<String> createChatRoom({
     required String name,
     required String roomType,

@@ -155,12 +155,24 @@ class _ChatScreenState extends State<ChatScreen> {
       } else {
         final selected = result['user'];
         roomName = '${selected['first_name']} ${selected['last_name']}';
-        roomId = await SupabaseService.createChatRoom(
-          name: roomName,
-          roomType: 'direct',
-          createdBy: appState.userId,
-          memberIds: [selected['id']],
+
+        // WhatsApp gibi: önce mevcut oda var mı kontrol et
+        final existingRoomId = await SupabaseService.findExistingDirectChat(
+          appState.userId,
+          selected['id'].toString(),
         );
+
+        if (existingRoomId != null) {
+          // Mevcut odaya yönlendir – yeni oda açma
+          roomId = existingRoomId;
+        } else {
+          roomId = await SupabaseService.createChatRoom(
+            name: roomName,
+            roomType: 'direct',
+            createdBy: appState.userId,
+            memberIds: [selected['id']],
+          );
+        }
       }
 
       if (mounted) {

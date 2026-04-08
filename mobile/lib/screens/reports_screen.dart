@@ -8,6 +8,7 @@ import '../services/pdf_service.dart';
 import '../services/localization_service.dart';
 import 'package:intl/intl.dart';
 import 'invoice_draft_detail_screen.dart';
+import 'work_report_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   final int initialIndex;
@@ -301,6 +302,12 @@ class _DailyAccountingSummaryTab extends StatefulWidget {
 class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> {
   List<Map<String, dynamic>> _dailyData = [];
   bool _loadingData = true;
+  // expandedDate -> bool
+  final Map<String, bool> _expanded = {};
+  // orderId -> whether invoicing is in progress
+  final Map<String, bool> _invoicing = {};
+  // orderId -> whether PDF is downloading
+  final Map<String, bool> _downloading = {};
 
   @override
   void initState() {
@@ -341,6 +348,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
             'materialCost': 0.0,
             'sessionCount': 0,
             'orderIds': <String>{},
+            'orders': <Map<String, dynamic>>[], // Full order objects per day
           };
         }
 
@@ -356,6 +364,13 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
           final orderIds = day['orderIds'] as Set<String>;
           if (!orderIds.contains(orderId) && orderId.isNotEmpty) {
             orderIds.add(orderId);
+            // Order'a ait tam objeyi sakla
+            (day['orders'] as List<Map<String, dynamic>>).add({
+              'id': orderId,
+              'title': order['title'] ?? '',
+              'order_number': order['order_number'] ?? '',
+              'status': order['status'] ?? '',
+            });
             // Gelir ve Gideri sadece bir kere say
             final reportsRaw = order['work_reports'];
             Map<String, dynamic>? wReport;
@@ -504,11 +519,22 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(displayDate, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Text('${sessions} ${tr('seans')}', style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontFamily: 'Inter')),
-                    ),
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                        child: Text('${sessions} ${tr('seans')}', style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontFamily: 'Inter')),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () => setState(() => _expanded[dateStr] = !(_expanded[dateStr] ?? false)),
+                        child: Icon(
+                          (_expanded[dateStr] ?? false) ? Icons.expand_less : Icons.expand_more,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                    ]),
                   ],
                 ),
                 const Divider(height: 16),
@@ -521,6 +547,117 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                     _miniStat(tr('Net Kar'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
                   ],
                 ),
+                // Proje listesi (genişletilmiş)
+                if (_expanded[dateStr] ?? false) ...[
+                  const Divider(height: 16),
+                  Text(tr('Projeler'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter')),
+                  const SizedBox(height: 8),
+                  ...(d['orders'] as List<Map<String, dynamic>>).map((order) {
+                    final orderId = order['id'] as String;
+                    final orderTitle = order['title'].toString().isNotEmpty ? order['title'] : (order['order_number'] ?? orderId);
+                    final isInvoiced = order['status'] == 'invoiced';
+                    final isInvoicing = _invoicing[orderId] ?? false;
+                    final isDownloading = _downloading[orderId] ?? false;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.divider),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.work_outline, size: 14, color: AppTheme.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(orderTitle, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'), overflow: TextOverflow.ellipsis),
+                              ),
+                              if (isInvoiced)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.teal.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                  child: Text(tr('Faturalandı'), style: const TextStyle(fontSize: 9, color: Colors.teal, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              // 1) Raporu Görüntüle
+                              OutlinedButton.icon(
+                                onPressed: () async {
+                                  if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => WorkReportScreen(orderId: orderId)));
+                                },
+                                icon: const Icon(Icons.visibility_outlined, size: 14),
+                                label: Text(tr('Raporu Görüntüle'), style: const TextStyle(fontSize: 11, fontFamily: 'Inter')),
+                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                              ),
+                              // 2) PDF İndir
+                              OutlinedButton.icon(
+                                onPressed: isDownloading ? null : () async {
+                                  setState(() => _downloading[orderId] = true);
+                                  try {
+                                    final fullOrder = await SupabaseService.getOrder(orderId);
+                                    if (fullOrder != null) {
+                                      final sessions = await SupabaseService.getWorkSessionsForOrder(orderId);
+                                      final workReport = await SupabaseService.getWorkReportByOrderId(orderId);
+                                      final extraWorks = await SupabaseService.getExtraWorks(orderId);
+                                      final pdf = await PdfService.buildWorkReportPdf(order: fullOrder, report: workReport, sessions: sessions, extraWorks: extraWorks);
+                                      await PdfService.sharePdf(pdf, 'is_raporu_$orderId.pdf');
+                                    }
+                                  } catch (e) {
+                                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Hatası: $e')));
+                                  } finally {
+                                    if (mounted) setState(() => _downloading[orderId] = false);
+                                  }
+                                },
+                                icon: isDownloading
+                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.picture_as_pdf_outlined, size: 14),
+                                label: Text(tr('PDF İndir'), style: const TextStyle(fontSize: 11, fontFamily: 'Inter')),
+                                style: OutlinedButton.styleFrom(foregroundColor: Colors.red[700], side: BorderSide(color: Colors.red[300]!), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                              ),
+                              // 3) Faturalandır
+                              if (!isInvoiced)
+                                OutlinedButton.icon(
+                                  onPressed: isInvoicing ? null : () async {
+                                    setState(() => _invoicing[orderId] = true);
+                                    try {
+                                      final appState = context.read<AppState>();
+                                      await SupabaseService.markOrderAsInvoiced(orderId, appState.userId);
+                                      // Yerel olarak statusu güncelle
+                                      setState(() {
+                                        order['status'] = 'invoiced';
+                                      });
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(tr('Fatura geçmişine taşındı')), backgroundColor: Colors.teal),
+                                      );
+                                    } catch (e) {
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                    } finally {
+                                      if (mounted) setState(() => _invoicing[orderId] = false);
+                                    }
+                                  },
+                                  icon: isInvoicing
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : const Icon(Icons.receipt_long_outlined, size: 14),
+                                  label: Text(tr('Faturalandır'), style: const TextStyle(fontSize: 11, fontFamily: 'Inter')),
+                                  style: OutlinedButton.styleFrom(foregroundColor: Colors.teal, side: const BorderSide(color: Colors.teal), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
               ],
             ),
           );

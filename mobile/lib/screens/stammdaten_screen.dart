@@ -31,7 +31,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
   Future<void> _load() async {
     try {
       final appState = context.read<AppState>();
-      final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
+      final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung;
       final serviceAreaIds = isAdmin ? null : appState.serviceAreaIds;
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
@@ -121,7 +121,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                 builder: (context) {
                   final appState = context.read<AppState>();
                   final isBereichsleiter = appState.isBereichsleiter;
-                  final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
+                  final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung;
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
@@ -234,7 +234,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               // Section Cards
               Builder(builder: (context) {
                 final appState = context.read<AppState>();
-                // Bereichsleiter sadece görüntüleyebilir, düzenleyemez
+                // Bereichsleiter sadece görüntüleyebilir, düzenleyemez. Buchhaltung da sadece görüntüler.
                 final canEdit = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
                 return Column(
                   children: [
