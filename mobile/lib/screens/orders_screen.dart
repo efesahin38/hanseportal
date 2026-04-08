@@ -46,8 +46,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
       // Bereichsleiter (Bölüm Sorumlusu) ise sadece KENDİ departmanını görsün (Kesin İzolasyon)
       if (appState.isBereichsleiter) {
         deptId = appState.departmentId;
-        // Eğer girmeye çalıştığı birim (widget.serviceAreaId) kendi birimi değilse temizleyelim
-        // (OrdersHub'dan bir filtre seçmiş olsa bile)
+        // Eğer girmeye çalıştığı birim (widget.serviceAreaId) kendi birimi değilse veya parametre boşsa
+        // Güvenlik için her zaman kendi deptId'sini dayatıyoruz.
+        saId = null; // Specifik SA filtresini temizle ki sadece kendi departmanındakileri görsün
       }
       
       final data = await SupabaseService.getOrders(

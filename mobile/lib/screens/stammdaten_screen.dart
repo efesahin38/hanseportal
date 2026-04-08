@@ -189,6 +189,28 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                             ),
                           ),
                         ],
+                        // Bereichsleiter şirket seçemez, sabit metin olarak görür
+                        if (isBereichsleiter) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.verified_user, color: Colors.white, size: 14),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _selectedCompany?['name'] ?? '-',
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   );

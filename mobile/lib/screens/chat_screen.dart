@@ -38,97 +38,221 @@ class _ChatScreenState extends State<ChatScreen> {
       appState.serviceAreaIds,
     );
     if (!mounted) return;
-    final selected = await showDialog<Map<String, dynamic>>(
+    
+    final isAdmin = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin;
+
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr('Neuer Chat')),
-        content: SizedBox(
-          width: 300, height: 400,
-          child: ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (_, i) {
-              final u = users[i];
-              return ListTile(
-                leading: CircleAvatar(backgroundColor: AppTheme.primary.withOpacity(0.1), child: Text('${u['first_name']?[0] ?? ''}${u['last_name']?[0] ?? ''}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12))),
-                title: Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                subtitle: Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
-                onTap: () => Navigator.pop(ctx, u),
-              );
-            },
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen')))],
-      ),
+      builder: (ctx) {
+        String groupName = '';
+        List<String> selectedUserIds = [];
+        bool isCreatingGroup = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isCreatingGroup ? tr('Yeni Grup Oluştur') : tr('Yeni Chat')),
+              content: SizedBox(
+                width: 400,
+                height: 500,
+                child: Column(
+                  children: [
+                    if (isAdmin && !isCreatingGroup)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: ElevatedButton.icon(
+                          onPressed: () => setDialogState(() => isCreatingGroup = true),
+                          icon: const Icon(Icons.group_add),
+                          label: Text(tr('Grup Oluştur')),
+                          style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
+                        ),
+                      ),
+                    if (isCreatingGroup) ...[
+                      TextField(
+                        decoration: InputDecoration(hintText: tr('Grup İsmi')),
+                        onChanged: (v) => groupName = v,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(tr('Üyeleri Seçin:'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: users.length,
+                        itemBuilder: (_, i) {
+                          final u = users[i];
+                          final uId = u['id'].toString();
+                          final isSelected = selectedUserIds.contains(uId);
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppTheme.primary.withOpacity(0.1),
+                              child: Text(
+                                '${u['first_name']?[0] ?? ''}${u['last_name']?[0] ?? ''}',
+                                style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            ),
+                            title: Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                            subtitle: Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
+                            trailing: isCreatingGroup
+                                ? Checkbox(
+                                    value: isSelected,
+                                    onChanged: (v) {
+                                      setDialogState(() {
+                                        if (v == true) {
+                                          selectedUserIds.add(uId);
+                                        } else {
+                                          selectedUserIds.remove(uId);
+                                        }
+                                      });
+                                    },
+                                  )
+                                : null,
+                            onTap: isCreatingGroup
+                                ? null
+                                : () => Navigator.pop(ctx, {'type': 'direct', 'user': u}),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen'))),
+                if (isCreatingGroup)
+                  ElevatedButton(
+                    onPressed: () {
+                      if (groupName.isEmpty || selectedUserIds.isEmpty) return;
+                      Navigator.pop(ctx, {
+                        'type': 'group',
+                        'name': groupName,
+                        'members': selectedUserIds,
+                      });
+                    },
+                    child: Text(tr('Oluştur')),
+                  ),
+              ],
+            );
+          },
+        );
+      },
     );
-    if (selected == null) return;
+
+    if (result == null) return;
+
     try {
-      final roomId = await SupabaseService.createChatRoom(
-        name: '${selected['first_name']} ${selected['last_name']}',
-        roomType: 'direct',
-        createdBy: context.read<AppState>().userId,
-        memberIds: [selected['id']],
-      );
+      String roomId;
+      String roomName;
+
+      if (result['type'] == 'group') {
+        roomName = result['name'];
+        roomId = await SupabaseService.createChatRoom(
+          name: roomName,
+          roomType: 'group',
+          createdBy: appState.userId,
+          memberIds: List<String>.from(result['members']),
+        );
+      } else {
+        final selected = result['user'];
+        roomName = '${selected['first_name']} ${selected['last_name']}';
+        roomId = await SupabaseService.createChatRoom(
+          name: roomName,
+          roomType: 'direct',
+          createdBy: appState.userId,
+          memberIds: [selected['id']],
+        );
+      }
+
       if (mounted) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: roomId, roomName: '${selected['first_name']} ${selected['last_name']}'))).then((_) => _load());
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _ChatDetailScreen(roomId: roomId, roomName: roomName),
+          ),
+        ).then((_) => _load());
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: Bitte prüfen Sie ob die SQL Migration in Supabase durchgeführt wurde! ($e)'), backgroundColor: AppTheme.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error),
+        );
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    floatingActionButton: FloatingActionButton(onPressed: _newChat, child: const Icon(Icons.chat_bubble_outline)),
-    body: WebContentWrapper(
-      child: Column(children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: AppTheme.gradientBox().copyWith(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24))),
-          child: Row(children: [
-            const Icon(Icons.chat, color: Colors.white, size: 28),
-            const SizedBox(width: 14),
-            Text(tr('Chatten'), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-          ]),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(onPressed: _newChat, child: const Icon(Icons.chat_bubble_outline)),
+      body: WebContentWrapper(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: AppTheme.gradientBox().copyWith(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24))),
+              child: Row(
+                children: [
+                  const Icon(Icons.chat, color: Colors.white, size: 28),
+                  const SizedBox(width: 14),
+                  Text(tr('Chatten'), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _rooms.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.forum_outlined, size: 56, color: AppTheme.textSub),
+                              const SizedBox(height: 12),
+                              Text(tr('Keine Chats vorhanden'), style: const TextStyle(color: AppTheme.textSub)),
+                              const SizedBox(height: 8),
+                              TextButton.icon(onPressed: _newChat, icon: const Icon(Icons.add), label: Text(tr('Neuen Chat starten'))),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _rooms.length,
+                            itemBuilder: (_, i) {
+                              final r = _rooms[i];
+                              final room = r['chat_rooms'];
+                              if (room == null) return const SizedBox.shrink();
+                              final msgs = room['chat_messages'] as List? ?? [];
+                              final lastMsg = msgs.isNotEmpty ? msgs.first : null;
+                              final unread = msgs.where((m) => m['is_read'] == false && m['sender_id'] != context.read<AppState>().userId).length;
+                              return Card(
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: room['room_type'] == 'group' ? AppTheme.warning.withOpacity(0.1) : AppTheme.primary.withOpacity(0.1),
+                                    child: Icon(room['room_type'] == 'group' ? Icons.group : Icons.person, color: room['room_type'] == 'group' ? AppTheme.warning : AppTheme.primary, size: 20),
+                                  ),
+                                  title: Text(room['name'] ?? tr('Chat'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  subtitle: Text(lastMsg?['message'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textSub), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  trailing: unread > 0
+                                      ? Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                          child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        )
+                                      : null,
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: room['id'], roomName: room['name'] ?? ''))).then((_) => _load()),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+            ),
+          ],
         ),
-        Expanded(
-          child: _loading ? const Center(child: CircularProgressIndicator())
-            : _rooms.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.forum_outlined, size: 56, color: AppTheme.textSub),
-                const SizedBox(height: 12),
-                Text(tr('Keine Chats vorhanden'), style: const TextStyle(color: AppTheme.textSub)),
-                const SizedBox(height: 8),
-                TextButton.icon(onPressed: _newChat, icon: const Icon(Icons.add), label: Text(tr('Neuen Chat starten'))),
-              ]))
-            : RefreshIndicator(onRefresh: _load, child: ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: _rooms.length,
-                itemBuilder: (_, i) {
-                  final r = _rooms[i];
-                  final room = r['chat_rooms'];
-                  if (room == null) return const SizedBox.shrink();
-                  final msgs = room['chat_messages'] as List? ?? [];
-                  final lastMsg = msgs.isNotEmpty ? msgs.first : null;
-                  final unread = msgs.where((m) => m['is_read'] == false && m['sender_id'] != context.read<AppState>().userId).length;
-                  return Card(child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: room['room_type'] == 'group' ? AppTheme.warning.withOpacity(0.1) : AppTheme.primary.withOpacity(0.1),
-                      child: Icon(room['room_type'] == 'group' ? Icons.group : Icons.person, color: room['room_type'] == 'group' ? AppTheme.warning : AppTheme.primary, size: 20),
-                    ),
-                    title: Text(room['name'] ?? tr('Chat'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text(lastMsg?['message'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textSub), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: unread > 0 ? Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-                      child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ) : null,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: room['id'], roomName: room['name'] ?? ''))).then((_) => _load()),
-                  ));
-                },
-              )),
-        ),
-      ]),
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _ChatDetailScreen extends StatefulWidget {
@@ -245,7 +369,20 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
                         if (m['message'] != null && m['message'].toString().isNotEmpty)
                           Text(m['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : AppTheme.textMain, fontSize: 14)),
                         const SizedBox(height: 2),
-                        Text(_formatTime(m['created_at']), style: TextStyle(fontSize: 9, color: isMe ? Colors.white54 : AppTheme.textSub)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_formatTime(m['created_at']), style: TextStyle(fontSize: 9, color: isMe ? Colors.white54 : AppTheme.textSub)),
+                            if (isMe) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.done_all,
+                                size: 12,
+                                color: m['is_read'] == true ? Colors.blueAccent : Colors.white54,
+                              ),
+                            ],
+                          ],
+                        ),
                       ]),
                     ),
                   );
