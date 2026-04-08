@@ -1703,31 +1703,6 @@ class SupabaseService {
     final data = await query.order('last_name');
     final allUsers = List<Map<String, dynamic>>.from(data);
 
-    if (role == 'geschaeftsfuehrer' || role == 'betriebsleiter' || role == 'system_admin') {
-      return allUsers; 
-    } else if (role == 'bereichsleiter') {
-      return allUsers.where((u) {
-        final r = u['role'] ?? '';
-        final isManagement = r == 'geschaeftsfuehrer' || r == 'betriebsleiter' || r == 'system_admin' || r == 'buchhaltung';
-        final userSa = u['user_service_areas'] as List?;
-        bool isMyTeam = false;
-        if (userSa != null && serviceAreaIds.isNotEmpty) {
-          isMyTeam = userSa.any((sa) => serviceAreaIds.contains(sa['service_area_id'].toString()));
-        }
-        return isManagement || isMyTeam;
-      }).toList();
-    } else {
-      // mitarbeiter, vorarbeiter vb. çalışanlar
-      return allUsers.where((u) {
-        final r = u['role'] ?? '';
-        final isManagement = r == 'buchhaltung'; // Sadece muhasebeye ekstra yetki veriliyor
-        final userSa = u['user_service_areas'] as List?;
-        bool isMyTeam = false;
-        if (userSa != null && serviceAreaIds.isNotEmpty) {
-          isMyTeam = userSa.any((sa) => serviceAreaIds.contains(sa['service_area_id'].toString()));
-        }
-        return isMyTeam || isManagement;
-      }).toList();
-    }
+    return allUsers; 
   }
 }

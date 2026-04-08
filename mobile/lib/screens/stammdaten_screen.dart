@@ -39,20 +39,21 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
       // Bereichsleiter: sadece kendi primary şirketini görecek, değiştiremeyecek
       if (appState.isBereichsleiter) {
         final assignedDept = appState.currentUser?['department']?['name'] as String?;
-        if (assignedDept != null && assignedDept.isNotEmpty) {
-          final matched = companies.where((c) {
-            final cName = (c['name'] as String? ?? '').toLowerCase();
-            return cName.contains(assignedDept.toLowerCase()) || 
-                   assignedDept.toLowerCase().contains(cName);
-          }).toList();
+        final userSACompanies = appState.authorizedCompanyIds;
+        
+        final matched = companies.where((c) {
+          final cId = c['id'].toString();
+          final cName = (c['name'] as String? ?? '').toLowerCase();
           
-          if (matched.isNotEmpty) {
-            companies = matched;
-          } else {
-             companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+          if (userSACompanies.contains(cId)) return true;
+          if (assignedDept != null && assignedDept.isNotEmpty) {
+            return cName.contains(assignedDept.toLowerCase()) || assignedDept.toLowerCase().contains(cName);
           }
-        } else if (appState.companyId.isNotEmpty) {
-          companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
+          return false;
+        }).toList();
+        
+        if (matched.isNotEmpty) {
+          companies = matched;
         }
       } else if (!isAdmin && appState.companyId.isNotEmpty) {
         companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();

@@ -22,8 +22,10 @@ class DocumentsScreen extends StatefulWidget {
 
 class _DocumentsScreenState extends State<DocumentsScreen> {
   List<Map<String, dynamic>> _docs = [];
+  List<Map<String, dynamic>> _departments = [];
   bool _loading = true;
   String _filterType = 'hepsi';
+  String? _selectedFolderId; // Null means root/all, otherwise departmentId
 
   final List<_FilterOption> _typeFilters = [
     _FilterOption('hepsi', tr('Tümü')),
@@ -32,7 +34,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     _FilterOption('work_order', tr('İş Emri')),
     _FilterOption('photo', tr('Fotoğraf')),
     _FilterOption('pre_invoice', tr('Ön Fatura')),
-    _FilterOption('work_report', tr('İş Raporu')),
     _FilterOption('final_invoice', tr('Fatura')),
     _FilterOption('other', tr('Diğer')),
   ];
@@ -50,15 +51,30 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       final docs = await SupabaseService.getDocuments(
         departmentId: departmentId,
       );
-      if (mounted) setState(() { _docs = docs; _loading = false; });
+      final depts = await SupabaseService.getDepartments();
+      
+      if (mounted) setState(() { 
+        _docs = docs; 
+        _departments = depts;
+        _loading = false; 
+      });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   List<Map<String, dynamic>> get _filtered {
-    if (_filterType == 'hepsi') return _docs;
-    return _docs.where((d) => d['document_type'] == _filterType).toList();
+    var list = _docs;
+    if (_filterType != 'hepsi') {
+      list = list.where((d) => d['document_type'] == _filterType).toList();
+    }
+    if (_selectedFolderId != null) {
+      list = list.where((d) {
+        final docDeptId = d['department_id']?.toString() ?? d['order']?['department_id']?.toString();
+        return docDeptId == _selectedFolderId;
+      }).toList();
+    }
+    return list;
   }
 
   @override
@@ -66,7 +82,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final appState = context.watch<AppState>();
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('Belgeler')),
+        title: Text(_selectedFolderId == null 
+            ? tr('Belgeler Yönetimi') 
+            : (_departments.firstWhere((d) => d['id'].toString() == _selectedFolderId, orElse: () => {'name': 'Klasör'})['name'] ?? 'Klasör')),
+        leading: _selectedFolderId != null 
+            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => setState(() => _selectedFolderId = null))
+            : null,
         actions: [
           if (appState.canManageDocuments)
             IconButton(
@@ -80,7 +101,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         padding: EdgeInsets.zero,
         child: Column(
           children: [
-            // ── Filtre Şeridi ──────────────────────────────────
+            // Filtre Şeridi
             SizedBox(
               height: 44,
               child: ListView.builder(
@@ -119,33 +140,112 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ),
             const Divider(height: 1),
 
-            // ── Liste ──────────────────────────────────────────
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _filtered.isEmpty
-                      ? Center(
-                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.folder_open_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
-                            const SizedBox(height: 12),
-                            Text(tr('Belge bulunamadı'),
-                                style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                          ]),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 4),
-                            itemBuilder: (_, i) => _DocumentCard(
-                              doc: _filtered[i],
-                              onDeleted: _load,
-                            ),
-                          ),
-                        ),
+                  : _selectedFolderId == null
+                      ? _buildFoldersGrid(appState)
+                      : _buildDocumentsList(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFoldersGrid(AppState appState) {
+    // Sadece Bereichsleiter ise kendi departmanı, değilse tüm departmanlar
+    var visibleDepts = _departments;
+    if (appState.isBereichsleiter) {
+        final assignedDeptName = appState.currentUser?['department']?['name'] as String?;
+        final userSACompanies = appState.authorizedCompanyIds;
+        visibleDepts = _departments.where((d) {
+          final cid = d['company_id']?.toString() ?? '';
+          if (userSACompanies.contains(cid)) return true;
+          return assignedDeptName != null && d['name'].toString().toLowerCase().contains(assignedDeptName.toLowerCase());
+        }).toList();
+        if (visibleDepts.isEmpty && appState.departmentId.isNotEmpty) {
+           visibleDepts = _departments.where((d) => d['id'].toString() == appState.departmentId).toList();
+        }
+    }
+
+    if (visibleDepts.isEmpty) {
+        return const Center(child: Text('Klasör bulunamadı'));
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: visibleDepts.length,
+      itemBuilder: (context, index) {
+        final dept = visibleDepts[index];
+        final deptId = dept['id'].toString();
+        // Count docs for this dept
+        int docCount = _docs.where((d) {
+           final dDept = d['department_id']?.toString() ?? d['order']?['department_id']?.toString();
+           return dDept == deptId;
+        }).length;
+
+        return InkWell(
+          onTap: () => setState(() => _selectedFolderId = deptId),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.folder_shared, size: 48, color: Colors.blue),
+                const SizedBox(height: 12),
+                Text(
+                  dept['name'] ?? 'Bölüm',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$docCount Belge',
+                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDocumentsList() {
+    if (_filtered.isEmpty) {
+      return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.folder_open_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
+          const SizedBox(height: 12),
+          Text(tr('Bu klasörde belge bulunamadı'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+        ]),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: _filtered.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 4),
+        itemBuilder: (_, i) => _DocumentCard(
+          doc: _filtered[i],
+          onDeleted: _load,
         ),
       ),
     );
@@ -207,6 +307,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   DropdownMenuItem(value: 'other', child: Text(tr('Diğer'))),
                 ],
                 onChanged: uploading ? null : (v) => setM(() => selectedType = v!),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: appState.isBereichsleiter ? appState.departmentId : null,
+                decoration: InputDecoration(labelText: tr('Bölüm / Hizmet Alanı'), border: const OutlineInputBorder()),
+                hint: Text(tr('Bölüm Seçin')),
+                items: _departments.map((d) => DropdownMenuItem(
+                  value: d['id'].toString(),
+                  child: Text(d['name'] ?? ''),
+                )).toList(),
+                onChanged: (uploading || appState.isBereichsleiter) ? null : (v) => setM(() => _selectedFolderId = v),
               ),
               const SizedBox(height: 16),
               
@@ -294,6 +405,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             'system_admin',
                             'buchhaltung'
                           ],
+                          'department_id': appState.isBereichsleiter ? appState.departmentId : _selectedFolderId,
                         };
 
                         await SupabaseService.createDocument(docData);

@@ -39,29 +39,61 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
       return;
     }
 
-    // Geschäftsführer, Betriebsleiter und Buchhaltung sehen ALLE Einträge (kein Abteilungsfilter)
     try {
-      final data = await SupabaseService.getApprovedWorkSessionsForAccounting(
-        serviceAreaIds: null,   // keine Filterung – alle Abteilungen
+      // 1. Fetch approved sessions
+      final approvedSessions = await SupabaseService.getApprovedWorkSessionsForAccounting(
+        serviceAreaIds: null,
         departmentId: null,
       );
       
-      // Group by order_id
+      // 2. Fetch completed/invoiced orders directly to capture older projects
+      final pastOrders = await SupabaseService.client.from('orders').select('''
+        id, title, order_number, service_area_id, department_id, status, created_at, planned_start_date,
+        customer:customers(id, name),
+        invoice_drafts(total_amount, subtotal),
+        extra_works(estimated_material_cost, estimated_labor_cost),
+        work_reports(total_revenue, estimated_labor_cost, estimated_material_cost),
+        work_sessions(id, actual_start, approved_billable_hours, approved_at, approval_status, user:users(id, first_name, last_name))
+      ''').inFilter('status', ['completed', 'invoiced']).order('created_at', ascending: false);
+
       Map<String, List<Map<String, dynamic>>> groups = {};
-      for (var s in data) {
+      
+      // Add from approved sessions first
+      for (var s in approvedSessions) {
         final key = s['order_id'] ?? 'misc';
         if (!groups.containsKey(key)) groups[key] = [];
         groups[key]!.add(s);
       }
 
-      // Her proje için work_report verilerini çek
+      // Add from past orders if not already in groups
+      for (var order in pastOrders) {
+        final key = order['id'];
+        if (!groups.containsKey(key)) {
+          groups[key] = [];
+          // Create dummy session if empty, just so it renders the project card
+          final sessions = order['work_sessions'] as List?;
+          if (sessions != null && sessions.isNotEmpty) {
+            for (var s in sessions) {
+              final mapped = Map<String, dynamic>.from(s);
+              mapped['order'] = order;
+              mapped['order_id'] = key;
+              groups[key]!.add(mapped);
+            }
+          } else {
+             groups[key]!.add({
+                'order': order,
+                'order_id': key,
+                'actual_start': order['planned_start_date'] ?? DateTime.now().toIso8601String(),
+             });
+          }
+        }
+      }
+
       Map<String, Map<String, dynamic>> reports = {};
       for (var orderId in groups.keys) {
         try {
           final report = await SupabaseService.getWorkReportByOrderId(orderId);
-          if (report != null) {
-            reports[orderId] = report;
-          }
+          if (report != null) reports[orderId] = report;
         } catch (_) {}
       }
 
