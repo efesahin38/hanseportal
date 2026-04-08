@@ -9,9 +9,10 @@ import 'order_detail_screen.dart';
 import 'order_form_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
+  final String? serviceAreaId;
   final String? departmentId;
   final String? initialStatus;
-  const OrdersScreen({super.key, this.departmentId, this.initialStatus});
+  const OrdersScreen({super.key, this.serviceAreaId, this.departmentId, this.initialStatus});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -40,11 +41,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final appState = context.read<AppState>();
     try {
       // Yalnızca tüm SIPARIŞLERI görme yetkisi olmayan yetkililer için (ör: alan yöneticileri) filtrele
-      final depId = widget.departmentId ?? (!appState.canViewAllOrders ? appState.departmentId : null);
+      final saId = widget.serviceAreaId;
       
       final data = await SupabaseService.getOrders(
         status: _statusFilter?.isNotEmpty == true ? _statusFilter : null,
-        departmentId: depId,
+        serviceAreaId: widget.serviceAreaId,
+        departmentId: widget.departmentId,
       );
       if (mounted) setState(() { _orders = data; _applyFilter(); _loading = false; });
     } catch (_) {
@@ -81,7 +83,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           : null,
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(initialDepartmentId: widget.departmentId))).then((_) => _load()),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(initialServiceAreaId: widget.serviceAreaId))).then((_) => _load()),
               icon: const Icon(Icons.add),
               label: Text(tr('Yeni İş'), style: const TextStyle(fontFamily: 'Inter')),
             )
@@ -223,11 +225,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 }
 
   String _getTitle() {
-    if (widget.departmentId == 'dddddddd-1111-1111-1111-111111111111') return tr('Temizlik İşleri');
-    if (widget.departmentId == 'dddddddd-2222-2222-2222-222222222222') return tr('Ray Servis İşleri');
-    if (widget.departmentId == 'dddddddd-3333-3333-3333-333333333333') return tr('Otel Servis İşleri');
-    if (widget.departmentId == 'dddddddd-4444-4444-4444-444444444444') return tr('Personel İşleri');
-    if (widget.departmentId == 'dddddddd-5555-5555-5555-555555555555') return tr('Yönetim / Diğer');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000001') return tr('Temizlik İşleri');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000002') return tr('Ray Servis İşleri');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000005') return tr('Otel Servis İşleri');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000004') return tr('Personel İşleri');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000003') return tr('Yönetim / Diğer');
     return tr('Tüm İşler');
   }
 }

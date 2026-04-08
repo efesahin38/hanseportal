@@ -46,8 +46,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
-        footer: (context) => _buildFooter(context, font),
+        header: (context) => _buildHeader(fontBold, companyName: order['company']?['name']),
+        footer: (context) => _buildFooter(context, font, companyName: order['company']?['name']),
         build: (context) => [
           // ── Başlık ──
           pw.Container(
@@ -254,8 +254,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
-        footer: (context) => _buildFooter(context, font),
+        header: (context) => _buildHeader(fontBold, companyName: company['name']),
+        footer: (context) => _buildFooter(context, font, companyName: company['name']),
         build: (context) => [
           // ── Başlık ──
           pw.Container(
@@ -454,7 +454,7 @@ class PdfService {
   // YARDIMCI WIDGET'LAR
   // ─────────────────────────────────────────────────────────
 
-  static pw.Widget _buildHeader(pw.Font fontBold) {
+  static pw.Widget _buildHeader(pw.Font fontBold, {String? companyName}) {
     return pw.Container(
       decoration: const pw.BoxDecoration(
         border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey200, width: 0.5)),
@@ -463,7 +463,7 @@ class PdfService {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text('Hanse Kollektiv GmbH',
+          pw.Text(companyName ?? 'Hanse Kollektiv GmbH',
               style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.blueGrey700)),
           pw.Text(tr('Dijital Yönetim Sistemi'),
               style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
@@ -472,7 +472,7 @@ class PdfService {
     );
   }
 
-  static pw.Widget _buildFooter(pw.Context context, pw.Font font) {
+  static pw.Widget _buildFooter(pw.Context context, pw.Font font, {String? companyName}) {
     return pw.Container(
       decoration: const pw.BoxDecoration(
         border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
@@ -484,7 +484,7 @@ class PdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Hanse Kollektiv GmbH • Hamburg • www.hanse-kollektiv.de',
+                '${companyName ?? 'Hanse Kollektiv GmbH'} • Hamburg',
                 style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600),
               ),
               pw.Text(
@@ -786,8 +786,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
-        footer: (context) => _buildFooter(context, font),
+        header: (context) => _buildHeader(fontBold, companyName: 'Hanse Kollektiv GmbH'), // Toplam rapor genellikle genel holding/merkez adına olabilir
+        footer: (context) => _buildFooter(context, font, companyName: 'Hanse Kollektiv GmbH'),
         build: (context) => [
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),

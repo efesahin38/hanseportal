@@ -21,7 +21,9 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await SupabaseService.getVehicles(companyId: context.read<AppState>().companyId);
+      final appState = context.read<AppState>();
+      final companyIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.authorizedCompanyIds;
+      final data = await SupabaseService.getVehicles(companyIds: companyIds);
       if (mounted) setState(() { _vehicles = data; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }

@@ -5,6 +5,9 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter/foundation.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -21,13 +24,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await SupabaseService.getChatRooms(context.read<AppState>().userId);
+      final appState = context.read<AppState>();
+      final data = await SupabaseService.getChatRooms(appState.userId, role: appState.role);
       if (mounted) setState(() { _rooms = data; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
   void _newChat() async {
-    final users = await SupabaseService.getAvailableChatUsers(context.read<AppState>().userId);
+    final appState = context.read<AppState>();
+    final users = await SupabaseService.getAvailableChatUsers(
+      appState.userId,
+      appState.role,
+      appState.serviceAreaIds,
+    );
     if (!mounted) return;
     final selected = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -52,14 +61,18 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
     if (selected == null) return;
-    final roomId = await SupabaseService.createChatRoom(
-      name: '${selected['first_name']} ${selected['last_name']}',
-      roomType: 'direct',
-      createdBy: context.read<AppState>().userId,
-      memberIds: [selected['id']],
-    );
-    if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: roomId, roomName: '${selected['first_name']} ${selected['last_name']}')));
+    try {
+      final roomId = await SupabaseService.createChatRoom(
+        name: '${selected['first_name']} ${selected['last_name']}',
+        roomType: 'direct',
+        createdBy: context.read<AppState>().userId,
+        memberIds: [selected['id']],
+      );
+      if (mounted) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: roomId, roomName: '${selected['first_name']} ${selected['last_name']}'))).then((_) => _load());
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: Bitte prüfen Sie ob die SQL Migration in Supabase durchgeführt wurde! ($e)'), backgroundColor: AppTheme.error));
     }
   }
 
@@ -145,8 +158,44 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
     _msgCtrl.clear();
+    setState(() => _loading = true);
     await SupabaseService.sendChatMessage(roomId: widget.roomId, senderId: context.read<AppState>().userId, message: text);
     _load();
+  }
+
+  Future<void> _sendImage() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      setState(() => _loading = true);
+      
+      Uint8List bytes = await picked.readAsBytes();
+      
+      // Native (iOS/Android) compression using flutter_image_compress
+      if (!kIsWeb) {
+        final compressed = await FlutterImageCompress.compressWithList(
+          bytes,
+          minHeight: 1080,
+          minWidth: 1080,
+          quality: 70,
+        );
+        bytes = compressed;
+      }
+
+      final url = await SupabaseService.uploadChatFile(picked.name, bytes);
+      await SupabaseService.sendChatMessage(
+        roomId: widget.roomId,
+        senderId: context.read<AppState>().userId,
+        fileUrl: url,
+        fileName: picked.name,
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+    } finally {
+      _load();
+    }
   }
 
   @override
@@ -180,7 +229,21 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
                       ),
                       child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
                         if (!isMe && sender != null) Text('${sender['first_name']} ${sender['last_name']}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isMe ? Colors.white70 : AppTheme.textSub)),
-                        Text(m['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : AppTheme.textMain, fontSize: 14)),
+                        if (m['file_url'] != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                m['file_url'],
+                                width: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                              ),
+                            ),
+                          ),
+                        if (m['message'] != null && m['message'].toString().isNotEmpty)
+                          Text(m['message'] ?? '', style: TextStyle(color: isMe ? Colors.white : AppTheme.textMain, fontSize: 14)),
                         const SizedBox(height: 2),
                         Text(_formatTime(m['created_at']), style: TextStyle(fontSize: 9, color: isMe ? Colors.white54 : AppTheme.textSub)),
                       ]),
@@ -193,6 +256,10 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
           padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
           decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: AppTheme.divider))),
           child: Row(children: [
+            IconButton(
+              icon: const Icon(Icons.attach_file, color: AppTheme.textSub),
+              onPressed: _sendImage,
+            ),
             Expanded(child: TextField(
               controller: _msgCtrl,
               decoration: InputDecoration(hintText: tr('Nachricht schreiben...'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),

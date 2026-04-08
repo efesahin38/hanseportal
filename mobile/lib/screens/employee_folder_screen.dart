@@ -107,11 +107,11 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = kIsWeb && WebUtils.isWide(context);
-
-    if (isWide) {
-      return _buildWideLayout();
+    if (widget.initialEmployee != null) {
+      return _buildNarrowLayout();
     }
+    final isWide = kIsWeb && WebUtils.isWide(context);
+    if (isWide) return _buildWideLayout();
     return _buildNarrowLayout();
   }
 
@@ -145,7 +145,13 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
         title: Text('${_selectedEmployee!['first_name']} ${_selectedEmployee!['last_name']}'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => setState(() => _selectedEmployee = null),
+          onPressed: () {
+            if (widget.initialEmployee != null) {
+              Navigator.pop(context);
+            } else {
+              setState(() => _selectedEmployee = null);
+            }
+          },
         ),
       ),
       body: _buildFolderPanel(),
@@ -292,10 +298,10 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
                   : GridView.builder(
                       padding: const EdgeInsets.all(16),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: kIsWeb && WebUtils.isWide(context) ? 4 : 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 1.3,
+                        crossAxisCount: WebUtils.gridColumns(context, mobile: 2, tablet: 3, desktop: 4),
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.8,
                       ),
                       itemCount: _folders.length,
                       itemBuilder: (_, i) {

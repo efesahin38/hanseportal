@@ -9,8 +9,8 @@ import '../services/localization_service.dart';
 /// Yeni iş / mevcut iş düzenleme formu
 class OrderFormScreen extends StatefulWidget {
   final String? orderId; // null = yeni oluştur
-  final String? initialDepartmentId;
-  const OrderFormScreen({super.key, this.orderId, this.initialDepartmentId});
+  final String? initialServiceAreaId;
+  const OrderFormScreen({super.key, this.orderId, this.initialServiceAreaId});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -61,9 +61,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final serviceAreas = await SupabaseService.getServiceAreas();
       
       String? defaultSAId;
-      if (widget.initialDepartmentId != null) {
-        // Bu departmana ait ilk hizmet alanını bul
-        final matching = serviceAreas.where((s) => s['department_id'] == widget.initialDepartmentId).toList();
+      if (widget.initialServiceAreaId != null) {
+        final matching = serviceAreas.where((s) => s['id']?.toString() == widget.initialServiceAreaId).toList();
         if (matching.isNotEmpty) {
           defaultSAId = matching.first['id'].toString();
         }

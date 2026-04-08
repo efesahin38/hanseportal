@@ -36,6 +36,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   String _status = 'draft';
 
   List<Map<String, dynamic>> _personnel = [];
+  Set<String> _conflictingUserIds = {};
 
   @override
   void initState() {
@@ -81,9 +82,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         _personnel = assignableUsers;
         _loadingPersonnel = false;
       });
+      await _loadConflicts();
     } catch (_) {
       if (mounted) setState(() => _loadingPersonnel = false);
     }
+  }
+
+  Future<void> _loadConflicts() async {
+    final dateStr = _planDate.toIso8601String().split('T')[0];
+    try {
+      final res = await SupabaseService.client
+          .from('operation_plan_personnel')
+          .select('user_id, operation_plans!inner(plan_date)')
+          .eq('operation_plans.plan_date', dateStr);
+          
+      final ids = (res as List).map((row) => row['user_id'] as String).toSet();
+      if (mounted) setState(() => _conflictingUserIds = ids);
+    } catch (_) {}
   }
 
   Future<void> _loadPlan() async {
@@ -124,7 +139,10 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null) setState(() => _planDate = picked);
+    if (picked != null) {
+      setState(() => _planDate = picked);
+      await _loadConflicts();
+    }
   }
 
   Future<void> _pickTime(bool isStart) async {
@@ -338,32 +356,59 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                         final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
                         final role = user['position_title'] ?? AppTheme.roleLabel(user['role'] ?? '');
                         final selected = _selectedPersonnelIds.contains(id);
-                        return CheckboxListTile(
-                          value: selected,
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                _selectedPersonnelIds.add(id);
-                              } else {
-                                _selectedPersonnelIds.remove(id);
-                                if (_supervisorId == id) _supervisorId = null;
-                              }
-                            });
-                          },
-                          title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
-                          subtitle: Text(role, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                          secondary: selected && _selectedPersonnelIds.isNotEmpty
-                              ? GestureDetector(
-                                  onTap: () => setState(() => _supervisorId = _supervisorId == id ? null : id),
-                                  child: Icon(
-                                    Icons.star,
-                                    color: _supervisorId == id ? AppTheme.warning : AppTheme.border,
-                                    size: 22,
-                                  ),
-                                )
-                              : null,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          dense: true,
+                        final hasConflict = _conflictingUserIds.contains(id);
+                        
+                        return Column(
+                          children: [
+                            CheckboxListTile(
+                              value: selected,
+                              onChanged: (v) {
+                                setState(() {
+                                  if (v == true) {
+                                    _selectedPersonnelIds.add(id);
+                                  } else {
+                                    _selectedPersonnelIds.remove(id);
+                                    if (_supervisorId == id) _supervisorId = null;
+                                  }
+                                });
+                              },
+                              title: Row(
+                                children: [
+                                  Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                                  if (hasConflict) ...[
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 16),
+                                  ]
+                                ],
+                              ),
+                              subtitle: Text(role, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                              secondary: selected && _selectedPersonnelIds.isNotEmpty
+                                  ? GestureDetector(
+                                      onTap: () => setState(() => _supervisorId = _supervisorId == id ? null : id),
+                                      child: Icon(
+                                        Icons.star,
+                                        color: _supervisorId == id ? AppTheme.warning : AppTheme.border,
+                                        size: 22,
+                                      ),
+                                    )
+                                  : null,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                            ),
+                            if (selected && hasConflict)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  child: Row(children: [
+                                    const Icon(Icons.info_outline, color: AppTheme.warning, size: 14),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(tr('Bu personelin seçili tarihte başka bir departmanda / projede de mesaisi var!'), style: const TextStyle(fontSize: 11, color: AppTheme.warning))),
+                                  ]),
+                                ),
+                              )
+                          ],
                         );
                       }).toList(),
                     );

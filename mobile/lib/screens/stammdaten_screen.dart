@@ -16,7 +16,8 @@ class StammdatenScreen extends StatefulWidget {
 }
 
 class _StammdatenScreenState extends State<StammdatenScreen> {
-  Map<String, dynamic>? _company;
+  Map<String, dynamic>? _selectedCompany;
+  List<Map<String, dynamic>> _authorizedCompanies = [];
   List<Map<String, dynamic>> _bankAccounts = [];
   List<Map<String, dynamic>> _serviceAreas = [];
   bool _loading = true;
@@ -29,19 +30,33 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
   Future<void> _load() async {
     try {
-      final companyId = context.read<AppState>().companyId;
-      final companies = await SupabaseService.getCompanies();
-      final company = companies.isNotEmpty ? companies.first : null;
-      final banks = company != null ? await SupabaseService.getCompanyBankAccounts(company['id']) : <Map<String, dynamic>>[];
-      final areas = await SupabaseService.getServiceAreas();
-      if (mounted) {
-        setState(() {
-          _company = company;
-          _bankAccounts = banks;
-          _serviceAreas = areas;
-          _loading = false;
-        });
+      final appState = context.read<AppState>();
+      final serviceAreaIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.serviceAreaIds;
+      
+      final companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
+      
+      if (companies.isNotEmpty) {
+        _authorizedCompanies = companies;
+        // Keep selection if exists, otherwise take first
+        if (_selectedCompany == null) {
+          _selectedCompany = companies.first;
+        } else {
+          try {
+            _selectedCompany = companies.firstWhere((c) => c['id'] == _selectedCompany!['id']);
+          } catch (_) {
+            _selectedCompany = companies.first;
+          }
+        }
       }
+
+      if (_selectedCompany != null) {
+        _bankAccounts = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
+        _serviceAreas = await SupabaseService.getServiceAreas(); 
+        // Filter service areas for the selected company
+        _serviceAreas = _serviceAreas.where((sa) => sa['department']?['company_id'] == _selectedCompany!['id']).toList();
+      }
+
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
@@ -58,27 +73,59 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header
+              // Header with Company Switcher if multiple
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
-                      child: const Icon(Icons.business, color: Colors.white, size: 28),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
+                          child: const Icon(Icons.business, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_selectedCompany?['name'] ?? tr('Firma'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                              Text(tr('Meine Stammdaten'), style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter')),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_company?['name'] ?? 'Hanse Kollektiv GmbH', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          Text(tr('Meine Stammdaten'), style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter')),
-                        ],
+                    if (_authorizedCompanies.length > 1) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: DropdownButton<String>(
+                          value: _selectedCompany?['id'],
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          dropdownColor: AppTheme.primary,
+                          iconEnabledColor: Colors.white,
+                          style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
+                          items: _authorizedCompanies.map((c) => DropdownMenuItem(
+                            value: c['id'].toString(),
+                            child: Text(c['name'] ?? ''),
+                          )).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedCompany = _authorizedCompanies.firstWhere((c) => c['id'] == val);
+                                _loading = true;
+                              });
+                              _load();
+                            }
+                          },
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -88,15 +135,15 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               _SectionCard(
                 icon: Icons.apartment,
                 title: tr('Unternehmensdaten'),
-                subtitle: _company?['name'] ?? '-',
+                subtitle: _selectedCompany?['name'] ?? '-',
                 color: const Color(0xFF3B82F6),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _company))).then((ok) { if (ok == true) _load(); }),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); }),
               ),
 
               _SectionCard(
                 icon: Icons.person,
                 title: tr('Geschäftsführer'),
-                subtitle: '${_company?['ceo_first_name'] ?? ''} ${_company?['ceo_last_name'] ?? ''}'.trim().isEmpty ? tr('Nicht hinterlegt') : '${_company?['ceo_first_name'] ?? ''} ${_company?['ceo_last_name'] ?? ''}'.trim(),
+                subtitle: '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim().isEmpty ? tr('Nicht hinterlegt') : '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim(),
                 color: const Color(0xFF10B981),
                 onTap: () => _showGfDialog(),
               ),
@@ -104,9 +151,9 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               _SectionCard(
                 icon: Icons.gavel,
                 title: tr('Rechtliche Firmendaten'),
-                subtitle: '${tr('HR')}: ${_company?['trade_register_number'] ?? '-'} | ${tr('St.Nr.')}: ${_company?['tax_number'] ?? '-'}',
+                subtitle: '${tr('HR')}: ${_selectedCompany?['trade_register_number'] ?? '-'} | ${tr('St.Nr.')}: ${_selectedCompany?['tax_number'] ?? '-'}',
                 color: const Color(0xFFF59E0B),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _company))).then((ok) { if (ok == true) _load(); }),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); }),
               ),
 
               _SectionCard(
@@ -132,11 +179,11 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
   }
 
   void _showGfDialog() {
-    final firstNameCtrl = TextEditingController(text: _company?['ceo_first_name'] ?? '');
-    final lastNameCtrl = TextEditingController(text: _company?['ceo_last_name'] ?? '');
-    final addressCtrl = TextEditingController(text: _company?['ceo_address'] ?? '');
-    final phoneCtrl = TextEditingController(text: _company?['ceo_phone'] ?? '');
-    final emailCtrl = TextEditingController(text: _company?['ceo_email'] ?? '');
+    final firstNameCtrl = TextEditingController(text: _selectedCompany?['ceo_first_name'] ?? '');
+    final lastNameCtrl = TextEditingController(text: _selectedCompany?['ceo_last_name'] ?? '');
+    final addressCtrl = TextEditingController(text: _selectedCompany?['ceo_address'] ?? '');
+    final phoneCtrl = TextEditingController(text: _selectedCompany?['ceo_phone'] ?? '');
+    final emailCtrl = TextEditingController(text: _selectedCompany?['ceo_email'] ?? '');
 
     showModalBottomSheet(
       context: context,
@@ -163,7 +210,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               ElevatedButton(
                 onPressed: () async {
                   await SupabaseService.upsertCompany({
-                    'id': _company!['id'],
+                    'id': _selectedCompany!['id'],
                     'ceo_first_name': firstNameCtrl.text.trim(),
                     'ceo_last_name': lastNameCtrl.text.trim(),
                     'ceo_address': addressCtrl.text.trim(),
@@ -222,7 +269,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                             onPressed: () async {
                               await SupabaseService.deleteCompanyBankAccount(b['id']);
                               _load();
-                              final banks = await SupabaseService.getCompanyBankAccounts(_company!['id']);
+                              final banks = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
                               setSheetState(() => _bankAccounts = banks);
                             },
                           ),
@@ -261,7 +308,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
           ElevatedButton(
             onPressed: () async {
               await SupabaseService.upsertCompanyBankAccount({
-                'company_id': _company!['id'],
+                'company_id': _selectedCompany!['id'],
                 'bank_name': bankCtrl.text.trim(),
                 'iban': ibanCtrl.text.trim(),
                 'bic': bicCtrl.text.trim(),
@@ -269,7 +316,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               if (mounted) {
                 Navigator.pop(ctx);
                 _load();
-                final banks = await SupabaseService.getCompanyBankAccounts(_company!['id']);
+                final banks = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
                 setSheetState(() => _bankAccounts = banks);
               }
             },

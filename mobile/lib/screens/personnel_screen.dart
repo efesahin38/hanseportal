@@ -42,10 +42,10 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      final departmentId = appState.isBereichsleiter ? appState.departmentId : null;
+      final serviceAreaIds = appState.isBereichsleiter ? appState.serviceAreaIds : null;
       final data = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
-        departmentId: departmentId,
+        serviceAreaIds: serviceAreaIds,
         role: _roleFilter,
         status: 'active',
       );

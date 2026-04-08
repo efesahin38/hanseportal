@@ -24,6 +24,11 @@ class AppState extends ChangeNotifier {
   String get userId => _currentUser?['id'] ?? '';
   String get companyId => _currentUser?['company_id'] ?? '';
   String get departmentId => _currentUser?['department_id'] ?? '';
+  List<String> get serviceAreaIds {
+    final usa = _currentUser?['user_service_areas'] as List?;
+    if (usa == null) return [];
+    return usa.map((u) => u['service_area_id'].toString()).toList();
+  }
   String get fullName => '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim();
 
   bool get isGeschaeftsfuehrer => role == 'geschaeftsfuehrer';
@@ -53,6 +58,27 @@ class AppState extends ChangeNotifier {
   bool get canSeeFullCustomerDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
   bool get canViewAllPersonnel => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
   bool get canViewAllDepartments => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+
+  /// Returns the IDs of companies the user is authorized to view based on their service areas.
+  /// If the user is a GF or Admin, they might see all companies? Actually, following the strict 
+  /// "only their company" rule for Bereichsleiter.
+  List<String> get authorizedCompanyIds {
+    if (isGeschaeftsfuehrer || isSystemAdmin) {
+      // GF can see all, but usually we handle it by not filtering.
+      // But for some screens, we need the "Main" or current selection.
+      return []; 
+    }
+    final usa = _currentUser?['user_service_areas'] as List?;
+    if (usa == null) return [];
+    
+    final companyIds = usa
+        .map((u) => u['service_areas']?['department']?['company_id']?.toString())
+        .where((id) => id != null)
+        .cast<String>()
+        .toSet()
+        .toList();
+    return companyIds;
+  }
 
   AppState() {
     _initialize();

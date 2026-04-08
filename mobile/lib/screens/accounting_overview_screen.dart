@@ -31,8 +31,13 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final appState = context.read<AppState>();
+    final serviceAreaIds = appState.isBereichsleiter ? appState.serviceAreaIds : null;
+    
     try {
-      final data = await SupabaseService.getApprovedWorkSessionsForAccounting();
+      final data = await SupabaseService.getApprovedWorkSessionsForAccounting(
+        serviceAreaIds: serviceAreaIds
+      );
       
       // Group by order_id
       Map<String, List<Map<String, dynamic>>> groups = {};

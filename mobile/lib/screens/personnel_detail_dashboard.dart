@@ -4,6 +4,7 @@ import '../theme/web_utils.dart';
 import '../services/localization_service.dart';
 import 'personnel_form_screen.dart';
 import 'employee_folder_screen.dart';
+import 'work_session_approval_screen.dart';
 
 class PersonnelDetailDashboard extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -68,8 +69,7 @@ class PersonnelDetailDashboard extends StatelessWidget {
               subtitle: tr('Einsatzdaten & Stundenzettel'),
               color: const Color(0xFFF59E0B),
               onTap: () {
-                // TODO: Arbeitszeiterfassung
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Demnächst verfügbar'))));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen()));
               },
             ),
           ],

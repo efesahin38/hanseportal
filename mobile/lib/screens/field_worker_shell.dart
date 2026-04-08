@@ -6,6 +6,7 @@ import '../services/localization_service.dart';
 import 'field_my_tasks_screen.dart';
 import 'notifications_screen.dart';
 import 'my_documents_screen.dart';
+import 'chat_screen.dart';
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
 class FieldWorkerShell extends StatefulWidget {
@@ -22,6 +23,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
     FieldMyTasksScreen(),
     MyDocumentsScreen(),
     NotificationsScreen(),
+    ChatScreen(),
   ];
 
   @override
@@ -31,6 +33,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
       tr('Meine Aufgaben'),
       tr('Meine Dokumente'),
       tr('Benachrichtigungen'),
+      tr('Chatten'),
     ];
 
     return Scaffold(
@@ -131,6 +134,16 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
                 setState(() => _selectedIndex = 2);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(_selectedIndex == 3 ? Icons.chat : Icons.chat_outlined, color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Chatten'), style: TextStyle(color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 3 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              selected: _selectedIndex == 3,
+              selectedTileColor: AppTheme.primary.withOpacity(0.1),
+              onTap: () {
+                setState(() => _selectedIndex = 3);
                 Navigator.pop(context);
               },
             ),

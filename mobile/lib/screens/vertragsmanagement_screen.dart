@@ -21,7 +21,9 @@ class _VState extends State<VertragsmanagementScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await SupabaseService.getContracts(companyId: context.read<AppState>().companyId);
+      final appState = context.read<AppState>();
+      final companyIds = appState.isGeschaeftsfuehrer || appState.isSystemAdmin ? null : appState.authorizedCompanyIds;
+      final data = await SupabaseService.getContracts(companyIds: companyIds);
       if (mounted) setState(() { _contracts = data; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }

@@ -24,9 +24,16 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
   }
 
   Future<void> _load() async {
+    final appState = context.read<AppState>();
     try {
       final areas = await SupabaseService.getServiceAreas();
-      if (mounted) setState(() { _serviceAreas = areas; _loading = false; });
+      List<Map<String, dynamic>> filtered = areas;
+      
+      if (appState.isBereichsleiter) {
+        filtered = areas.where((s) => appState.serviceAreaIds.contains(s['id'].toString())).toList();
+      }
+      
+      if (mounted) setState(() { _serviceAreas = filtered; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -83,11 +90,11 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                 itemBuilder: (_, i) {
                   final s = _serviceAreas[i];
                   final color = Color(int.parse((s['color'] ?? '#3B82F6').replaceAll('#', '0xFF')));
-                  final deptId = s['department']?['id']?.toString();
+                  final sId = s['id']?.toString();
                   return InkWell(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => OrdersScreen(departmentId: deptId, initialStatus: 'active'),
+                        builder: (_) => OrdersScreen(serviceAreaId: sId, initialStatus: 'active'),
                       ));
                     },
                     borderRadius: BorderRadius.circular(20),

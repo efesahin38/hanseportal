@@ -52,10 +52,11 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   String _contractType = 'Vollzeit';
   String _compensationType = 'Stundenlohn';
   String _idType = 'Ausweis';
-  String? _companyId, _departmentId;
+  String? _companyId;
   bool _saving = false;
   bool _workPermit = false, _maritalStatus = false, _hasChildren = false, _hasDrivingLicense = false, _hasQualifications = false;
-  List<Map<String, dynamic>> _departments = [];
+  List<Map<String, dynamic>> _serviceAreas = [];
+  List<String> _selectedServiceAreaIds = [];
 
   final _roles = {'mitarbeiter': 'Mitarbeiter', 'vorarbeiter': 'Vorarbeiter', 'bereichsleiter': 'Bereichsleiter', 'betriebsleiter': 'Betriebsleiter', 'buchhaltung': 'Buchhaltung', 'backoffice': 'Backoffice', 'geschaeftsfuehrer': 'Geschäftsführer', 'system_admin': 'System Admin'};
 
@@ -63,14 +64,13 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   void initState() {
     super.initState();
     _companyId = context.read<AppState>().currentUser?['company_id'];
-    _loadDepartments();
+    _loadServiceAreas();
     if (widget.userId != null) _loadUser();
   }
 
-  Future<void> _loadDepartments() async {
-    if (_companyId == null) return;
-    final data = await SupabaseService.getDepartments(companyId: _companyId!);
-    if (mounted) setState(() { _departments = data; });
+  Future<void> _loadServiceAreas() async {
+    final data = await SupabaseService.getServiceAreas();
+    if (mounted) setState(() { _serviceAreas = data; });
   }
 
   Future<void> _loadUser() async {
@@ -98,10 +98,15 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       if (d['driving_license_since'] != null) _drivingLicenseSince = DateTime.tryParse(d['driving_license_since']);
       _role = d['role'] ?? 'mitarbeiter'; _employmentType = d['employment_type'] ?? 'Vollzeit';
       _contractType = d['contract_type'] ?? 'Vollzeit'; _compensationType = d['compensation_type'] ?? 'Stundenlohn';
-      _idType = d['id_type'] ?? 'Ausweis'; _companyId = d['company_id']; _departmentId = d['department_id'];
+      _idType = d['id_type'] ?? 'Ausweis'; _companyId = d['company_id']; 
       _workPermit = d['work_permit'] == true; _maritalStatus = d['marital_status'] == true;
       _hasChildren = d['has_children'] == true; _hasDrivingLicense = d['has_driving_license'] == true;
       _hasQualifications = d['has_qualifications'] == true;
+      
+      final usa = d['user_service_areas'] as List?;
+      if (usa != null) {
+        _selectedServiceAreaIds = usa.map((u) => u['service_area_id'].toString()).toList();
+      }
     });
   }
 
@@ -125,7 +130,9 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'bank_name': _bankName.text.trim(), 'bank_iban': _bankIban.text.trim(), 'bank_bic': _bankBic.text.trim(),
         'health_insurance_name': _hiName.text.trim(), 'health_insurance_number': _hiNumber.text.trim(),
         'position_title': _position.text.trim(), 'position_as': _positionAs.text.trim(),
-        'activities': _activities.text.trim(), 'pin_code': _pin.text.trim(),
+        'activities': _activities.text.trim(), 
+        'pin_code': _pin.text.trim(),
+        'password': _pin.text.trim().isEmpty ? '1111' : _pin.text.trim(),
         'employee_number': _employeeNumber.text.trim().isEmpty ? null : _employeeNumber.text.trim(),
         'weekly_hours': double.tryParse(_weeklyHours.text), 'monthly_hours': double.tryParse(_monthlyHours.text),
         'birth_date': _birthDate?.toIso8601String().split('T')[0],
@@ -137,8 +144,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'driving_license_class': _drivingLicenseClass.text.trim(),
         'driving_license_since': _drivingLicenseSince?.toIso8601String().split('T')[0],
         'has_qualifications': _hasQualifications, 'qualifications': _qualifications.text.trim(),
-        'company_id': _companyId, 'department_id': _departmentId, 'status': 'active',
-      });
+        'company_id': _companyId, 'status': 'active',
+      }, serviceAreaIds: _selectedServiceAreaIds);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e'))); setState(() => _saving = false); }
@@ -209,9 +216,28 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
           const SizedBox(height: 16),
           _sec(tr('Organisation & Vertrag')),
           Wrap(spacing: 16, runSpacing: 12, children: [
-            if (_departments.isNotEmpty) SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _departmentId,
-              items: [DropdownMenuItem<String>(value: null, child: Text(tr('Nicht ausgewählt'))), ..._departments.map((d) => DropdownMenuItem<String>(value: d['id'].toString(), child: Text(tr(d['name'] ?? ''))))],
-              onChanged: (v) => setState(() => _departmentId = v))),
+            SizedBox(width: fw * 2 + 16, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(tr('Zuständige Bereiche (Hizmet Alanları)'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSub)),
+              const SizedBox(height: 8),
+              if (_serviceAreas.isEmpty) const Text('Ladevorgang...') else Wrap(
+                spacing: 8, runSpacing: 8,
+                children: _serviceAreas.map((sa) {
+                  final id = sa['id'].toString();
+                  final name = sa['name'] ?? '';
+                  final isSel = _selectedServiceAreaIds.contains(id);
+                  return FilterChip(
+                    label: Text(name),
+                    selected: isSel,
+                    onSelected: (v) {
+                      setState(() {
+                         if (v) _selectedServiceAreaIds.add(id);
+                         else _selectedServiceAreaIds.remove(id);
+                      });
+                    },
+                  );
+                }).toList(),
+              )
+            ])),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: tr('Rolle *')),
               items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: (v) => setState(() => _role = v!))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _contractType, decoration: InputDecoration(labelText: tr('Vertragsart')),

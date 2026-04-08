@@ -61,13 +61,32 @@ class SupabaseService {
   }
 
   // ── Şirketler ─────────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getCompanies({String? status}) async {
-    var query = _client.from('companies').select();
+  static Future<List<Map<String, dynamic>>> getCompanies({String? status, List<String>? serviceAreaIds}) async {
+    var query = _client.from('companies').select('''
+      *,
+      departments(*)
+    ''');
+    
     if (status != null) {
       query = query.eq('status', status) as dynamic;
     }
+
     final data = await query.order('name');
-    final list = List<Map<String, dynamic>>.from(data);
+    var list = List<Map<String, dynamic>>.from(data);
+
+    // If serviceAreaIds is provided, filter companies that own those service areas
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      // First, get the service areas to find their company_ids (via departments)
+      final allAreas = await getServiceAreas();
+      final authorizedCompanyIds = allAreas
+          .where((sa) => serviceAreaIds.contains(sa['id'].toString()))
+          .map((sa) => sa['department']?['company_id']?.toString())
+          .where((id) => id != null)
+          .toSet();
+      
+      list = list.where((c) => authorizedCompanyIds.contains(c['id'].toString())).toList();
+    }
+
     if (status == null) {
       return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
     }
@@ -89,11 +108,13 @@ class SupabaseService {
     String? role,
     String? status,
     String? serviceAreaCode,
+    List<String>? serviceAreaIds,
   }) async {
     var query = _client.from('users').select('''
       *,
       company:companies(id, name, short_name),
-      department:departments(id, name)
+      department:departments(id, name),
+      user_service_areas(service_area_id, service_areas(code, name, color))
     ''');
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
@@ -103,7 +124,17 @@ class SupabaseService {
     }
     
     final data = await query.order('last_name');
-    final list = List<Map<String, dynamic>>.from(data);
+    var list = List<Map<String, dynamic>>.from(data);
+    
+    // Checkbox departman filtreleme
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      list = list.where((user) {
+        final usa = user['user_service_areas'] as List?;
+        if (usa == null || usa.isEmpty) return false;
+        return usa.any((u) => serviceAreaIds.contains(u['service_area_id'].toString()));
+      }).toList();
+    }
+    
     // Eğer spesifik bir statü istenmediyse hem 'passive' (silinen) hem 'archived' (arşivlenen) gizlenir.
     if (status == null) {
        return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
@@ -120,8 +151,24 @@ class SupabaseService {
     ''').eq('id', id).maybeSingle();
   }
 
-  static Future<void> upsertUser(Map<String, dynamic> data) async {
-    await _client.from('users').upsert(data);
+  static Future<Map<String, dynamic>> upsertUser(Map<String, dynamic> data, {List<String>? serviceAreaIds}) async {
+    final response = await _client.from('users').upsert(data).select('id').single();
+    final String userId = response['id'];
+    
+    if (serviceAreaIds != null) {
+      // First, delete existing ones for this user
+      await _client.from('user_service_areas').delete().eq('user_id', userId);
+      // Then insert new ones
+      if (serviceAreaIds.isNotEmpty) {
+        final inserts = serviceAreaIds.map((sid) => {
+          'user_id': userId,
+          'service_area_id': sid,
+          'is_qualified': true
+        }).toList();
+        await _client.from('user_service_areas').insert(inserts);
+      }
+    }
+    return response;
   }
 
   // ── Müşteriler ────────────────────────────────────────────
@@ -613,19 +660,25 @@ class SupabaseService {
     }).eq('id', sessionId);
   }
 
-  static Future<List<Map<String, dynamic>>> getApprovedWorkSessionsForAccounting() async {
-    final data = await _client.from('work_sessions').select('''
+  static Future<List<Map<String, dynamic>>> getApprovedWorkSessionsForAccounting({List<String>? serviceAreaIds}) async {
+    var query = _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
-      order:orders(
-        id, title, order_number, 
+      order:orders!inner(
+        id, title, order_number, service_area_id,
         customer:customers(name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
       approved_by_user:users!work_sessions_approved_by_fkey(id, first_name, last_name)
-    ''').eq('approval_status', 'approved').order('approved_at', ascending: false);
+    ''').eq('approval_status', 'approved');
+    
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+    }
+    
+    final data = await query.order('approved_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }
 
@@ -836,11 +889,11 @@ class SupabaseService {
   }
 
   // ── Ön Fatura Taslağı ─────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getInvoiceDrafts({String? status}) async {
+  static Future<List<Map<String, dynamic>>> getInvoiceDrafts({String? status, List<String>? serviceAreaIds}) async {
     var query = _client.from('invoice_drafts').select('''
       *,
-      order:orders(
-        id, title, order_number, 
+      order:orders!inner(
+        id, title, order_number, service_area_id,
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
       customer:customers(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
@@ -848,6 +901,9 @@ class SupabaseService {
     ''');
     if (status != null) {
       query = query.eq('status', status) as dynamic;
+    }
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     }
     final data = await query.order('created_at', ascending: false);
     final list = List<Map<String, dynamic>>.from(data);
@@ -1392,9 +1448,11 @@ class SupabaseService {
   }
 
   // ── Vertragsmanagement ────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getContracts({String? companyId}) async {
+  static Future<List<Map<String, dynamic>>> getContracts({List<String>? companyIds}) async {
     var query = _client.from('contracts').select();
-    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (companyIds != null && companyIds.isNotEmpty) {
+      query = query.inFilter('company_id', companyIds) as dynamic;
+    }
     final data = await query.order('end_date');
     return List<Map<String, dynamic>>.from(data);
   }
@@ -1408,9 +1466,11 @@ class SupabaseService {
   }
 
   // ── Fuhrpark ──────────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getVehicles({String? companyId}) async {
+  static Future<List<Map<String, dynamic>>> getVehicles({List<String>? companyIds}) async {
     var query = _client.from('vehicles').select();
-    if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
+    if (companyIds != null && companyIds.isNotEmpty) {
+      query = query.inFilter('company_id', companyIds) as dynamic;
+    }
     final data = await query.order('license_plate');
     final list = List<Map<String, dynamic>>.from(data);
     return list.where((v) => v['status'] != 'deleted').toList();
@@ -1483,15 +1543,28 @@ class SupabaseService {
   }
 
   // ── Chat System ───────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getChatRooms(String userId) async {
-    final data = await _client.from('chat_room_members').select('''
-      room_id,
-      chat_rooms(
+  static Future<List<Map<String, dynamic>>> getChatRooms(String userId, {String? role}) async {
+    if (role == 'geschaeftsfuehrer') {
+      // Geschäftsführer sees all chats. 
+      // Note: Here we just fetch all chat_rooms directly to see everything.
+      final data = await _client.from('chat_rooms').select('''
         id, name, room_type, created_at,
         chat_messages(id, message, sender_id, created_at, is_read)
-      )
-    ''').eq('user_id', userId).order('joined_at', ascending: false);
-    return List<Map<String, dynamic>>.from(data);
+      ''').order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data).map((room) => {
+        'room_id': room['id'],
+        'chat_rooms': room
+      }).toList();
+    } else {
+      final data = await _client.from('chat_room_members').select('''
+        room_id,
+        chat_rooms(
+          id, name, room_type, created_at,
+          chat_messages(id, message, sender_id, created_at, is_read)
+        )
+      ''').eq('user_id', userId).order('joined_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data);
+    }
   }
 
   static Future<String> createChatRoom({
@@ -1544,6 +1617,11 @@ class SupabaseService {
       if (fileUrl != null) 'file_url': fileUrl,
       if (fileName != null) 'file_name': fileName,
     });
+
+    // MOCK LAYER FOR PUSH NOTIFICATIONS
+    // İleride burada bir Edge Function veya veritabanı Trigger'ı (pg_notify + FCM) çağrılabilir.
+    // Şimdilik dart seviyesinde logluyoruz.
+    debugPrint('Push Notification Tetiklendi: Oda $roomId için $senderId isimli kullanıcıdan yeni mesaj.');
   }
 
   static Future<void> markChatMessagesRead(String roomId, String userId) async {
@@ -1553,12 +1631,57 @@ class SupabaseService {
         .neq('sender_id', userId);
   }
 
-  static Future<List<Map<String, dynamic>>> getAvailableChatUsers(String currentUserId) async {
-    final data = await _client.from('users')
-        .select('id, first_name, last_name, role, department:departments(name)')
+  static Future<String> uploadChatFile(String fileName, dynamic fileBytes) async {
+    final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final path = '${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
+    try {
+      await _client.storage.from('chat-files').uploadBinary(
+        path,
+        fileBytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+      return _client.storage.from('chat-files').getPublicUrl(path);
+    } catch (e) {
+      debugPrint('Chat file upload error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAvailableChatUsers(
+      String currentUserId, String role, List<String> serviceAreaIds) async {
+    final query = _client.from('users')
+        .select('id, first_name, last_name, role, department_id, department:departments(name), user_service_areas(service_area_id, service_areas(name))')
         .eq('status', 'active')
-        .neq('id', currentUserId)
-        .order('last_name');
-    return List<Map<String, dynamic>>.from(data);
+        .neq('id', currentUserId);
+
+    final data = await query.order('last_name');
+    final allUsers = List<Map<String, dynamic>>.from(data);
+
+    if (role == 'geschaeftsfuehrer' || role == 'betriebsleiter' || role == 'system_admin') {
+      return allUsers; 
+    } else if (role == 'bereichsleiter') {
+      return allUsers.where((u) {
+        final r = u['role'] ?? '';
+        final isManagement = r == 'geschaeftsfuehrer' || r == 'betriebsleiter' || r == 'system_admin' || r == 'buchhaltung';
+        final userSa = u['user_service_areas'] as List?;
+        bool isMyTeam = false;
+        if (userSa != null && serviceAreaIds.isNotEmpty) {
+          isMyTeam = userSa.any((sa) => serviceAreaIds.contains(sa['service_area_id'].toString()));
+        }
+        return isManagement || isMyTeam;
+      }).toList();
+    } else {
+      // mitarbeiter, vorarbeiter vb. çalışanlar
+      return allUsers.where((u) {
+        final r = u['role'] ?? '';
+        final isManagement = r == 'buchhaltung'; // Sadece muhasebeye ekstra yetki veriliyor
+        final userSa = u['user_service_areas'] as List?;
+        bool isMyTeam = false;
+        if (userSa != null && serviceAreaIds.isNotEmpty) {
+          isMyTeam = userSa.any((sa) => serviceAreaIds.contains(sa['service_area_id'].toString()));
+        }
+        return isMyTeam || isManagement;
+      }).toList();
+    }
   }
 }
