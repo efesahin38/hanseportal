@@ -108,12 +108,17 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
     final appState = context.watch<AppState>();
     final bereichDept = _bereichsleiterDept(appState);
 
-    // %100 STRICT ISOLATION: Her Bereichsleiter sadece kendi bölümünü görür
-    final visibleDefs = appState.isBereichsleiter && bereichDept != null
-        ? kGmbhDefs.where((d) => 
-            bereichDept.toLowerCase().contains(d.departmentKey.toLowerCase()) || 
-            d.departmentKey.toLowerCase().contains(bereichDept.toLowerCase())).toList()
-        : kGmbhDefs;
+    // 🛡️ ZERO TOLERANCE ISOLATION: Tam Kilit
+    List<_GmbhDef> visibleDefs = kGmbhDefs;
+    if (appState.isBereichsleiter && bereichDept != null) {
+      final bDept = bereichDept.toLowerCase();
+      visibleDefs = kGmbhDefs.where((d) => 
+        bDept.contains(d.departmentKey.toLowerCase()) || 
+        d.departmentKey.toLowerCase().contains(bDept)).toList();
+      
+      // Güvenlik: Eğer hala boşsa (isim uyuşmazlığı), hiçbir şey gösterme
+      if (visibleDefs.isEmpty) visibleDefs = []; 
+    }
 
     return Scaffold(
       body: WebContentWrapper(
