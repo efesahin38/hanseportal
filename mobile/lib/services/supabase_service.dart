@@ -1546,7 +1546,9 @@ class SupabaseService {
     var query = _client.from('pq_documents').select('*, uploaded_by_user:users!pq_documents_uploaded_by_fkey(first_name, last_name)');
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (category != null) query = query.eq('category', category) as dynamic;
-    if (department != null) query = query.eq('department', department) as dynamic;
+    if (department != null) {
+      query = query.eq('department', department) as dynamic;
+    }
     final data = await query.order('category').order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }

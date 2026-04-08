@@ -31,14 +31,14 @@ class AppState extends ChangeNotifier {
   }
   String get fullName => '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim();
 
-  bool get isGeschaeftsfuehrer => role == 'geschaeftsfuehrer';
-  bool get isBetriebsleiter => role == 'betriebsleiter';
-  bool get isBereichsleiter => role == 'bereichsleiter';
-  bool get isVorarbeiter => role == 'vorarbeiter';
-  bool get isMitarbeiter => role == 'mitarbeiter';
-  bool get isBuchhaltung => role == 'buchhaltung';
-  bool get isBackoffice => role == 'backoffice';
-  bool get isSystemAdmin => role == 'system_admin';
+  bool get isGeschaeftsfuehrer => role.toLowerCase() == 'geschaeftsfuehrer';
+  bool get isBetriebsleiter => role.toLowerCase() == 'betriebsleiter';
+  bool get isBereichsleiter => role.toLowerCase() == 'bereichsleiter';
+  bool get isVorarbeiter => role.toLowerCase() == 'vorarbeiter';
+  bool get isMitarbeiter => role.toLowerCase() == 'mitarbeiter';
+  bool get isBuchhaltung => role.toLowerCase() == 'buchhaltung';
+  bool get isBackoffice => role.toLowerCase() == 'backoffice';
+  bool get isSystemAdmin => role.toLowerCase() == 'system_admin';
 
   bool get canManageCompanies => isGeschaeftsfuehrer || isSystemAdmin;
   bool get canManageUsers => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin || isBackoffice;
