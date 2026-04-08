@@ -36,20 +36,44 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
 
-      // %100 STRICT ISOLATION: Tam 5 Şirket Yapısı ve Arşiv Temizliği
+      // %100 NAILED STRUCTURE: Tam 5 Şirket Yapısı ve Arşiv/UG Temizliği
+      final allowedCompanyKeywords = [
+        'hanse kollektiv',
+        'gebäudedienstleistungen',
+        'rail service',
+        'gastwirtschaftsservice',
+        'personalüberlassung'
+      ];
+
       final filteredCompanies = companies.where((c) {
         final cName = (c['name'] as String? ?? '').toLowerCase();
-        // Arşiv, UG ve Placeholder'ları kesinlikle at
-        return !cName.contains('ug') && !cName.contains('archiv') && !cName.contains('placeholder');
+        // Kesinlikle Yasaklı: Arşiv, UG, Placeholder
+        if (cName.contains('ug') || cName.contains('archiv') || cName.contains('placeholder')) return false;
+        
+        // Sadece İzin Verilen 5 Şirket
+        return allowedCompanyKeywords.any((keyword) => cName.contains(keyword));
       }).toList();
 
       if (appState.isBereichsleiter) {
-        final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
-        
-        final matched = filteredCompanies.where((c) {
-          final cName = (c['name'] as String? ?? '').toLowerCase();
-          return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
-        }).toList();
+        final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
+        List<Map<String, dynamic>> matched = [];
+
+        if (firstName == 'sandra') {
+          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('gebäudedienstleistungen')).toList();
+        } else if (firstName == 'peter') {
+          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('rail service')).toList();
+        } else if (firstName == 'fatma') {
+          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('gastwirtschaftsservice')).toList();
+        } else if (firstName == 'markus') {
+          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('personalüberlassung')).toList();
+        } else {
+          // Varsayılan departman eşleşmesi
+          final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
+          matched = filteredCompanies.where((c) {
+            final cName = (c['name'] as String? ?? '').toLowerCase();
+            return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
+          }).toList();
+        }
         
         companies = matched.isNotEmpty ? matched : [filteredCompanies.first];
       } else {

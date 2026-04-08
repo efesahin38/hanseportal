@@ -108,16 +108,29 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
     final appState = context.watch<AppState>();
     final bereichDept = _bereichsleiterDept(appState);
 
-    // 🛡️ ZERO TOLERANCE ISOLATION: Tam Kilit
+    // 🛡️ NAILED ISOLATION: Sandra, Peter, Fatma, Markus için kesin kilit
     List<_GmbhDef> visibleDefs = kGmbhDefs;
-    if (appState.isBereichsleiter && bereichDept != null) {
-      final bDept = bereichDept.toLowerCase();
-      visibleDefs = kGmbhDefs.where((d) => 
-        bDept.contains(d.departmentKey.toLowerCase()) || 
-        d.departmentKey.toLowerCase().contains(bDept)).toList();
+
+    if (appState.isBereichsleiter) {
+      final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
       
-      // Güvenlik: Eğer hala boşsa (isim uyuşmazlığı), hiçbir şey gösterme
-      if (visibleDefs.isEmpty) visibleDefs = []; 
+      if (firstName == 'sandra') {
+        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Sandra').toList();
+      } else if (firstName == 'peter') {
+        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Peter').toList();
+      } else if (firstName == 'fatma') {
+        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Fatma').toList();
+      } else if (firstName == 'markus') {
+        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Markus').toList();
+      } else if (bereichDept != null) {
+        // Diğer Bereichsleiter'lar için mevcut departman bazlı mantık
+        final bDept = bereichDept.toLowerCase();
+        visibleDefs = kGmbhDefs.where((d) => 
+          bDept.contains(d.departmentKey.toLowerCase()) || 
+          d.departmentKey.toLowerCase().contains(bDept)).toList();
+      } else {
+        visibleDefs = [];
+      }
     }
 
     return Scaffold(
