@@ -32,9 +32,11 @@ class _MainShellState extends State<MainShell> {
   List<_NavItem> _buildNavItems(AppState appState) {
     // Boss Requirements: Exactly 6 modules
     return [
-      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter')
+      // Stammdaten: GF, Admin, BL, Betriebsleiter, Bereichsleiter (kendi GmbH'sini görür)
+      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter' || appState.isBereichsleiter)
         _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
-      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter')
+      // Verwaltung: GF, Admin, BL, Betriebsleiter, Bereichsleiter (Muhasebe kısmi engeli Verwaltung içinde)
+      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter' || appState.isBereichsleiter)
         _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Verwaltung'), screen: const VerwaltungScreen()),
       _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
       _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('Aufträge'), screen: const OrdersHubScreen()),

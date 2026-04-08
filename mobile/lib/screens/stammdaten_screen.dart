@@ -33,17 +33,16 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
       final appState = context.read<AppState>();
       final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
       final serviceAreaIds = isAdmin ? null : appState.serviceAreaIds;
-      
+
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
-      
-      // Strict filter for department managers: they should ONLY see their primary assigned company
+
+      // Bereichsleiter: sadece kendi primary şirketini görecek, değiştiremeyecek
       if (!isAdmin && appState.companyId.isNotEmpty) {
         companies = companies.where((c) => c['id'].toString() == appState.companyId).toList();
       }
-      
+
       if (companies.isNotEmpty) {
         _authorizedCompanies = companies;
-        // Keep selection if exists, otherwise take first
         if (_selectedCompany == null) {
           _selectedCompany = companies.first;
         } else {
@@ -57,8 +56,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       if (_selectedCompany != null) {
         _bankAccounts = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
-        _serviceAreas = await SupabaseService.getServiceAreas(); 
-        // Filter service areas for the selected company
+        _serviceAreas = await SupabaseService.getServiceAreas();
         _serviceAreas = _serviceAreas.where((sa) => sa['department']?['company_id'] == _selectedCompany!['id']).toList();
       }
 
@@ -79,105 +77,156 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header with Company Switcher if multiple
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
-                child: Column(
-                  children: [
-                    Row(
+              // Header – Bereichsleiter için kilitli görünüm
+              Builder(
+                builder: (context) {
+                  final appState = context.read<AppState>();
+                  final isBereichsleiter = appState.isBereichsleiter;
+                  final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
+                    child: Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
-                          child: const Icon(Icons.business, color: Colors.white, size: 28),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                isBereichsleiter ? Icons.lock_outline : Icons.business,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedCompany?['name'] ?? tr('Firma'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                  Text(
+                                    isBereichsleiter
+                                        ? tr('Ihr Unternehmensbereich')
+                                        : tr('Meine Stammdaten'),
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 13,
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_selectedCompany?['name'] ?? tr('Firma'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                              Text(tr('Meine Stammdaten'), style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter')),
-                            ],
+                        // Yalnızca Admin/GF/BL için şirket değiştirme seçeneği
+                        if (isAdmin && _authorizedCompanies.length > 1) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: DropdownButton<String>(
+                              value: _selectedCompany?['id'],
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              dropdownColor: AppTheme.primary,
+                              iconEnabledColor: Colors.white,
+                              style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
+                              items: _authorizedCompanies.map((c) => DropdownMenuItem(
+                                value: c['id'].toString(),
+                                child: Text(c['name'] ?? ''),
+                              )).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() {
+                                    _selectedCompany = _authorizedCompanies.firstWhere((c) => c['id'] == val);
+                                    _loading = true;
+                                  });
+                                  _load();
+                                }
+                              },
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    if (_authorizedCompanies.length > 1) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                        child: DropdownButton<String>(
-                          value: _selectedCompany?['id'],
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          dropdownColor: AppTheme.primary,
-                          iconEnabledColor: Colors.white,
-                          style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
-                          items: _authorizedCompanies.map((c) => DropdownMenuItem(
-                            value: c['id'].toString(),
-                            child: Text(c['name'] ?? ''),
-                          )).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedCompany = _authorizedCompanies.firstWhere((c) => c['id'] == val);
-                                _loading = true;
-                              });
-                              _load();
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 20),
 
               // Section Cards
-              _SectionCard(
-                icon: Icons.apartment,
-                title: tr('Unternehmensdaten'),
-                subtitle: _selectedCompany?['name'] ?? '-',
-                color: const Color(0xFF3B82F6),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); }),
-              ),
+              Builder(builder: (context) {
+                final appState = context.read<AppState>();
+                // Bereichsleiter sadece görüntüleyebilir, düzenleyemez
+                final canEdit = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
+                return Column(
+                  children: [
+                    _SectionCard(
+                      icon: Icons.apartment,
+                      title: tr('Unternehmensdaten'),
+                      subtitle: _selectedCompany?['name'] ?? '-',
+                      color: const Color(0xFF3B82F6),
+                      readOnly: !canEdit,
+                      onTap: canEdit
+                          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); })
+                          : () {},
+                    ),
 
-              _SectionCard(
-                icon: Icons.person,
-                title: tr('Geschäftsführer'),
-                subtitle: '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim().isEmpty ? tr('Nicht hinterlegt') : '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim(),
-                color: const Color(0xFF10B981),
-                onTap: () => _showGfDialog(),
-              ),
+                    _SectionCard(
+                      icon: Icons.person,
+                      title: tr('Geschäftsführer'),
+                      subtitle: '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim().isEmpty ? tr('Nicht hinterlegt') : '${_selectedCompany?['ceo_first_name'] ?? ''} ${_selectedCompany?['ceo_last_name'] ?? ''}'.trim(),
+                      color: const Color(0xFF10B981),
+                      readOnly: !canEdit,
+                      onTap: canEdit ? () => _showGfDialog() : () {},
+                    ),
 
-              _SectionCard(
-                icon: Icons.gavel,
-                title: tr('Rechtliche Firmendaten'),
-                subtitle: '${tr('HR')}: ${_selectedCompany?['trade_register_number'] ?? '-'} | ${tr('St.Nr.')}: ${_selectedCompany?['tax_number'] ?? '-'}',
-                color: const Color(0xFFF59E0B),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); }),
-              ),
+                    _SectionCard(
+                      icon: Icons.gavel,
+                      title: tr('Rechtliche Firmendaten'),
+                      subtitle: '${tr('HR')}: ${_selectedCompany?['trade_register_number'] ?? '-'} | ${tr('St.Nr.')}: ${_selectedCompany?['tax_number'] ?? '-'}',
+                      color: const Color(0xFFF59E0B),
+                      readOnly: !canEdit,
+                      onTap: canEdit
+                          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CompanyFormScreen(company: _selectedCompany))).then((ok) { if (ok == true) _load(); })
+                          : () {},
+                    ),
 
-              _SectionCard(
-                icon: Icons.account_balance,
-                title: tr('Bankverbindungen'),
-                subtitle: '${_bankAccounts.length} ${tr('Bankverbindung(en)')}',
-                color: const Color(0xFF6366F1),
-                onTap: () => _showBankAccounts(),
-              ),
+                    _SectionCard(
+                      icon: Icons.account_balance,
+                      title: tr('Bankverbindungen'),
+                      subtitle: '${_bankAccounts.length} ${tr('Bankverbindung(en)')}',
+                      color: const Color(0xFF6366F1),
+                      onTap: () => _showBankAccounts(),
+                    ),
 
-              if (context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isSystemAdmin || context.read<AppState>().isBetriebsleiter)
-                _SectionCard(
-                  icon: Icons.category,
-                  title: tr('Branchen / Unternehmensbereiche'),
-                  subtitle: _serviceAreas.map((s) => s['name']).join(', '),
-                  color: const Color(0xFFEF4444),
-                  onTap: () => _showServiceAreas(),
-                ),
+                    if (canEdit)
+                      _SectionCard(
+                        icon: Icons.category,
+                        title: tr('Branchen / Unternehmensbereiche'),
+                        subtitle: _serviceAreas.map((s) => s['name']).join(', '),
+                        color: const Color(0xFFEF4444),
+                        onTap: () => _showServiceAreas(),
+                      ),
+                  ],
+                );
+              }),
             ],
           ),
         ),
@@ -442,43 +491,50 @@ class _SectionCard extends StatelessWidget {
   final String title, subtitle;
   final Color color;
   final VoidCallback onTap;
-  const _SectionCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+  final bool readOnly;
+  const _SectionCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap, this.readOnly = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: onTap,
+        onTap: readOnly ? null : onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.divider),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Inter')),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
+        child: Opacity(
+          opacity: readOnly ? 0.85 : 1.0,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.divider),
+              boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, color: color, size: 24),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: color.withOpacity(0.6)),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Inter')),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                if (readOnly)
+                  Icon(Icons.visibility_outlined, color: color.withOpacity(0.4), size: 20)
+                else
+                  Icon(Icons.chevron_right, color: color.withOpacity(0.6)),
+              ],
+            ),
           ),
         ),
       ),
