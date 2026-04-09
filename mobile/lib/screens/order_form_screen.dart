@@ -62,12 +62,32 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final appState = context.read<AppState>();
       final serviceAreas = await SupabaseService.getServiceAreas();
       
-      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
-      var filteredServiceAreas = serviceAreas.where((sa) {
-        final name = (sa['name'] as String? ?? '').toLowerCase();
-        return keywords.any((kw) => name.contains(kw));
-      }).toList();
+      final List<Map<String, dynamic>> matchedAreas = [];
+      for (var sa in serviceAreas) {
+        final deptId = sa['department_id']?.toString() ?? '';
+        final saName = (sa['name'] as String? ?? '').toLowerCase();
+        String? displayLabel;
 
+        // 🛡️ NAILED ID MATCHING: Dashboard ile tam uyumlu
+        if (deptId == 'dddddddd-1111-1111-1111-111111111111' || saName.contains('gebäud') || saName.contains('reinigung')) {
+          displayLabel = 'Gebäudedienstleistungen';
+        } else if (deptId == 'dddddddd-2222-2222-2222-222222222222' || saName.contains('rail') || saName.contains('gleis')) {
+          displayLabel = 'Rail Service';
+        } else if (deptId == 'dddddddd-3333-3333-3333-333333333333' || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
+          displayLabel = 'Gastwirtschaftsservice';
+        } else if (deptId == 'dddddddd-4444-4444-4444-444444444444' || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
+          displayLabel = 'Personalüberlassung';
+        }
+
+        if (displayLabel != null) {
+          if (!matchedAreas.any((m) => m['display_name'] == displayLabel)) {
+            matchedAreas.add({...sa, 'display_name': displayLabel});
+          }
+        }
+      }
+
+      var filteredServiceAreas = matchedAreas;
+      
       // 🛡️ NAILED ISOLATION: Eğer departman belliyse sadece o departmanın SA'larını göster
       if (widget.initialDepartmentId != null) {
         filteredServiceAreas = filteredServiceAreas.where((sa) => sa['department_id'] == widget.initialDepartmentId).toList();
@@ -93,11 +113,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (mounted) {
         setState(() {
           _customers = customers;
-          // 🛡️ NAILED IT: Arka planda veriyi çeksek bile dropdown'da 'Verwaltung' ismini gösterme
-          _serviceAreas = filteredServiceAreas.where((sa) {
-            final name = (sa['name'] as String? ?? '').toLowerCase();
-            return name != 'verwaltung';
-          }).toList();
+          _serviceAreas = filteredServiceAreas;
           
           if (widget.orderId == null && defaultSAId != null) {
             _selectedServiceAreaId = defaultSAId;
@@ -491,7 +507,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.6', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+        Text('v16.7', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',

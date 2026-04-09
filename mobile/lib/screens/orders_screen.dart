@@ -159,7 +159,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            Text('v16.6', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                            Text('v16.7', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
