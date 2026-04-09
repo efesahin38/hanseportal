@@ -206,11 +206,11 @@ class SupabaseService {
     if (serviceAreaId != null) {
       query = query.eq('customer_service_areas.service_area_id', serviceAreaId) as dynamic;
     } else if (departmentId != null) {
-      // Departman bazlı filtreleme için orders üzerinden gitmek yerine 
-      // service_areas tablosuna bakmak daha doğru olabilir.
-      // Şimdilik basitleştirmek adına: Eğer departman belliyse, o departmanın 
-      // SA'larına bağlı müşterileri client-side filtrelemek daha kolay olabilir 
-      // veya burada karmaşık bir join yapılabilir.
+      // 🛡️ NAILED ISOLATION: Sadece bu departmanın service area'larına atanmış müşterileri getir
+      final deptSAs = await _client.from('service_areas').select('id').eq('department_id', departmentId);
+      final saIds = (deptSAs as List).map((sa) => sa['id'] as String).toList();
+      if (saIds.isEmpty) return [];
+      query = query.inFilter('customer_service_areas.service_area_id', saIds) as dynamic;
     }
 
     final data = await query.order('name');

@@ -49,17 +49,36 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     try {
       final areas = await SupabaseService.getServiceAreas();
       
-      // Hub ile uyumlu anahtar kelimeler
+      // 🛡️ NAILED MATCHING: Hub'daki kGmbhDefs isimleriyle eşleştir
+      final List<Map<String, dynamic>> matchedAreas = [];
       const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
-      
-      final filteredAreas = areas.where((sa) {
+
+      final filtered = areas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
         return keywords.any((kw) => name.contains(kw));
       }).toList();
 
+      for (var sa in filtered) {
+        final saName = (sa['name'] as String? ?? '').toLowerCase();
+        String displayLabel = sa['name'] ?? ''; // varsayılan
+
+        // Hub isimlerine göre etiketle
+        if (saName.contains('rail') || saName.contains('gleis')) {
+          displayLabel = 'Rail Service';
+        } else if (saName.contains('gebäud') || saName.contains('reinigung')) {
+          displayLabel = 'Gebäudedienstleistungen';
+        } else if (saName.contains('gast') || saName.contains('hotel')) {
+          displayLabel = 'Gastwirtschaftsservice';
+        } else if (saName.contains('personal') || saName.contains('überlassung')) {
+          displayLabel = 'Personalüberlassung';
+        }
+        
+        matchedAreas.add({...sa, 'display_name': displayLabel});
+      }
+
       if (mounted) {
         setState(() {
-          _serviceAreas = filteredAreas;
+          _serviceAreas = matchedAreas;
         });
       }
     } catch (e) {
@@ -194,7 +213,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                           decoration: InputDecoration(labelText: tr('Varsayılan Hizmet Alanı')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
-                            child: Text(s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
+                            child: Text(s['display_name'] ?? s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
                           )).toList(),
                           onChanged: (v) => setState(() => _selectedServiceAreaId = v),
                         ),

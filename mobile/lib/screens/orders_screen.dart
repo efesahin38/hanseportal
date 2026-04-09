@@ -92,7 +92,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
           : null,
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(initialServiceAreaId: widget.serviceAreaId))).then((_) => _load()),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(
+                initialServiceAreaId: widget.serviceAreaId,
+                initialDepartmentId: widget.departmentId,
+              ))).then((_) => _load()),
               icon: const Icon(Icons.add),
               label: Text(tr('Yeni İş'), style: const TextStyle(fontFamily: 'Inter')),
             )

@@ -10,7 +10,8 @@ import '../services/localization_service.dart';
 class OrderFormScreen extends StatefulWidget {
   final String? orderId; // null = yeni oluştur
   final String? initialServiceAreaId;
-  const OrderFormScreen({super.key, this.orderId, this.initialServiceAreaId});
+  final String? initialDepartmentId;
+  const OrderFormScreen({super.key, this.orderId, this.initialServiceAreaId, this.initialDepartmentId});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -61,10 +62,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final serviceAreas = await SupabaseService.getServiceAreas();
       
       const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
-      final filteredServiceAreas = serviceAreas.where((sa) {
+      var filteredServiceAreas = serviceAreas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
         return keywords.any((kw) => name.contains(kw));
       }).toList();
+
+      // 🛡️ NAILED ISOLATION: Eğer departman belliyse sadece o departmanın SA'larını göster
+      if (widget.initialDepartmentId != null) {
+        filteredServiceAreas = filteredServiceAreas.where((sa) => sa['department_id'] == widget.initialDepartmentId).toList();
+      }
       
       String? defaultSAId;
       if (widget.initialServiceAreaId != null) {
@@ -72,10 +78,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         if (matching.isNotEmpty) {
           defaultSAId = matching.first['id'].toString();
         }
+      } else if (widget.initialDepartmentId != null && filteredServiceAreas.isNotEmpty) {
+        // Eğer SP belirtilmemişse ama departman varsa, departmanın ilk SA'sını seç
+        defaultSAId = filteredServiceAreas.first['id'].toString();
       }
 
-      // 🛡️ NAILED ISOLATION: İlk yüklemede, eğer bir SA seçili ise müşterileri ona göre filtrele
-      final customers = await SupabaseService.getCustomers(serviceAreaId: defaultSAId);
+      // 🛡️ NAILED ISOLATION: İlk yüklemede, departman veya SA'ya göre müşterileri filtrele
+      final customers = await SupabaseService.getCustomers(
+        serviceAreaId: defaultSAId,
+        departmentId: defaultSAId == null ? widget.initialDepartmentId : null,
+      );
 
       if (mounted) {
         setState(() {
