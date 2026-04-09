@@ -83,10 +83,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         defaultSAId = filteredServiceAreas.first['id'].toString();
       }
 
-      // 🛡️ NAILED ISOLATION: İlk yüklemede, departman veya SA'ya göre müşterileri filtrele
+      // 🛡️ NAILED ISOLATION: İlk yüklemede, departman bazlı müşterileri getir (Kesin İzolasyon)
       final customers = await SupabaseService.getCustomers(
-        serviceAreaId: defaultSAId,
-        departmentId: defaultSAId == null ? widget.initialDepartmentId : null,
+        departmentId: widget.initialDepartmentId,
+        serviceAreaId: widget.initialDepartmentId == null ? defaultSAId : null,
       );
 
       if (mounted) {
@@ -276,28 +276,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                             _loading = true; // Müşteriler yüklenirken gösterge
                           });
                           
-                          // 🛡️ NAILED ISOLATION: Seçilen bölüme ait müşterileri getir
-                          try {
-                            final filteredCustomers = await SupabaseService.getCustomers(serviceAreaId: v);
-                            if (mounted) {
-                              setState(() {
-                                _customers = filteredCustomers;
-                                // Eğer önceden seçili müşteri yeni listede yoksa seçimi temizle
-                                if (_selectedCustomerId != null && !filteredCustomers.any((c) => c['id'] == _selectedCustomerId)) {
-                                  _selectedCustomerId = null;
+                          // 🛡️ NAILED ISOLATION: Bölüm içindeki tüm müşterileri göstermeye devam et 
+                          // (Sadece SA seçince daraltmak yerine departman seviyesinde tutuyoruz)
+                          // Eğer departman bilgisi varsa departman bazlı, yoksa SA bazlı getir
+                          final filteredCustomers = await SupabaseService.getCustomers(
+                            departmentId: widget.initialDepartmentId,
+                            serviceAreaId: widget.initialDepartmentId == null ? v : null,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _customers = filteredCustomers;
+                              // Eğer önceden seçili müşteri yeni listede yoksa seçimi temizle
+                              if (_selectedCustomerId != null && !filteredCustomers.any((c) => c['id'] == _selectedCustomerId)) {
+                                _selectedCustomerId = null;
+                              }
+                              _loading = false;
+                              
+                              if (v != null) {
+                                final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == v, orElse: () => <String, dynamic>{});
+                                if (sArea.isNotEmpty) {
+                                  _title.text = sArea['name'] ?? '';
                                 }
-                                _loading = false;
-                                
-                                if (v != null) {
-                                  final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == v, orElse: () => <String, dynamic>{});
-                                  if (sArea.isNotEmpty) {
-                                    _title.text = sArea['name'] ?? '';
-                                  }
-                                }
-                              });
-                            }
-                          } catch (e) {
-                            if (mounted) setState(() => _loading = false);
+                              }
+                            });
                           }
                         }),
                       ),
@@ -482,6 +483,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+        Text('v16.0', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
