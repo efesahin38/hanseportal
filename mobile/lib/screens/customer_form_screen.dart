@@ -73,7 +73,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           displayLabel = 'Personalüberlassung';
         }
         
-        matchedAreas.add({...sa, 'display_name': displayLabel});
+        // 🛡️ DEDUPLICATION: Her kategori sadece 1 kez görünsün
+        if (!matchedAreas.any((m) => m['display_name'] == displayLabel)) {
+          matchedAreas.add({...sa, 'display_name': displayLabel});
+        }
       }
 
       if (mounted) {
