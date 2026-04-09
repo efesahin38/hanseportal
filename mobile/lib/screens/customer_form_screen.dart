@@ -69,7 +69,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           displayLabel = 'Gebäudedienstleistungen';
         } else if (saName.contains('gast') || saName.contains('hotel')) {
           displayLabel = 'Gastwirtschaftsservice';
-        } else if (saName.contains('personal') || saName.contains('überlassung')) {
+        } else if (saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
           displayLabel = 'Personalüberlassung';
         }
         
