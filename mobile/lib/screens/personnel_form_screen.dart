@@ -70,40 +70,48 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   Future<void> _loadServiceAreas() async {
     final depts = await SupabaseService.getDepartments();
-    final areas = await SupabaseService.getServiceAreas();
-    final List<Map<String, dynamic>> matchedAreas = [];
+    final areas = await SupabaseService.getServiceAreas(activeOnly: false);
+    final List<Map<String, dynamic>> consolidatedAreas = [];
     
-    // 🛡️ DYNAMIC MATCHING (v16.8): Hub ekranındaki aynı mantıkla kategorize et
-    for (var sa in areas) {
-      final saName = (sa['name'] as String? ?? '').toLowerCase();
-      final deptId = sa['department_id']?.toString() ?? '';
+    // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
+    final categories = [
+      {'key': 'Rail', 'label': 'Rail Service', 'kw': ['rail', 'gleis']},
+      {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+      {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
+      {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+    ];
+
+    for (var cat in categories) {
+      final label = cat['label'] as String;
+      final kws = cat['kw'] as List<String>;
       
-      // Departman adını bul
-      final dept = depts.firstWhere((d) => d['id']?.toString() == deptId, orElse: () => {});
-      final deptName = (dept['name'] as String? ?? '').toLowerCase();
+      final dept = depts.firstWhere((d) {
+        final dName = (d['name'] as String? ?? '').toLowerCase();
+        return kws.any((kw) => dName.contains(kw));
+      }, orElse: () => {});
+      final deptId = dept['id']?.toString();
 
-      String? displayLabel;
+      var sa = areas.firstWhere((s) {
+        final sDeptId = s['department_id']?.toString();
+        if (deptId != null && sDeptId == deptId) return true;
+        final sName = (s['name'] as String? ?? '').toLowerCase();
+        return kws.any((kw) => sName.contains(kw));
+      }, orElse: () => {});
 
-      // 🛡️ NAILED MATCHING: Rail, Bina, Gast, Personel
-      if (deptName.contains('rail') || deptName.contains('gleis') || saName.contains('rail') || saName.contains('gleis')) {
-        displayLabel = 'Rail Service';
-      } else if (deptName.contains('gebäud') || deptName.contains('reinigung') || saName.contains('gebäud') || saName.contains('reinigung')) {
-        displayLabel = 'Gebäudedienstleistungen';
-      } else if (deptName.contains('gast') || deptName.contains('hotel') || deptName.contains('otel') || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
-        displayLabel = 'Gastwirtschaftsservice';
-      } else if (deptName.contains('personal') || deptName.contains('überlassung') || deptName.contains('verwal') || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
-        displayLabel = 'Personalüberlassung';
+      if (sa.isEmpty && deptId != null) {
+        sa = {
+          'id': deptId,
+          'name': label,
+          'department_id': deptId,
+        };
       }
-      
-      if (displayLabel != null) {
-        // 🛡️ DEDUPLICATION: Her kategori sadece 1 kez görünsün
-        if (!matchedAreas.any((m) => m['display_name'] == displayLabel)) {
-          matchedAreas.add({...sa, 'display_name': displayLabel});
-        }
+
+      if (sa.isNotEmpty) {
+        consolidatedAreas.add({...sa, 'display_name': label});
       }
     }
     
-    if (mounted) setState(() { _serviceAreas = matchedAreas; });
+    if (mounted) setState(() { _serviceAreas = consolidatedAreas; });
   }
 
   Future<void> _loadUser() async {
@@ -306,7 +314,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
             : Text(widget.userId == null ? tr('Personal erstellen') : tr('Speichern'))),
           const SizedBox(height: 24),
-          const Center(child: Text('HansePortal v16.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+          const Center(child: Text('HansePortal v16.9', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
         ]);
       }))),
     );

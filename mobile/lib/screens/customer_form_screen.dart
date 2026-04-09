@@ -48,42 +48,60 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   Future<void> _loadInitialData() async {
     try {
       final depts = await SupabaseService.getDepartments();
-      final areas = await SupabaseService.getServiceAreas();
-      final List<Map<String, dynamic>> matchedAreas = [];
+      // 🛡️ v16.9: Etkin olmayanları da çekelim ki Fatma'nın bölümü eksik kalmasın
+      final allAreas = await SupabaseService.getServiceAreas(activeOnly: false);
       
-      // 🛡️ DYNAMIC MATCHING (v16.8): Hub ekranındaki aynı mantıkla kategorize et
-      for (var sa in areas) {
-        final saName = (sa['name'] as String? ?? '').toLowerCase();
-        final deptId = sa['department_id']?.toString() ?? '';
+      final List<Map<String, dynamic>> consolidatedAreas = [];
+      
+      // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
+      final categories = [
+        {'key': 'Rail', 'label': 'Rail Service', 'kw': ['rail', 'gleis']},
+        {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+        {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
+        {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+      ];
+
+      for (var cat in categories) {
+        final label = cat['label'] as String;
+        final kws = cat['kw'] as List<String>;
         
-        // Departman adını bul
-        final dept = depts.firstWhere((d) => d['id']?.toString() == deptId, orElse: () => {});
-        final deptName = (dept['name'] as String? ?? '').toLowerCase();
+        // 1. Bu kategoriye uygun departmanı bul
+        final dept = depts.firstWhere((d) {
+          final dName = (d['name'] as String? ?? '').toLowerCase();
+          return kws.any((kw) => dName.contains(kw));
+        }, orElse: () => {});
 
-        String? displayLabel;
+        final deptId = dept['id']?.toString();
+        
+        // 2. Bu departmana bağlı veya ismiyle eşleşen ilk hizmet alanını bul
+        var sa = allAreas.firstWhere((s) {
+          final sDeptId = s['department_id']?.toString();
+          if (deptId != null && sDeptId == deptId) return true;
+          final sName = (s['name'] as String? ?? '').toLowerCase();
+          return kws.any((kw) => sName.contains(kw));
+        }, orElse: () => {});
 
-        // 🛡️ NAILED MATCHING: Rail, Bina, Gast, Personel
-        if (deptName.contains('rail') || deptName.contains('gleis') || saName.contains('rail') || saName.contains('gleis')) {
-          displayLabel = 'Rail Service';
-        } else if (deptName.contains('gebäud') || deptName.contains('reinigung') || saName.contains('gebäud') || saName.contains('reinigung')) {
-          displayLabel = 'Gebäudedienstleistungen';
-        } else if (deptName.contains('gast') || deptName.contains('hotel') || deptName.contains('otel') || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
-          displayLabel = 'Gastwirtschaftsservice';
-        } else if (deptName.contains('personal') || deptName.contains('überlassung') || deptName.contains('verwal') || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
-          displayLabel = 'Personalüberlassung';
+        // 3. Eğer hiçbir hizmet alanı kaydı bulunamadıysa (Gastwirtschaftsservice durumu)
+        // en azından departman ID'sini kullanarak sanal bir giriş oluştur
+        if (sa.isEmpty && deptId != null) {
+          sa = {
+            'id': deptId, // Geçici olarak departman ID'sini kullanıyoruz (FK hatası riskine karşı sistem kontrol edilmeli)
+            'name': label,
+            'department_id': deptId,
+          };
         }
-        
-        if (displayLabel != null) {
-          // 🛡️ DEDUPLICATION: Her kategori sadece 1 kez görünsün
-          if (!matchedAreas.any((m) => m['display_name'] == displayLabel)) {
-            matchedAreas.add({...sa, 'display_name': displayLabel});
-          }
+
+        if (sa.isNotEmpty) {
+          consolidatedAreas.add({
+            ...sa,
+            'display_name': label,
+          });
         }
       }
 
       if (mounted) {
         setState(() {
-          _serviceAreas = matchedAreas;
+          _serviceAreas = consolidatedAreas;
         });
       }
     } catch (e) {
@@ -121,10 +139,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           final csa = data['customer_service_areas'] as List;
           if (csa.isNotEmpty) {
             final sId = csa.first['service_area_id']?.toString();
-            // Burada eşleşen ilk hizmet alanını seçebiliriz (etiket bazlı olduğu için)
-            if (_serviceAreas.any((s) => s['id']?.toString() == sId)) {
-                   _selectedServiceAreaId = sId;
-            }
+            if (sId != null) _selectedServiceAreaId = sId;
           }
         }
       });
@@ -216,7 +231,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _selectedServiceAreaId,
-                          decoration: InputDecoration(labelText: tr('Varsayılan Hizmet Alanı')),
+                          decoration: InputDecoration(labelText: tr('Zuständige Bereiche (Hizmet Alanları)')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
                             child: Text(s['display_name'] ?? s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
@@ -309,7 +324,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
-                  const Center(child: Text('HansePortal v16.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+                  const Center(child: Text('HansePortal v16.9', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
                 ],
               );
             },
@@ -335,9 +350,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   );
 
   Widget _statusDropdown() {
-    final role = context.read<AppState>().role;
     final canEditStatus = context.read<AppState>().canManageCustomers;
-
     return DropdownButtonFormField<String>(
       value: _status,
       decoration: InputDecoration(labelText: tr('Müşteri Durumu')),

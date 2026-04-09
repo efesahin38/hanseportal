@@ -883,12 +883,16 @@ class SupabaseService {
   }
 
   // ── Hizmet Alanları ────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getServiceAreas() async {
-    final data = await _client
+  static Future<List<Map<String, dynamic>>> getServiceAreas({bool activeOnly = true}) async {
+    var query = _client
         .from('service_areas')
-        .select('*, department:departments(id, name, company_id)')
-        .eq('is_active', true)
-        .order('name');
+        .select('*, department:departments(id, name, company_id)');
+    
+    if (activeOnly) {
+      query = query.eq('is_active', true);
+    }
+    
+    final data = await query.order('name');
     return List<Map<String, dynamic>>.from(data);
   }
 
