@@ -52,7 +52,10 @@ class _InternePqScreenState extends State<InternePqScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppState>().refreshProfile();
+      _load();
+    });
   }
 
   Future<void> _load() async {
@@ -154,8 +157,12 @@ class _InternePqScreenState extends State<InternePqScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
+    final companyName = appState.currentUser?['company']?['name'] ?? tr('Interne PQ');
     return Scaffold(
-      appBar: AppBar(title: Text(tr('Interne PQ'))),
+      appBar: AppBar(
+        title: Text(appState.isBereichsleiter ? '$companyName - PQ' : tr('Interne PQ')),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploadDoc,
         icon: const Icon(Icons.upload_file),

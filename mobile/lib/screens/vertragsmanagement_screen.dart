@@ -24,7 +24,13 @@ class _VState extends State<VertragsmanagementScreen> {
   }
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppState>().refreshProfile();
+      _load();
+    });
+  }
 
   Future<void> _load() async {
     try {
@@ -142,54 +148,77 @@ class _VState extends State<VertragsmanagementScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(tr('Vertragsmanagement'))),
-    floatingActionButton: FloatingActionButton.extended(onPressed: () => _showForm(), icon: const Icon(Icons.add), label: Text(tr('Neuer Vertrag'))),
-    body: WebContentWrapper(child: _loading ? const Center(child: CircularProgressIndicator())
-      : _contracts.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.description_outlined, size: 56, color: AppTheme.textSub), const SizedBox(height: 12), Text(tr('Keine Verträge vorhanden'), style: const TextStyle(color: AppTheme.textSub))]))
-      : RefreshIndicator(onRefresh: _load, child: Builder(builder: (context) {
-          final grouped = <String, List<Map<String, dynamic>>>{};
-          for (var c in _contracts) {
-            final dep = c['department'] ?? 'Allgemein (Genel)';
-            grouped.putIfAbsent(dep, () => []).add(c);
-          }
-          return ListView.builder(padding: const EdgeInsets.all(12), itemCount: grouped.keys.length, itemBuilder: (_, i) {
-            final dep = grouped.keys.elementAt(i);
-            final depList = grouped[dep]!;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ExpansionTile(
-                leading: const Icon(Icons.folder_shared, color: AppTheme.primary),
-                title: Text(dep, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                subtitle: Text('${depList.length} ${tr('Verträge')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                initiallyExpanded: true,
-                children: depList.map((c) {
-                  final color = _statusColor(c);
-                  return Dismissible(key: Key(c['id'].toString()), direction: DismissDirection.endToStart,
-                    background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), color: AppTheme.error, child: const Icon(Icons.delete, color: Colors.white)),
-                    onDismissed: (_) async { await SupabaseService.deleteContract(c['id']); _load(); },
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: Icon(Icons.description, color: color, size: 22)),
-                      title: Text(c['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        if (c['partner'] != null && c['partner'].toString().isNotEmpty) Text(c['partner'], style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
-                        const SizedBox(height: 4),
-                        Row(children: [
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(_statusLabel(c), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold))),
-                          if (c['monthly_cost'] != null) ...[const SizedBox(width: 8), Text('€${c['monthly_cost']}/Mon.', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub))],
-                        ]),
-                      ]),
-                      onTap: () => _showForm(contract: c), isThreeLine: true,
-                    ),
-                  );
-                }).toList(),
-              ),
-            );
-          });
-        })),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
+    final companyName = appState.currentUser?['company']?['name'] ?? tr('Vertragsmanagement');
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(appState.isBereichsleiter ? '$companyName - Verträge' : tr('Vertragsmanagement')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showForm(),
+        icon: const Icon(Icons.add),
+        label: Text(tr('Neuer Vertrag')),
+      ),
+      body: WebContentWrapper(
+        child: _loading 
+          ? const Center(child: CircularProgressIndicator())
+          : _contracts.isEmpty 
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.description_outlined, size: 56, color: AppTheme.textSub), const SizedBox(height: 12), Text(tr('Keine Verträge vorhanden'), style: const TextStyle(color: AppTheme.textSub))]))
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: Builder(builder: (context) {
+                    final grouped = <String, List<Map<String, dynamic>>>{};
+                    for (var c in _contracts) {
+                      final dep = c['department'] ?? 'Allgemein (Genel)';
+                      grouped.putIfAbsent(dep, () => []).add(c);
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: grouped.keys.length,
+                      itemBuilder: (_, i) {
+                        final dep = grouped.keys.elementAt(i);
+                        final depList = grouped[dep]!;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: ExpansionTile(
+                            leading: const Icon(Icons.folder_shared, color: AppTheme.primary),
+                            title: Text(dep, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                            subtitle: Text('${depList.length} ${tr('Verträge')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                            initiallyExpanded: true,
+                            children: depList.map((c) {
+                              final color = _statusColor(c);
+                              return Dismissible(
+                                key: Key(c['id'].toString()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), color: AppTheme.error, child: const Icon(Icons.delete, color: Colors.white)),
+                                onDismissed: (_) async { await SupabaseService.deleteContract(c['id']); _load(); },
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: Icon(Icons.description, color: color, size: 22)),
+                                  title: Text(c['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    if (c['partner'] != null && c['partner'].toString().isNotEmpty) Text(c['partner'], style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
+                                    const SizedBox(height: 4),
+                                    Row(children: [
+                                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                        child: Text(_statusLabel(c), style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold))),
+                                      if (c['monthly_cost'] != null) ...[const SizedBox(width: 8), Text('€${c['monthly_cost']}/Mon.', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub))],
+                                    ]),
+                                  ]),
+                                  onTap: () => _showForm(contract: c),
+                                  isThreeLine: true,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    );
+                  }),
+                ),
+      ),
+    );
+  }
 }

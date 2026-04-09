@@ -12,7 +12,8 @@ class OrdersScreen extends StatefulWidget {
   final String? serviceAreaId;
   final String? departmentId;
   final String? initialStatus;
-  const OrdersScreen({super.key, this.serviceAreaId, this.departmentId, this.initialStatus});
+  final String? customTitle;
+  const OrdersScreen({super.key, this.serviceAreaId, this.departmentId, this.initialStatus, this.customTitle});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -233,6 +234,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 }
 
   String _getTitle() {
+    if (widget.customTitle != null) return widget.customTitle!;
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000001') return tr('Temizlik İşleri');
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000002') return tr('Ray Servis İşleri');
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000005') return tr('Otel Servis İşleri');

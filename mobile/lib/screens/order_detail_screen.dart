@@ -8,6 +8,7 @@ import '../services/localization_service.dart';
 import 'operation_plan_form_screen.dart';
 import 'extra_work_form_screen.dart';
 import 'work_report_screen.dart';
+import 'order_formulare_tab.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -26,7 +27,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 5, vsync: this);
+    _tabs = TabController(length: 6, vsync: this);
     _load();
   }
 
@@ -74,7 +75,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
     final history = o['order_status_history'] as List? ?? [];
 
     final appState = context.watch<AppState>();
-    final isAssignedForeman = plans.any((p) => p['site_supervisor_id'] == appState.userId);
+    final isAssignedForeman = plans.any((p) => 
+        (p['operation_plan_personnel'] as List? ?? []).any((pp) => pp['user']?['id'] == appState.userId));
     
     // İş sonu raporunu (yeşil buton) sadece yönetici, muhasebe ve sistem admin görebilir.
     final canSeeReport = appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isBuchhaltung || appState.isSystemAdmin;
@@ -161,6 +163,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                         Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
                         Tab(text: '${tr('Belgeler')} (${docs.length})'),
                         Tab(text: '${tr('Geçmiş')} (${history.length})'),
+                        const Tab(text: 'Formulare'),
                       ],
                   ),
                 ],
@@ -451,6 +454,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                             );
                           },
                         ),
+                  // Tab 6: Formulare (Gebäudedienstleistungen)
+                  OrderFormulareTab(
+                    orderId: widget.orderId,
+                    orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
+                    supervisorIds: plans
+                        .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
+                        .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
+                        .where((id) => id.isNotEmpty)
+                        .toList(),
+                  ),
                 ],
               ),
             ),

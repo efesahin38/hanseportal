@@ -183,10 +183,22 @@ class PdfService {
             );
           }(),
 
-          // ── Müşteri Bilgileri (Bölüm 1) ──
-          _sectionTitle(tr('Müşteri Bilgileri'), fontBold),
+          // ── Müşteri Bilgileri & Finansal Detaylar ──
+          _sectionTitle(tr('Kundeninformationen (Finanzinformationen)'), fontBold),
           _infoTable([
-            if (customer['secondary_contact_name'] != null) [tr('İkinci Muhatap'), customer['secondary_contact_name']],
+            if ((customer['secondary_contact_name']?.toString().trim() ?? '').isNotEmpty) 
+              [tr('İkinci Muhatap'), customer['secondary_contact_name']],
+            if ((customer['vat_number']?.toString().trim() ?? '').isNotEmpty) 
+              [tr('USt-IdNr.'), customer['vat_number']],
+            if ((customer['bank_name']?.toString().trim() ?? '').isNotEmpty) 
+              [tr('Bankname'), customer['bank_name']],
+            if ((customer['iban']?.toString().trim() ?? '').isNotEmpty) 
+              ['IBAN', customer['iban']],
+            if ((customer['bic']?.toString().trim() ?? '').isNotEmpty) 
+              ['BIC / SWIFT', customer['bic']],
+            if ([customer['secondary_contact_name'], customer['vat_number'], customer['bank_name'], customer['iban'], customer['bic']]
+                  .every((e) => e == null || e.toString().trim().isEmpty))
+              [tr('Finansal Bilgiler'), tr('Kayıtlı finansal bilgi bulunmuyor.')],
           ], font, fontBold),
           pw.SizedBox(height: 16),
 

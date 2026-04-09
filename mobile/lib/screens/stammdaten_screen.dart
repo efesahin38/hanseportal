@@ -25,7 +25,11 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // Profile'ı tazeleyip en güncel company_id'yi aldığımızdan emin olalım
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppState>().refreshProfile();
+      _load();
+    });
   }
 
   Future<void> _load() async {
@@ -36,53 +40,26 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
 
-      // %100 NAILED STRUCTURE: Tam 5 Şirket Yapısı ve Arşiv/UG Temizliği
-      final allowedCompanyKeywords = [
-        'hanse kollektiv',
-        'gebäudedienstleistungen',
-        'rail service',
-        'gastwirtschaftsservice',
-        'personalüberlassung'
-      ];
-
       final filteredCompanies = companies.where((c) {
         final cName = (c['name'] as String? ?? '').toLowerCase();
-        // Kesinlikle Yasaklı: Arşiv, UG, Placeholder
-        if (cName.contains('ug') || cName.contains('archiv') || cName.contains('placeholder')) return false;
-        
-        // Sadece İzin Verilen 5 Şirket
-        return allowedCompanyKeywords.any((keyword) => cName.contains(keyword));
+        if (cName.contains('archiv') || cName.contains('placeholder')) return false;
+        return true;
       }).toList();
 
       if (appState.isBereichsleiter) {
-        final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
-        List<Map<String, dynamic>> matched = [];
-
-        if (firstName == 'sandra') {
-          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('gebäudedienstleistungen')).toList();
-        } else if (firstName == 'peter') {
-          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('rail service')).toList();
-        } else if (firstName == 'fatma') {
-          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('gastwirtschaftsservice')).toList();
-        } else if (firstName == 'markus') {
-          matched = filteredCompanies.where((c) => (c['name'] as String? ?? '').toLowerCase().contains('personalüberlassung')).toList();
-        } else {
-          // Varsayılan departman eşleşmesi
-          final assignedDeptName = (appState.currentUser?['department']?['name'] as String? ?? '').toLowerCase();
-          matched = filteredCompanies.where((c) {
-            final cName = (c['name'] as String? ?? '').toLowerCase();
-            return cName.contains(assignedDeptName) || assignedDeptName.contains(cName);
-          }).toList();
-        }
-        
-        companies = matched.isNotEmpty ? matched : [filteredCompanies.first];
+        // Bereichsleiter kendi departmanının bağlı olduğu şirkete kilitlenir
+        final myCompanyId = appState.companyId;
+        companies = filteredCompanies.where((c) => c['id'] == myCompanyId).toList();
+        // Fallback removed to prevent showing wrong company if ID is missing or wrong
       } else {
+        // Admin, GF, Buchhaltung tüm aktifleri görür
         companies = filteredCompanies;
       }
 
       if (companies.isNotEmpty) {
         _authorizedCompanies = companies;
         if (_selectedCompany == null) {
+          // Admin/Accounting için ilk şirketi seç, Bereichsleiter için zaten liste 1 elemanlı veya boş
           _selectedCompany = companies.first;
         } else {
           try {
@@ -91,6 +68,9 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
             _selectedCompany = companies.first;
           }
         }
+      } else {
+        _authorizedCompanies = [];
+        _selectedCompany = null;
       }
 
       if (_selectedCompany != null) {
@@ -122,6 +102,28 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                   final appState = context.read<AppState>();
                   final isBereichsleiter = appState.isBereichsleiter;
                   final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung;
+                  if (_selectedCompany == null)
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.error_outline, size: 48, color: Colors.white70),
+                            const SizedBox(height: 12),
+                            Text(
+                              tr('Şirket yapılandırması eksik'),
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tr('Lütfen yönetici ile iletişime geçin'),
+                              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
@@ -302,43 +304,56 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
     final phoneCtrl = TextEditingController(text: _selectedCompany?['ceo_phone'] ?? '');
     final emailCtrl = TextEditingController(text: _selectedCompany?['ceo_email'] ?? '');
 
+    bool isSaving = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: 16),
-              Text(tr('Geschäftsführer'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-              const SizedBox(height: 16),
-              _dialogField(tr('Vorname'), firstNameCtrl),
-              _dialogField(tr('Nachname'), lastNameCtrl),
-              _dialogField(tr('Adresse'), addressCtrl),
-              _dialogField(tr('Telefon'), phoneCtrl),
-              _dialogField(tr('E-Mail'), emailCtrl),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  await SupabaseService.upsertCompany({
-                    'id': _selectedCompany!['id'],
-                    'ceo_first_name': firstNameCtrl.text.trim(),
-                    'ceo_last_name': lastNameCtrl.text.trim(),
-                    'ceo_address': addressCtrl.text.trim(),
-                    'ceo_phone': phoneCtrl.text.trim(),
-                    'ceo_email': emailCtrl.text.trim(),
-                  });
-                  if (mounted) { Navigator.pop(ctx); _load(); }
-                },
-                child: Text(tr('Speichern')),
-              ),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Text(tr('Geschäftsführer'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                const SizedBox(height: 16),
+                _dialogField(tr('Vorname'), firstNameCtrl),
+                _dialogField(tr('Nachname'), lastNameCtrl),
+                _dialogField(tr('Adresse'), addressCtrl),
+                _dialogField(tr('Telefon'), phoneCtrl),
+                _dialogField(tr('E-Mail'), emailCtrl),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: isSaving ? null : () async {
+                    setModalState(() => isSaving = true);
+                    try {
+                      await SupabaseService.upsertCompany({
+                        'id': _selectedCompany!['id'],
+                        'ceo_first_name': firstNameCtrl.text.trim(),
+                        'ceo_last_name': lastNameCtrl.text.trim(),
+                        'ceo_address': addressCtrl.text.trim(),
+                        'ceo_phone': phoneCtrl.text.trim(),
+                        'ceo_email': emailCtrl.text.trim(),
+                      });
+                      if (mounted) { Navigator.pop(ctx); _load(); }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red));
+                      }
+                    } finally {
+                      setModalState(() => isSaving = false);
+                    }
+                  },
+                  child: isSaving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(tr('Speichern')),
+                ),
+              ],
+            ),
           ),
         ),
       ),

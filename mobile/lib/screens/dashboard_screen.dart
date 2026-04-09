@@ -26,7 +26,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppState>().refreshProfile();
+      _load();
+    });
   }
 
   Future<void> _load() async {

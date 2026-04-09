@@ -102,13 +102,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            tr('Giriş Yap'),
+                          const Text(
+                            'HansePortal v15.1',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textMain,
-                              fontFamily: 'Inter',
+                              fontFamily: 'Poppins',
                             ),
                           ),
                           const SizedBox(height: 24),

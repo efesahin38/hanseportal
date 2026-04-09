@@ -24,7 +24,13 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
   }
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppState>().refreshProfile();
+      _load();
+    });
+  }
 
   Future<void> _load() async {
     try {
@@ -67,7 +73,6 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
     DateTime? tc = v?['next_tire_change_date'] != null ? DateTime.tryParse(v!['next_tire_change_date']) : null;
     DateTime? lc = v?['license_check_date'] != null ? DateTime.tryParse(v!['license_check_date']) : null;
 
-    // Abteilung vorbelegen
     final appState = context.read<AppState>();
     final bereichDept = _bereichsleiterDepartment(appState);
     String? selectedDept = v?['department'] ?? bereichDept ?? kDepartmentOptions.first;
@@ -92,7 +97,6 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
           const SizedBox(height: 12),
           TextField(controller: vin, decoration: InputDecoration(labelText: tr('Fahrzeug-Identnummer'))),
           const SizedBox(height: 12),
-          // ── Abteilung ─────────────────────────────────────
           if (bereichDept != null)
             InputDecorator(
               decoration: InputDecoration(labelText: tr('Abteilung')),
@@ -143,7 +147,7 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
               'next_tire_change_date': tc?.toIso8601String().split('T')[0],
               'license_check_date': lc?.toIso8601String().split('T')[0],
               'notes': n.text.trim(),
-              'department': bereichDept ?? selectedDept, // Pflichtfeld
+              'department': bereichDept ?? selectedDept,
             });
             if (mounted) { Navigator.pop(ctx); _load(); }
           }, child: Text(tr('Speichern'))),
@@ -158,73 +162,94 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(tr('Fuhrpark'))),
-    floatingActionButton: FloatingActionButton.extended(onPressed: () => _showForm(), icon: const Icon(Icons.add), label: Text(tr('Neues Fahrzeug'))),
-    body: WebContentWrapper(child: _loading ? const Center(child: CircularProgressIndicator())
-      : _vehicles.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.directions_car_outlined, size: 56, color: AppTheme.textSub), const SizedBox(height: 12), Text(tr('Keine Fahrzeuge'), style: const TextStyle(color: AppTheme.textSub))]))
-      : RefreshIndicator(onRefresh: _load, child: Builder(builder: (context) {
-          final grouped = <String, List<Map<String, dynamic>>>{};
-          for (var v in _vehicles) {
-            final dep = v['department'] ?? 'Allgemein (Genel)';
-            grouped.putIfAbsent(dep, () => []).add(v);
-          }
-          return ListView.builder(padding: const EdgeInsets.all(12), itemCount: grouped.keys.length, itemBuilder: (_, i) {
-            final dep = grouped.keys.elementAt(i);
-            final depList = grouped[dep]!;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ExpansionTile(
-                leading: const Icon(Icons.folder_special, color: AppTheme.primary),
-                title: Text(dep, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                subtitle: Text('${depList.length} ${tr('Fahrzeuge')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                initiallyExpanded: true,
-                children: depList.map((v) {
-                  final alerts = _getAlerts(v);
-                  return Card(
-                    elevation: 0,
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: ExpansionTile(
-                      leading: Container(width: 44, height: 44, decoration: BoxDecoration(
-                        color: alerts.any((a) => a.overdue) ? AppTheme.error.withOpacity(0.1) : alerts.isNotEmpty ? AppTheme.warning.withOpacity(0.1) : AppTheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ), child: Icon(Icons.directions_car, color: alerts.any((a) => a.overdue) ? AppTheme.error : alerts.isNotEmpty ? AppTheme.warning : AppTheme.primary)),
-                      title: Text(v['license_plate'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Inter')),
-                      subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${v['driver_first_name'] ?? ''} ${v['driver_last_name'] ?? ''}'.trim(), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
-                      ]),
-                      trailing: alerts.isNotEmpty ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: (alerts.any((a) => a.overdue) ? AppTheme.error : AppTheme.warning).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text('${alerts.length} ⚠️', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: alerts.any((a) => a.overdue) ? AppTheme.error : AppTheme.warning)),
-                      ) : null,
-                      children: [
-                        if (alerts.isNotEmpty) ...alerts.map((a) => ListTile(
-                          dense: true,
-                          leading: Icon(a.overdue ? Icons.error : Icons.warning_amber, color: a.overdue ? AppTheme.error : AppTheme.warning, size: 18),
-                          title: Text(a.label, style: TextStyle(fontSize: 12, color: a.overdue ? AppTheme.error : AppTheme.warning, fontWeight: FontWeight.bold)),
-                          subtitle: Text('${a.date.day}.${a.date.month}.${a.date.year}', style: const TextStyle(fontSize: 11)),
-                        )),
-                        if (v['tuev_date'] != null) _infoRow(Icons.verified, 'TÜV', v['tuev_date']),
-                        if (v['vehicle_ident_number'] != null) _infoRow(Icons.confirmation_number, 'VIN', v['vehicle_ident_number']),
-                        Padding(padding: const EdgeInsets.all(12), child: Row(children: [
-                          TextButton.icon(onPressed: () => _showForm(v: v), icon: const Icon(Icons.edit, size: 16), label: Text(tr('Bearbeiten'))),
-                          const Spacer(),
-                          TextButton.icon(onPressed: () async {
-                            await SupabaseService.deleteVehicle(v['id']); _load();
-                          }, icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.error), label: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error))),
-                        ])),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            );
-          });
-        })),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
+    final companyName = appState.currentUser?['company']?['name'] ?? tr('Fuhrpark');
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(appState.isBereichsleiter ? '$companyName - Fuhrpark' : tr('Fuhrpark')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showForm(),
+        icon: const Icon(Icons.add),
+        label: Text(tr('Neues Fahrzeug')),
+      ),
+      body: WebContentWrapper(
+        child: _loading 
+          ? const Center(child: CircularProgressIndicator())
+          : _vehicles.isEmpty 
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.directions_car_outlined, size: 56, color: AppTheme.textSub), const SizedBox(height: 12), Text(tr('Keine Fahrzeuge'), style: const TextStyle(color: AppTheme.textSub))]))
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: Builder(builder: (context) {
+                    final grouped = <String, List<Map<String, dynamic>>>{};
+                    for (var v in _vehicles) {
+                      final dep = v['department'] ?? 'Allgemein (Genel)';
+                      grouped.putIfAbsent(dep, () => []).add(v);
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: grouped.keys.length,
+                      itemBuilder: (_, i) {
+                        final dep = grouped.keys.elementAt(i);
+                        final depList = grouped[dep]!;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: ExpansionTile(
+                            leading: const Icon(Icons.folder_special, color: AppTheme.primary),
+                            title: Text(dep, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                            subtitle: Text('${depList.length} ${tr('Fahrzeuge')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                            initiallyExpanded: true,
+                            children: depList.map((v) {
+                              final alerts = _getAlerts(v);
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: ExpansionTile(
+                                  leading: Container(width: 44, height: 44, decoration: BoxDecoration(
+                                    color: alerts.any((a) => a.overdue) ? AppTheme.error.withOpacity(0.1) : alerts.isNotEmpty ? AppTheme.warning.withOpacity(0.1) : AppTheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ), child: Icon(Icons.directions_car, color: alerts.any((a) => a.overdue) ? AppTheme.error : alerts.isNotEmpty ? AppTheme.warning : AppTheme.primary)),
+                                  title: Text(v['license_plate'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Inter')),
+                                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('${v['driver_first_name'] ?? ''} ${v['driver_last_name'] ?? ''}'.trim(), style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                                  ]),
+                                  trailing: alerts.isNotEmpty ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(color: (alerts.any((a) => a.overdue) ? AppTheme.error : AppTheme.warning).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                    child: Text('${alerts.length} ⚠️', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: alerts.any((a) => a.overdue) ? AppTheme.error : AppTheme.warning)),
+                                  ) : null,
+                                  children: [
+                                    if (alerts.isNotEmpty) ...alerts.map((a) => ListTile(
+                                      dense: true,
+                                      leading: Icon(a.overdue ? Icons.error : Icons.warning_amber, color: a.overdue ? AppTheme.error : AppTheme.warning, size: 18),
+                                      title: Text(a.label, style: TextStyle(fontSize: 12, color: a.overdue ? AppTheme.error : AppTheme.warning, fontWeight: FontWeight.bold)),
+                                      subtitle: Text('${a.date.day}.${a.date.month}.${a.date.year}', style: const TextStyle(fontSize: 11)),
+                                    )),
+                                    if (v['tuev_date'] != null) _infoRow(Icons.verified, 'TÜV', v['tuev_date']),
+                                    if (v['vehicle_ident_number'] != null) _infoRow(Icons.confirmation_number, 'VIN', v['vehicle_ident_number']),
+                                    Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+                                      TextButton.icon(onPressed: () => _showForm(v: v), icon: const Icon(Icons.edit, size: 16), label: Text(tr('Bearbeiten'))),
+                                      const Spacer(),
+                                      TextButton.icon(onPressed: () async {
+                                        await SupabaseService.deleteVehicle(v['id']); _load();
+                                      }, icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.error), label: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error))),
+                                    ])),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    );
+                  }),
+                ),
+      ),
+    );
+  }
 
   Widget _infoRow(IconData ic, String l, String? val) => val == null ? const SizedBox.shrink() : Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),

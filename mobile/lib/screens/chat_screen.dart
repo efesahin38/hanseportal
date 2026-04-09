@@ -77,9 +77,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                     Expanded(
                       child: ListView.builder(
-                        itemCount: users.length,
+                        itemCount: users.where((u) => u['id'] != appState.userId).length,
                         itemBuilder: (_, i) {
-                          final u = users[i];
+                          final filteredUsers = users.where((u) => u['id'] != appState.userId).toList();
+                          final u = filteredUsers[i];
                           final uId = u['id'].toString();
                           final isSelected = selectedUserIds.contains(uId);
 
@@ -179,7 +180,11 @@ class _ChatScreenState extends State<ChatScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => _ChatDetailScreen(roomId: roomId, roomName: roomName),
+            builder: (_) => _ChatDetailScreen(
+              roomId: roomId,
+              roomName: roomName,
+              members: result['type'] == 'group' ? null : null, // we don't have full member objects here right away, but we can fetch or ignore for new groups. It will refresh later.
+            ),
           ),
         ).then((_) => _load());
       }
@@ -235,6 +240,20 @@ class _ChatScreenState extends State<ChatScreen> {
                               final r = _rooms[i];
                               final room = r['chat_rooms'];
                               if (room == null) return const SizedBox.shrink();
+
+                              String displayName = room['name'] ?? tr('Chat');
+                              if (room['room_type'] == 'direct') {
+                                final members = room['members'] as List? ?? [];
+                                final myId = context.read<AppState>().userId;
+                                final peer = members.firstWhere(
+                                  (m) => m['user_id'] != myId,
+                                  orElse: () => null,
+                                );
+                                if (peer != null && peer['user'] != null) {
+                                  displayName = '${peer['user']['first_name']} ${peer['user']['last_name']}';
+                                }
+                              }
+
                               final msgs = room['chat_messages'] as List? ?? [];
                               final lastMsg = msgs.isNotEmpty ? msgs.first : null;
                               final unread = msgs.where((m) => m['is_read'] == false && m['sender_id'] != context.read<AppState>().userId).length;
@@ -244,7 +263,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     backgroundColor: room['room_type'] == 'group' ? AppTheme.warning.withOpacity(0.1) : AppTheme.primary.withOpacity(0.1),
                                     child: Icon(room['room_type'] == 'group' ? Icons.group : Icons.person, color: room['room_type'] == 'group' ? AppTheme.warning : AppTheme.primary, size: 20),
                                   ),
-                                  title: Text(room['name'] ?? tr('Chat'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                   subtitle: Text(lastMsg?['message'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textSub), maxLines: 1, overflow: TextOverflow.ellipsis),
                                   trailing: unread > 0
                                       ? Container(
@@ -253,7 +272,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                           child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                                         )
                                       : null,
-                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: room['id'], roomName: room['name'] ?? ''))).then((_) => _load()),
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _ChatDetailScreen(roomId: room['id'], roomName: displayName, members: room['members'] as List?))).then((_) => _load()),
                                 ),
                               );
                             },
@@ -269,7 +288,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
 class _ChatDetailScreen extends StatefulWidget {
   final String roomId, roomName;
-  const _ChatDetailScreen({required this.roomId, required this.roomName});
+  final List<dynamic>? members;
+  const _ChatDetailScreen({required this.roomId, required this.roomName, this.members});
   @override
   State<_ChatDetailScreen> createState() => _ChatDetailState();
 }
@@ -338,7 +358,46 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
   Widget build(BuildContext context) {
     final myId = context.read<AppState>().userId;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.roomName)),
+      appBar: AppBar(
+        title: Text(widget.roomName),
+        actions: [
+          if (widget.members != null && widget.members!.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(tr('Katılımcılar')),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: widget.members!.length,
+                        itemBuilder: (context, index) {
+                          final m = widget.members![index];
+                          final u = m['user'];
+                          if (u == null) return const SizedBox.shrink();
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppTheme.primary.withOpacity(0.1),
+                              child: Text('${u['first_name']?[0] ?? ''}${u['last_name']?[0] ?? ''}', style: const TextStyle(color: AppTheme.primary, fontSize: 12)),
+                            ),
+                            title: Text('${u['first_name']} ${u['last_name']}'),
+                            subtitle: Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 11)),
+                          );
+                        },
+                      ),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Kapat'))),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
       body: Column(children: [
         Expanded(
           child: _loading ? const Center(child: CircularProgressIndicator())

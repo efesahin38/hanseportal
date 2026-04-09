@@ -26,28 +26,28 @@ class _GmbhDef {
 const List<_GmbhDef> kGmbhDefs = [
   _GmbhDef(
     departmentKey: 'Gebäudedienstleistungen',
-    gmbhName: 'Gebäudedienstleistungen GmbH',
+    gmbhName: 'Gebäudedienstleistungen',
     responsible: 'Sandra',
     icon: Icons.apartment,
     color: Color(0xFF3B82F6),
   ),
   _GmbhDef(
     departmentKey: 'Rail Service',
-    gmbhName: 'Rail Service GmbH',
+    gmbhName: 'Rail Service',
     responsible: 'Peter',
     icon: Icons.train,
     color: Color(0xFF10B981),
   ),
   _GmbhDef(
     departmentKey: 'Gastwirtschaftsservice',
-    gmbhName: 'Gastwirtschaftsservice GmbH',
+    gmbhName: 'Gastwirtschaftsservice',
     responsible: 'Fatma',
     icon: Icons.restaurant,
     color: Color(0xFFF59E0B),
   ),
   _GmbhDef(
     departmentKey: 'Personalüberlassung',
-    gmbhName: 'Personalüberlassung GmbH',
+    gmbhName: 'Personalüberlassung',
     responsible: 'Markus',
     icon: Icons.people,
     color: Color(0xFF8B5CF6),
@@ -61,8 +61,8 @@ class OrdersHubScreen extends StatefulWidget {
 }
 
 class _OrdersHubScreenState extends State<OrdersHubScreen> {
-  /// Service area listesini DB'den alıp GmbhDef ile eşleştiriyoruz.
-  Map<String, String?> _serviceAreaIds = {}; // departmentKey → serviceAreaId
+  /// Departman listesini DB'den alıp GmbhDef ile eşleştiriyoruz.
+  Map<String, String?> _departmentIds = {}; // departmentKey → departmentId
   bool _loading = true;
 
   @override
@@ -73,23 +73,23 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
 
   Future<void> _load() async {
     try {
-      final areas = await SupabaseService.getServiceAreas();
+      final depts = await SupabaseService.getDepartments();
       final Map<String, String?> ids = {};
       for (final def in kGmbhDefs) {
-        // DB'deki service_area adı departmentKey ile başlıyorsa eşleştir
-        final match = areas.firstWhere(
-          (a) =>
-              (a['name'] as String? ?? '')
+        // DB'deki departman adı departmentKey ile başlıyorsa eşleştir
+        final match = depts.firstWhere(
+          (d) =>
+              (d['name'] as String? ?? '')
                   .toLowerCase()
                   .contains(def.departmentKey.toLowerCase()) ||
               def.departmentKey
                   .toLowerCase()
-                  .contains((a['name'] as String? ?? '').toLowerCase()),
+                  .contains((d['name'] as String? ?? '').toLowerCase()),
           orElse: () => {},
         );
         ids[def.departmentKey] = match['id']?.toString();
       }
-      if (mounted) setState(() { _serviceAreaIds = ids; _loading = false; });
+      if (mounted) setState(() { _departmentIds = ids; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -194,7 +194,7 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
               else
                 ...visibleDefs.map((def) => _GmbhCard(
                   def: def,
-                  serviceAreaId: _serviceAreaIds[def.departmentKey],
+                  departmentId: _departmentIds[def.departmentKey],
                 )),
             ],
           ),
@@ -206,8 +206,8 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
 
 class _GmbhCard extends StatelessWidget {
   final _GmbhDef def;
-  final String? serviceAreaId;
-  const _GmbhCard({required this.def, this.serviceAreaId});
+  final String? departmentId;
+  const _GmbhCard({required this.def, this.departmentId});
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +217,7 @@ class _GmbhCard extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => OrdersScreen(serviceAreaId: serviceAreaId),
+            builder: (_) => OrdersScreen(departmentId: departmentId, customTitle: def.gmbhName),
           ),
         ),
         borderRadius: BorderRadius.circular(20),

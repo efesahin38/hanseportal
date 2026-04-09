@@ -52,8 +52,7 @@ class SupabaseService {
         .select('''
           *,
           company:companies(id, name, short_name),
-          department:departments(id, name),
-          manager:users!users_manager_id_fkey(id, first_name, last_name)
+          department:departments(id, name)
         ''')
         .eq('id', userId)
         .maybeSingle();
@@ -273,7 +272,7 @@ class SupabaseService {
     return await _client.from('orders').select('''
       *,
       company:companies(id, name, short_name),
-      customer:customers(id, name, phone, email),
+      customer:customers(id, name, phone, email, vat_number, bank_name, iban, bic),
       customer_contact:customer_contacts(id, name, phone, email),
       service_area:service_areas(id, code, name, color),
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
@@ -667,7 +666,7 @@ class SupabaseService {
     var query = _client.from('work_sessions').select('''
       *,
       order:orders!inner(
-        id, title, order_number, service_area_id, department_id,
+        id, title, order_number, service_area_id, department_id, status,
         customer:customers(name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
@@ -1590,27 +1589,34 @@ class SupabaseService {
 
   // ── Chat System ───────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> getChatRooms(String userId, {String? role}) async {
-    if (role == 'geschaeftsfuehrer') {
-      // Geschäftsführer sees all chats. 
-      // Note: Here we just fetch all chat_rooms directly to see everything.
-      final data = await _client.from('chat_rooms').select('''
-        id, name, room_type, created_at,
-        chat_messages(id, message, sender_id, created_at, is_read)
-      ''').order('created_at', ascending: false);
-      return List<Map<String, dynamic>>.from(data).map((room) => {
-        'room_id': room['id'],
-        'chat_rooms': room
-      }).toList();
-    } else {
-      final data = await _client.from('chat_room_members').select('''
+    List<dynamic> data;
+    if (role == 'system_admin' || role == 'geschaeftsfuehrer') {
+      data = await _client.from('chat_room_members').select('''
         room_id,
-        chat_rooms(
-          id, name, room_type, created_at,
-          chat_messages(id, message, sender_id, created_at, is_read)
+        chat_rooms(*, 
+          chat_messages(message, created_at, sender_id, is_read),
+          members:chat_room_members(user_id, user:users(id, first_name, last_name, role))
+        )
+      ''').order('joined_at', ascending: false);
+    } else {
+      data = await _client.from('chat_room_members').select('''
+        room_id,
+        chat_rooms(*, 
+          chat_messages(message, created_at, sender_id, is_read),
+          members:chat_room_members(user_id, user:users(id, first_name, last_name, role))
         )
       ''').eq('user_id', userId).order('joined_at', ascending: false);
-      return List<Map<String, dynamic>>.from(data);
     }
+
+    final list = List<Map<String, dynamic>>.from(data);
+    final uniqueRooms = <String, Map<String, dynamic>>{};
+    for (final item in list) {
+       final roomId = item['room_id']?.toString() ?? '';
+       if (roomId.isNotEmpty && !uniqueRooms.containsKey(roomId)) {
+          uniqueRooms[roomId] = item;
+       }
+    }
+    return uniqueRooms.values.toList();
   }
 
   /// İki kullanıcı arasında zaten bir direkt sohbet odası varsa ID'sini döndürür.
@@ -1630,16 +1636,27 @@ class SupabaseService {
 
       if (roomIds1.isEmpty) return null;
 
-      // user2'nin de aynı oda(lar)da üye olup olmadığını kontrol et
-      final rooms2 = await _client
+      // Tüm bu odalardaki üyeleri çekelim ve tam olarak 2 üye olan ve birinin user1 diğerinin user2 olduğu odayı bulalım.
+      final allMembersData = await _client
           .from('chat_room_members')
-          .select('room_id')
-          .eq('user_id', user2Id)
+          .select('room_id, user_id')
           .inFilter('room_id', roomIds1.toList());
 
-      if ((rooms2 as List).isNotEmpty) {
-        return rooms2.first['room_id'].toString();
+      // Odaya göre üyeleri grupla
+      final Map<String, List<String>> roomMembers = {};
+      for (var row in (allMembersData as List)) {
+        final rId = row['room_id'].toString();
+        final uId = row['user_id'].toString();
+        roomMembers.putIfAbsent(rId, () => []).add(uId);
       }
+
+      for (var rId in roomIds1) {
+        final members = roomMembers[rId] ?? [];
+        if (members.length == 2 && members.contains(user1Id) && members.contains(user2Id)) {
+          return rId; // Sadece ikisinin olduğu eşleşen tek oda
+        }
+      }
+
       return null;
     } catch (e) {
       debugPrint('[Chat] findExistingDirectChat hata: $e');
@@ -1738,5 +1755,55 @@ class SupabaseService {
     final allUsers = List<Map<String, dynamic>>.from(data);
 
     return allUsers; 
+  }
+
+  // ── Formulare (Gebäudedienstleistungen) ───────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getOrderForms(String orderId) async {
+    final data = await _client
+        .from('order_forms')
+        .select('''
+          *,
+          updated_by_user:users!order_forms_updated_by_fkey(first_name, last_name),
+          approved_by_user:users!order_forms_approved_by_fkey(first_name, last_name)
+        ''')
+        .eq('order_id', orderId)
+        .order('created_at');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertOrderForm({
+    String? id,
+    required String orderId,
+    required String formType,
+    required String status,
+    required Map<String, dynamic> data,
+    required String userId,
+  }) async {
+    final payload = <String, dynamic>{
+      'order_id':   orderId,
+      'form_type':  formType,
+      'status':     status,
+      'data':       data,
+      'updated_by': userId,
+    };
+    if (id != null) {
+      payload['id'] = id;
+    } else {
+      payload['created_by'] = userId;
+    }
+    await _client.from('order_forms').upsert(payload, onConflict: 'order_id,form_type');
+  }
+
+  static Future<void> approveOrderForm(String formId, String approverId) async {
+    await _client.from('order_forms').update({
+      'is_approved':  true,
+      'approved_by':  approverId,
+      'approved_at':  DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', formId);
+  }
+
+  static Future<void> deleteOrderForm(String formId) async {
+    await _client.from('order_forms').delete().eq('id', formId);
   }
 }
