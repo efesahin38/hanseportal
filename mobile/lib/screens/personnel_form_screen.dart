@@ -70,12 +70,37 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   Future<void> _loadServiceAreas() async {
     final data = await SupabaseService.getServiceAreas();
-    final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+    final List<Map<String, dynamic>> matchedAreas = [];
+    
+    // 🛡️ NAILED MATCHING: Diğer formlar ile tutarlı 4 ana kategori
+    const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
+
     final filtered = data.where((sa) {
       final name = (sa['name'] as String? ?? '').toLowerCase();
-      return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+      return keywords.any((kw) => name.contains(kw));
     }).toList();
-    if (mounted) setState(() { _serviceAreas = filtered; });
+
+    for (var sa in filtered) {
+      final saName = (sa['name'] as String? ?? '').toLowerCase();
+      String displayLabel = sa['name'] ?? '';
+
+      if (saName.contains('rail') || saName.contains('gleis')) {
+        displayLabel = 'Rail Service';
+      } else if (saName.contains('gebäud') || saName.contains('reinigung')) {
+        displayLabel = 'Gebäudedienstleistungen';
+      } else if (saName.contains('gast') || saName.contains('hotel')) {
+        displayLabel = 'Gastwirtschaftsservice';
+      } else if (saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
+        displayLabel = 'Personalüberlassung';
+      }
+      
+      // Eğer bu etiketle zaten bir kayıt eklediysek, sadece ilkini alalım (Tekilleştirme)
+      if (!matchedAreas.any((m) => m['display_name'] == displayLabel)) {
+        matchedAreas.add({...sa, 'display_name': displayLabel});
+      }
+    }
+    
+    if (mounted) setState(() { _serviceAreas = matchedAreas; });
   }
 
   Future<void> _loadUser() async {
@@ -139,6 +164,10 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'pin_code': _pin.text.trim(),
         'password': _pin.text.trim().isEmpty ? '1111' : _pin.text.trim(),
         'employee_number': _employeeNumber.text.trim().isEmpty ? null : _employeeNumber.text.trim(),
+        // 🛡️ AUTO-DEPARTMENT: Seçilen ilk hizmet alanının departmanını otomatik ata (İzolasyon için şart)
+        'department_id': _selectedServiceAreaIds.isNotEmpty 
+            ? _serviceAreas.firstWhere((sa) => _selectedServiceAreaIds.contains(sa['id'].toString()))['department_id']
+            : null,
         'weekly_hours': double.tryParse(_weeklyHours.text), 'monthly_hours': double.tryParse(_monthlyHours.text),
         'birth_date': _birthDate?.toIso8601String().split('T')[0],
         'entry_date': _entryDate?.toIso8601String().split('T')[0],
@@ -228,7 +257,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                 spacing: 8, runSpacing: 8,
                 children: _serviceAreas.map((sa) {
                   final id = sa['id'].toString();
-                  final name = sa['name'] ?? '';
+                  final name = sa['display_name'] ?? sa['name'] ?? '';
                   final isSel = _selectedServiceAreaIds.contains(id);
                   return FilterChip(
                     label: Text(name),
