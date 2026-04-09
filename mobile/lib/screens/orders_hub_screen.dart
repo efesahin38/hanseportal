@@ -25,29 +25,29 @@ class _GmbhDef {
 
 const List<_GmbhDef> kGmbhDefs = [
   _GmbhDef(
-    departmentKey: 'Gebäude', // DB: Gebäudereinigung
-    gmbhName: 'Gebäudedienstleistungen',
+    departmentKey: 'Gebäude',
+    gmbhName: 'Gebäudedienstleistungen', // veya Gebäudereinigung
     responsible: 'Sandra',
     icon: Icons.apartment,
     color: Color(0xFF3B82F6),
   ),
   _GmbhDef(
-    departmentKey: 'Gleis', // DB: Gleisbausicherung
-    gmbhName: 'Rail Service',
+    departmentKey: 'Rail',
+    gmbhName: 'Rail Service', // veya Gleisbausicherung
     responsible: 'Peter',
     icon: Icons.train,
     color: Color(0xFF10B981),
   ),
   _GmbhDef(
-    departmentKey: 'Hotel', // DB: Hotelservice
-    gmbhName: 'Gastwirtschaftsservice',
+    departmentKey: 'Gast',
+    gmbhName: 'Gastwirtschaftsservice', // veya Hotelservice
     responsible: 'Fatma',
     icon: Icons.restaurant,
     color: Color(0xFFF59E0B),
   ),
   _GmbhDef(
-    departmentKey: 'Verwaltung', // DB: Verwaltung
-    gmbhName: 'Personalüberlassung',
+    departmentKey: 'Personal',
+    gmbhName: 'Personalüberlassung', // veya Verwaltung
     responsible: 'Markus',
     icon: Icons.people,
     color: Color(0xFF8B5CF6),
@@ -76,15 +76,21 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
       final depts = await SupabaseService.getDepartments();
       final Map<String, String?> ids = {};
       for (final def in kGmbhDefs) {
-        // DB'deki departman adı departmentKey ile başlıyorsa eşleştir
+        // DB'deki departman adı ile eşleştir (çoklu anahtar kelime mantığı)
         final match = depts.firstWhere(
-          (d) =>
-              (d['name'] as String? ?? '')
-                  .toLowerCase()
-                  .contains(def.departmentKey.toLowerCase()) ||
-              def.departmentKey
-                  .toLowerCase()
-                  .contains((d['name'] as String? ?? '').toLowerCase()),
+          (d) {
+            final dbName = (d['name'] as String? ?? '').toLowerCase();
+            final key = def.departmentKey.toLowerCase();
+            final gmbh = def.gmbhName.toLowerCase();
+            
+            // Eğer veritabanındaki isim, bizim anahtarımızı veya GmbH ismimizi İÇERİYORSA
+            return dbName.contains(key) || 
+                   dbName.contains(gmbh) || 
+                   key.contains(dbName) || 
+                   gmbh.contains(dbName) ||
+                   (key == 'rail' && dbName.contains('gleis')) || // Rail -> Gleis özel eşleşmesi
+                   (key == 'gast' && dbName.contains('hotel'));  // Gast -> Hotel özel eşleşmesi
+          },
           orElse: () => {},
         );
         ids[def.departmentKey] = match['id']?.toString();
