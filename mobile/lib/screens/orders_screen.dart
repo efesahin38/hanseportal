@@ -39,17 +39,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _load() async {
-    final appState = context.read<AppState>();
+    setState(() => _loading = true);
     try {
+      final appState = context.read<AppState>();
       String? saId = widget.serviceAreaId;
       String? deptId = widget.departmentId;
 
       // Bereichsleiter (Bölüm Sorumlusu) ise sadece KENDİ departmanını görsün (Kesin İzolasyon)
       if (appState.isBereichsleiter) {
         deptId = appState.departmentId;
-        // Eğer girmeye çalıştığı birim (widget.serviceAreaId) kendi birimi değilse veya parametre boşsa
-        // Güvenlik için her zaman kendi deptId'sini dayatıyoruz.
-        saId = null; // Specifik SA filtresini temizle ki sadece kendi departmanındakileri görsün
+        saId = null; 
       }
       
       final data = await SupabaseService.getOrders(
@@ -57,8 +56,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
         serviceAreaId: saId,
         departmentId: deptId,
       );
-      if (mounted) setState(() { _orders = data; _applyFilter(); _loading = false; });
+      if (mounted) setState(() { _orders = data; _applyFilter(); });
     } catch (_) {
+    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -136,7 +136,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         onSelected: (_) {
                           setState(() {
                             _statusFilter = _statuses[i].isEmpty ? null : _statuses[i];
-                            _loading = true;
                           });
                           _load();
                         },
@@ -160,11 +159,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            Text(tr('İş bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter')),
+                            Text('v16.1', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderFormScreen())).then((_) => _load()),
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(
+                                  initialServiceAreaId: widget.serviceAreaId,
+                                  initialDepartmentId: widget.departmentId,
+                                ))).then((_) => _load()),
                                 icon: const Icon(Icons.add),
                                 label: Text(tr('Yeni İş Ekle')),
                               ),
@@ -230,6 +232,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ),
           ),
+          const Text('HansePortal v16.1', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
         ],
       ),
     ),
@@ -258,7 +261,6 @@ class _OrderListTile extends StatelessWidget {
     final priority = order['priority'] ?? 'normal';
     final serviceArea = order['service_area'];
     final customer = order['customer'];
-    final responsible = order['responsible_user'];
     final startDate = order['planned_start_date'];
 
     return Card(

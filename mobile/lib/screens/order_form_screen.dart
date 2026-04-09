@@ -57,6 +57,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Future<void> _loadDropdowns() async {
+    if (mounted) setState(() => _loading = true);
     try {
       final appState = context.read<AppState>();
       final serviceAreas = await SupabaseService.getServiceAreas();
@@ -98,8 +99,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           }
         });
       }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Dropdown verileri yüklenemedi')}: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -216,8 +217,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.orderId == null ? tr('Yeni İş') : tr('İş Düzenle'))),
       body: WebContentWrapper(
-        child: Form(
-          key: _formKey,
+        child: _loading 
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 500;
@@ -483,7 +486,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.0', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+        Text('v16.1', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
