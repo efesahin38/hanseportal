@@ -47,22 +47,29 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
   Future<void> _loadInitialData() async {
     try {
+      final depts = await SupabaseService.getDepartments();
       final areas = await SupabaseService.getServiceAreas();
       final List<Map<String, dynamic>> matchedAreas = [];
       
+      // 🛡️ DYNAMIC MATCHING (v16.8): Hub ekranındaki aynı mantıkla kategorize et
       for (var sa in areas) {
-        final deptId = sa['department_id']?.toString() ?? '';
         final saName = (sa['name'] as String? ?? '').toLowerCase();
+        final deptId = sa['department_id']?.toString() ?? '';
+        
+        // Departman adını bul
+        final dept = depts.firstWhere((d) => d['id']?.toString() == deptId, orElse: () => {});
+        final deptName = (dept['name'] as String? ?? '').toLowerCase();
+
         String? displayLabel;
 
-        // 🛡️ NAILED ID MATCHING: Dashboard ile tam uyumlu
-        if (deptId == 'dddddddd-1111-1111-1111-111111111111' || saName.contains('gebäud') || saName.contains('reinigung')) {
-          displayLabel = 'Gebäudedienstleistungen';
-        } else if (deptId == 'dddddddd-2222-2222-2222-222222222222' || saName.contains('rail') || saName.contains('gleis')) {
+        // 🛡️ NAILED MATCHING: Rail, Bina, Gast, Personel
+        if (deptName.contains('rail') || deptName.contains('gleis') || saName.contains('rail') || saName.contains('gleis')) {
           displayLabel = 'Rail Service';
-        } else if (deptId == 'dddddddd-3333-3333-3333-333333333333' || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
+        } else if (deptName.contains('gebäud') || deptName.contains('reinigung') || saName.contains('gebäud') || saName.contains('reinigung')) {
+          displayLabel = 'Gebäudedienstleistungen';
+        } else if (deptName.contains('gast') || deptName.contains('hotel') || deptName.contains('otel') || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
           displayLabel = 'Gastwirtschaftsservice';
-        } else if (deptId == 'dddddddd-4444-4444-4444-444444444444' || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
+        } else if (deptName.contains('personal') || deptName.contains('überlassung') || deptName.contains('verwal') || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
           displayLabel = 'Personalüberlassung';
         }
         
@@ -114,8 +121,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           final csa = data['customer_service_areas'] as List;
           if (csa.isNotEmpty) {
             final sId = csa.first['service_area_id']?.toString();
+            // Burada eşleşen ilk hizmet alanını seçebiliriz (etiket bazlı olduğu için)
             if (_serviceAreas.any((s) => s['id']?.toString() == sId)) {
-              _selectedServiceAreaId = sId;
+                   _selectedServiceAreaId = sId;
             }
           }
         }
@@ -301,7 +309,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
-                  const Center(child: Text('HansePortal v16.7', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+                  const Center(child: Text('HansePortal v16.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
                 ],
               );
             },

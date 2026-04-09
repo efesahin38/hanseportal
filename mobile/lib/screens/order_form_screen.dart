@@ -52,30 +52,34 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDropdowns();
+    _loadInitialData();
     if (widget.orderId != null) _loadOrder();
   }
 
-  Future<void> _loadDropdowns() async {
-    if (mounted) setState(() => _loading = true);
+  Future<void> _loadInitialData() async {
     try {
-      final appState = context.read<AppState>();
+      final depts = await SupabaseService.getDepartments();
       final serviceAreas = await SupabaseService.getServiceAreas();
-      
       final List<Map<String, dynamic>> matchedAreas = [];
+      
       for (var sa in serviceAreas) {
-        final deptId = sa['department_id']?.toString() ?? '';
         final saName = (sa['name'] as String? ?? '').toLowerCase();
+        final deptId = sa['department_id']?.toString() ?? '';
+        
+        // Departman adını bul
+        final dept = depts.firstWhere((d) => d['id']?.toString() == deptId, orElse: () => {});
+        final deptName = (dept['name'] as String? ?? '').toLowerCase();
+
         String? displayLabel;
 
-        // 🛡️ NAILED ID MATCHING: Dashboard ile tam uyumlu
-        if (deptId == 'dddddddd-1111-1111-1111-111111111111' || saName.contains('gebäud') || saName.contains('reinigung')) {
-          displayLabel = 'Gebäudedienstleistungen';
-        } else if (deptId == 'dddddddd-2222-2222-2222-222222222222' || saName.contains('rail') || saName.contains('gleis')) {
+        // 🛡️ NAILED MATCHING: Rail, Bina, Gast, Personel
+        if (deptName.contains('rail') || deptName.contains('gleis') || saName.contains('rail') || saName.contains('gleis')) {
           displayLabel = 'Rail Service';
-        } else if (deptId == 'dddddddd-3333-3333-3333-333333333333' || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
+        } else if (deptName.contains('gebäud') || deptName.contains('reinigung') || saName.contains('gebäud') || saName.contains('reinigung')) {
+          displayLabel = 'Gebäudedienstleistungen';
+        } else if (deptName.contains('gast') || deptName.contains('hotel') || deptName.contains('otel') || saName.contains('gast') || saName.contains('hotel') || saName.contains('otel')) {
           displayLabel = 'Gastwirtschaftsservice';
-        } else if (deptId == 'dddddddd-4444-4444-4444-444444444444' || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
+        } else if (deptName.contains('personal') || deptName.contains('überlassung') || deptName.contains('verwal') || saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
           displayLabel = 'Personalüberlassung';
         }
 
@@ -507,7 +511,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.7', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+        Text('v16.8', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
