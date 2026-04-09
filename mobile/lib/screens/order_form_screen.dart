@@ -93,7 +93,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (mounted) {
         setState(() {
           _customers = customers;
-          _serviceAreas = filteredServiceAreas;
+          // 🛡️ NAILED IT: Arka planda veriyi çeksek bile dropdown'da 'Verwaltung' ismini gösterme
+          _serviceAreas = filteredServiceAreas.where((sa) {
+            final name = (sa['name'] as String? ?? '').toLowerCase();
+            return name != 'verwaltung';
+          }).toList();
+          
           if (widget.orderId == null && defaultSAId != null) {
             _selectedServiceAreaId = defaultSAId;
           }
@@ -486,7 +491,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.3', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+        Text('v16.4', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
