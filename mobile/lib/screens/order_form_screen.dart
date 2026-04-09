@@ -62,7 +62,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final appState = context.read<AppState>();
       final serviceAreas = await SupabaseService.getServiceAreas();
       
-      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung'];
+      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
       var filteredServiceAreas = serviceAreas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
         return keywords.any((kw) => name.contains(kw));
@@ -486,7 +486,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.1', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+        Text('v16.3', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',

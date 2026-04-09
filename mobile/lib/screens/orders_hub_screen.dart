@@ -89,7 +89,8 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                    key.contains(dbName) || 
                    gmbh.contains(dbName) ||
                    (key == 'rail' && dbName.contains('gleis')) || // Rail -> Gleis özel eşleşmesi
-                   (key == 'gast' && dbName.contains('hotel'));  // Gast -> Hotel özel eşleşmesi
+                   (key == 'gast' && dbName.contains('hotel')) || // Gast -> Hotel özel eşleşmesi
+                   (key == 'personal' && dbName.contains('verwal')); // Personal -> Verwaltung eşleşmesi (Arka plan için şart)
           },
           orElse: () => {},
         );
@@ -168,6 +169,10 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                           Text(
                             tr('Aufträge'),
                             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                          ),
+                          Text(
+                            'HansePortal v16.3',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
                           ),
                           Text(
                             bereichDept != null
