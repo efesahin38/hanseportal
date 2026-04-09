@@ -48,11 +48,13 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   Future<void> _loadInitialData() async {
     try {
       final areas = await SupabaseService.getServiceAreas();
-      final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+      
+      // Hub ile uyumlu anahtar kelimeler
+      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
       
       final filteredAreas = areas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
-        return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+        return keywords.any((kw) => name.contains(kw));
       }).toList();
 
       if (mounted) {

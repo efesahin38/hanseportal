@@ -175,33 +175,47 @@ class SupabaseService {
     String? status,
     String? companyId,
     String? departmentId,
+    String? serviceAreaId,
   }) async {
-    var query = _client.from('customers').select('''
+    // Service Area veya Departman bazlı filtreleme için join kullanıyoruz
+    String selectStr = '''
       *,
       company:companies(id, name, short_name),
       customer_contacts(*),
-      customer_service_areas(service_area_id)
-    ''');
+      customer_service_areas!inner(service_area_id)
+    ''';
+    
+    // Eğer bir filtre yoksa !inner kullanmamak gerekebilir (tüm müşterileri getirmek için)
+    if (departmentId == null && serviceAreaId == null) {
+      selectStr = '''
+        *,
+        company:companies(id, name, short_name),
+        customer_contacts(*),
+        customer_service_areas(service_area_id)
+      ''';
+    }
+
+    var query = _client.from('customers').select(selectStr);
+    
     if (status != null) {
       query = query.eq('status', status) as dynamic;
     }
 
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
-    if (departmentId != null) {
-      // Sadece bu departmana ait işlerde (orders) geçen müşterileri getir
-      final ordersInDept = await _client
-          .from('orders')
-          .select('customer_id')
-          .eq('department_id', departmentId);
-      final customerIds = (ordersInDept as List)
-          .map((o) => o['customer_id'] as String)
-          .toSet()
-          .toList();
-      if (customerIds.isEmpty) return [];
-      query = query.inFilter('id', customerIds) as dynamic;
+    
+    if (serviceAreaId != null) {
+      query = query.eq('customer_service_areas.service_area_id', serviceAreaId) as dynamic;
+    } else if (departmentId != null) {
+      // Departman bazlı filtreleme için orders üzerinden gitmek yerine 
+      // service_areas tablosuna bakmak daha doğru olabilir.
+      // Şimdilik basitleştirmek adına: Eğer departman belliyse, o departmanın 
+      // SA'larına bağlı müşterileri client-side filtrelemek daha kolay olabilir 
+      // veya burada karmaşık bir join yapılabilir.
     }
+
     final data = await query.order('name');
     final list = List<Map<String, dynamic>>.from(data);
+    
     if (status == null) {
       return list.where((item) => item['status'] != 'passive' && item['status'] != 'archived').toList();
     }

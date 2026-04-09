@@ -42,6 +42,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   bool _saving = false;
+  bool _loading = false;
 
   List<Map<String, dynamic>> _customers = [];
   List<Map<String, dynamic>> _serviceAreas = [];
@@ -57,13 +58,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _loadDropdowns() async {
     try {
       final appState = context.read<AppState>();
-      final customers = await SupabaseService.getCustomers();
       final serviceAreas = await SupabaseService.getServiceAreas();
       
-      final activeDepartments = ['Gebäudedienstleistungen', 'Rail Service', 'Gastwirtschaftsservice', 'Personalüberlassung'];
+      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
       final filteredServiceAreas = serviceAreas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
-        return activeDepartments.any((dep) => name.contains(dep.toLowerCase()));
+        return keywords.any((kw) => name.contains(kw));
       }).toList();
       
       String? defaultSAId;
@@ -73,6 +73,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           defaultSAId = matching.first['id'].toString();
         }
       }
+
+      // 🛡️ NAILED ISOLATION: İlk yüklemede, eğer bir SA seçili ise müşterileri ona göre filtrele
+      final customers = await SupabaseService.getCustomers(serviceAreaId: defaultSAId);
 
       if (mounted) {
         setState(() {
@@ -255,16 +258,35 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown(tr('Hizmet Alanı *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) {
+                        child: _dropdown(tr('Hizmet Alanı *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) async {
                           setState(() {
                             _selectedServiceAreaId = v;
-                            if (v != null) {
-                              final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == v, orElse: () => <String, dynamic>{});
-                              if (sArea.isNotEmpty) {
-                                _title.text = sArea['name'] ?? '';
-                              }
-                            }
+                            _loading = true; // Müşteriler yüklenirken gösterge
                           });
+                          
+                          // 🛡️ NAILED ISOLATION: Seçilen bölüme ait müşterileri getir
+                          try {
+                            final filteredCustomers = await SupabaseService.getCustomers(serviceAreaId: v);
+                            if (mounted) {
+                              setState(() {
+                                _customers = filteredCustomers;
+                                // Eğer önceden seçili müşteri yeni listede yoksa seçimi temizle
+                                if (_selectedCustomerId != null && !filteredCustomers.any((c) => c['id'] == _selectedCustomerId)) {
+                                  _selectedCustomerId = null;
+                                }
+                                _loading = false;
+                                
+                                if (v != null) {
+                                  final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == v, orElse: () => <String, dynamic>{});
+                                  if (sArea.isNotEmpty) {
+                                    _title.text = sArea['name'] ?? '';
+                                  }
+                                }
+                              });
+                            }
+                          } catch (e) {
+                            if (mounted) setState(() => _loading = false);
+                          }
                         }),
                       ),
                     ],
