@@ -159,7 +159,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            Text('v16.1', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                            Text('v16.2', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
@@ -245,7 +245,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000002') return tr('Ray Servis İşleri');
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000005') return tr('Otel Servis İşleri');
     if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000004') return tr('Personel İşleri');
-    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000003') return tr('Yönetim / Diğer');
     return tr('Tüm İşler');
   }
 }

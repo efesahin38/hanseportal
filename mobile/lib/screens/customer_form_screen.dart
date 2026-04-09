@@ -51,7 +51,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       
       // 🛡️ NAILED MATCHING: Hub'daki kGmbhDefs isimleriyle eşleştir
       final List<Map<String, dynamic>> matchedAreas = [];
-      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
+      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung'];
 
       final filtered = areas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
@@ -69,7 +69,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           displayLabel = 'Gebäudedienstleistungen';
         } else if (saName.contains('gast') || saName.contains('hotel')) {
           displayLabel = 'Gastwirtschaftsservice';
-        } else if (saName.contains('personal') || saName.contains('überlassung') || saName.contains('verwal')) {
+        } else if (saName.contains('personal') || saName.contains('überlassung')) {
           displayLabel = 'Personalüberlassung';
         }
         

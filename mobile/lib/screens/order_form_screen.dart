@@ -62,7 +62,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final appState = context.read<AppState>();
       final serviceAreas = await SupabaseService.getServiceAreas();
       
-      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung', 'verwal'];
+      const keywords = ['rail', 'gleis', 'gebäud', 'reinigung', 'gast', 'hotel', 'personal', 'überlassung'];
       var filteredServiceAreas = serviceAreas.where((sa) {
         final name = (sa['name'] as String? ?? '').toLowerCase();
         return keywords.any((kw) => name.contains(kw));
