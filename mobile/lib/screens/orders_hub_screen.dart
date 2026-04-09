@@ -25,28 +25,28 @@ class _GmbhDef {
 
 const List<_GmbhDef> kGmbhDefs = [
   _GmbhDef(
-    departmentKey: 'Gebäudedienstleistungen',
+    departmentKey: 'Gebäude', // DB: Gebäudereinigung
     gmbhName: 'Gebäudedienstleistungen',
     responsible: 'Sandra',
     icon: Icons.apartment,
     color: Color(0xFF3B82F6),
   ),
   _GmbhDef(
-    departmentKey: 'Rail Service',
+    departmentKey: 'Gleis', // DB: Gleisbausicherung
     gmbhName: 'Rail Service',
     responsible: 'Peter',
     icon: Icons.train,
     color: Color(0xFF10B981),
   ),
   _GmbhDef(
-    departmentKey: 'Gastwirtschaftsservice',
+    departmentKey: 'Hotel', // DB: Hotelservice
     gmbhName: 'Gastwirtschaftsservice',
     responsible: 'Fatma',
     icon: Icons.restaurant,
     color: Color(0xFFF59E0B),
   ),
   _GmbhDef(
-    departmentKey: 'Personalüberlassung',
+    departmentKey: 'Verwaltung', // DB: Verwaltung
     gmbhName: 'Personalüberlassung',
     responsible: 'Markus',
     icon: Icons.people,
