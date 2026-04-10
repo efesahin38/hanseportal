@@ -18,7 +18,7 @@ class OrderDetailScreen extends StatefulWidget {
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTickerProviderStateMixin {
+class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _order;
   List<Map<String, dynamic>> _siteUpdates = [];
   bool _loading = true;
@@ -45,6 +45,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
         setState(() {
           _order = order;
           _siteUpdates = updates;
+          
+          final isGebaeude = order?['service_area']?['name']?.toString().toLowerCase().contains('gebäude') ?? false;
+          final targetLen = isGebaeude ? 6 : 5;
+          if (_tabs.length != targetLen) {
+            _tabs.dispose();
+            _tabs = TabController(length: targetLen, vsync: this);
+          }
+          
           _loading = false;
         });
       }
@@ -82,6 +90,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
     final canSeeReport = appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isBuchhaltung || appState.isSystemAdmin;
     // Ek işi saha lideri ve yetkili personeller ekleyebilir.
     final canAddExtraWork = isAssignedForeman || appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isSystemAdmin;
+    final isGebaeude = serviceArea?['name']?.toString().toLowerCase().contains('gebäude') ?? false;
 
     return Scaffold(
       floatingActionButton: (canSeeReport || canAddExtraWork || appState.canPlanOperations) ? Column(
@@ -163,7 +172,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                         Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
                         Tab(text: '${tr('Belgeler')} (${docs.length})'),
                         Tab(text: '${tr('Geçmiş')} (${history.length})'),
-                        const Tab(text: 'Formulare'),
+                        if (isGebaeude) const Tab(text: 'Formulare'),
                       ],
                   ),
                 ],
@@ -455,15 +464,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with SingleTicker
                           },
                         ),
                   // Tab 6: Formulare (Gebäudedienstleistungen)
-                  OrderFormulareTab(
-                    orderId: widget.orderId,
-                    orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
-                    supervisorIds: plans
-                        .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
-                        .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
-                        .where((id) => id.isNotEmpty)
-                        .toList(),
-                  ),
+                  if (isGebaeude)
+                    OrderFormulareTab(
+                      orderId: widget.orderId,
+                      orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
+                      supervisorIds: plans
+                          .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
+                          .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
+                          .where((id) => id.isNotEmpty)
+                          .toList(),
+                    ),
                 ],
               ),
             ),
