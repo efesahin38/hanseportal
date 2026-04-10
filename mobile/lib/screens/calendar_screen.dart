@@ -7,9 +7,75 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/localization_service.dart';
 
+// ─── Renk sabitleri ───────────────────────────────────────────────────────────
+const _kColorVertragsende  = Color(0xFFEF4444); // Kırmızı
+const _kColorProbezeit     = Color(0xFFF97316); // Turuncu
+const _kColorAusweis       = Color(0xFFEAB308); // Sarı
+const _kColorVehicle       = Color(0xFFEC4899); // Pembe (TÜV/Servis/Reifen/FS)
+const _kColorPlan          = Color(0xFF3B82F6); // Mavi (Operasyon)
+const _kColorEvent         = Color(0xFF8B5CF6); // Mor (Manuel etkinlik)
+const _kColorLeaveOther    = Color(0xFF06B6D4); // Turkuaz (başkasının izni)
+const _kColorLeaveOwn      = Color(0xFF1D4ED8); // Koyu Mavi (kendi izni)
+
+Color _eventColor(String? type) {
+  switch (type) {
+    case 'vertragsende': return _kColorVertragsende;
+    case 'probezeit':    return _kColorProbezeit;
+    case 'ausweis_ablauf': return _kColorAusweis;
+    case 'tuev':
+    case 'reifen':
+    case 'wartung':
+    case 'fs_kontrolle': return _kColorVehicle;
+    case 'plan':         return _kColorPlan;
+    case 'leave_own':    return _kColorLeaveOwn;
+    case 'leave_other':  return _kColorLeaveOther;
+    default:             return _kColorEvent;
+  }
+}
+
+IconData _eventIcon(String? type) {
+  switch (type) {
+    case 'vertragsende': return Icons.gavel;
+    case 'probezeit':    return Icons.timer_outlined;
+    case 'ausweis_ablauf': return Icons.badge_outlined;
+    case 'tuev':         return Icons.verified_outlined;
+    case 'reifen':       return Icons.tire_repair;
+    case 'wartung':      return Icons.build_outlined;
+    case 'fs_kontrolle': return Icons.drive_eta_outlined;
+    case 'plan':         return Icons.engineering;
+    case 'leave_own':
+    case 'leave_other':  return Icons.beach_access;
+    default:             return Icons.event;
+  }
+}
+
+String _eventLabel(String? type) {
+  switch (type) {
+    case 'vertragsende': return 'Vertragsende';
+    case 'probezeit':    return 'Probezeit';
+    case 'ausweis_ablauf': return 'Ausweis-Ablauf';
+    case 'tuev':         return 'TÜV-Termin';
+    case 'reifen':       return 'Reifenwechsel';
+    case 'wartung':      return 'Fahrzeug-Wartung';
+    case 'fs_kontrolle': return 'FS-Kontrolle';
+    case 'plan':         return 'Einsatzplan';
+    case 'leave_own':    return 'Mein Urlaub';
+    case 'leave_other':  return 'Urlaub';
+    default:             return 'Etkinlik';
+  }
+}
+
+// ─── Aktif filtre chip modeli ─────────────────────────────────────────────────
+class _Filter {
+  final String key, label;
+  final Color color;
+  bool active;
+  _Filter(this.key, this.label, this.color, {this.active = true});
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
-
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
@@ -17,9 +83,18 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
-  List<Map<String, dynamic>> _events = [];
-  List<Map<String, dynamic>> _plans = [];
   bool _loading = true;
+
+  // Tüm veri listeleri
+  List<Map<String, dynamic>> _events   = [];  // Manuel etkinlikler
+  List<Map<String, dynamic>> _plans    = [];  // Operasyon planları
+  List<Map<String, dynamic>> _leaves   = [];  // İzinler
+  List<Map<String, dynamic>> _vehicle  = [];  // Araç tarihleri
+  List<Map<String, dynamic>> _expiry   = [];  // Personel kritik tarihleri
+
+  // Filtreler (GF/BL için)
+  late List<_Filter> _filters;
+  bool _filtersInitialized = false;
 
   @override
   void initState() {
@@ -27,25 +102,106 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _load();
   }
 
+  bool get _isAdmin {
+    final a = context.read<AppState>();
+    return a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin;
+  }
+
+  bool get _isBereichsleiter => context.read<AppState>().isBereichsleiter;
+  bool get _isMitarbeiter {
+    final a = context.read<AppState>();
+    return a.isMitarbeiter || a.isVorarbeiter;
+  }
+
+  void _initFilters() {
+    if (_filtersInitialized) return;
+    _filtersInitialized = true;
+    _filters = [
+      if (_isAdmin || _isBereichsleiter) _Filter('plan', tr('Einsatzpläne'), _kColorPlan),
+      if (_isAdmin || _isBereichsleiter || _isMitarbeiter) _Filter('event', tr('Etkinlikler'), _kColorEvent),
+      if (_isAdmin || _isBereichsleiter) _Filter('leave', tr('Urlaub'), _kColorLeaveOther),
+      if (_isAdmin || _isBereichsleiter) _Filter('vehicle', tr('Fahrzeuge'), _kColorVehicle),
+      if (_isAdmin) _Filter('vertragsende', tr('Vertragsende'), _kColorVertragsende),
+      if (_isAdmin) _Filter('probezeit', tr('Probezeit'), _kColorProbezeit),
+      if (_isAdmin) _Filter('ausweis', tr('Ausweis-Ablauf'), _kColorAusweis),
+    ];
+  }
+
   Future<void> _load() async {
+    _initFilters();
     final appState = context.read<AppState>();
     setState(() => _loading = true);
-    try {
-      final departmentId = appState.isBereichsleiter ? appState.departmentId : null;
-      final from = DateTime(_focusedDay.year, _focusedDay.month, 1);
-      final to = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
 
-      final events = await SupabaseService.getCalendarEvents(from: from, to: to);
-      final plans = await SupabaseService.getOperationPlans(
-        dateFrom: from,
-        dateTo: to,
-        departmentId: departmentId,
+    final from = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final to   = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+
+    try {
+      // 1. Manuel etkinlikler
+      final events = await SupabaseService.getCalendarEventsEnhanced(
+        from: from, to: to,
+        targetUserId: _isMitarbeiter ? appState.userId : null,
+        targetDepartmentId: _isBereichsleiter ? appState.departmentId : null,
       );
+
+      // 2. Operasyon planları
+      List<Map<String, dynamic>> plans = [];
+      if (!_isMitarbeiter || _isBereichsleiter || _isAdmin) {
+        plans = await SupabaseService.getOperationPlans(
+          dateFrom: from, dateTo: to,
+          departmentId: _isBereichsleiter ? appState.departmentId : null,
+        );
+      } else {
+        // Mitarbeiter sadece kendi planlarını görür
+        plans = await SupabaseService.getOperationPlans(
+          dateFrom: from, dateTo: to,
+          userId: appState.userId,
+        );
+      }
+
+      // 3. İzinler (leave_requests)
+      List<Map<String, dynamic>> leaves = [];
+      try {
+        leaves = await SupabaseService.getLeaveRequests(
+          from: from, to: to,
+          userId: _isMitarbeiter ? appState.userId : null,
+          departmentId: _isBereichsleiter ? appState.departmentId : null,
+        );
+      } catch (_) {} // Tablo henüz yoksa sessizce geç
+
+      // 4. Araç tarihleri (GF/BL/Bereichsleiter)
+      List<Map<String, dynamic>> vehicle = [];
+      if (_isAdmin || _isBereichsleiter) {
+        try {
+          final deptName = _isBereichsleiter
+              ? (appState.currentUser?['department']?['name'] as String?)
+              : null;
+          vehicle = await SupabaseService.getVehicleCalendarDates(
+            from: from, to: to,
+            department: deptName,
+          );
+        } catch (_) {}
+      }
+
+      // 5. Personel kritik tarihleri (sadece GF/BL)
+      List<Map<String, dynamic>> expiry = [];
+      if (_isAdmin) {
+        try {
+          expiry = await SupabaseService.getPersonnelExpiryDates(
+            from: from, to: to,
+            includeContractEnd: true,
+            includeProbezeit: true,
+            includeAusweis: true,
+          );
+        } catch (_) {}
+      }
 
       if (mounted) {
         setState(() {
-          _events = events;
-          _plans = plans;
+          _events  = events;
+          _plans   = plans;
+          _leaves  = leaves;
+          _vehicle = vehicle;
+          _expiry  = expiry;
           _loading = false;
         });
       }
@@ -54,23 +210,132 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // ─── Bir güne ait tüm öğeleri topla ──────────────────────────────────────
   List<Map<String, dynamic>> _getItemsForDay(DateTime day) {
-    final dateStr = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-    final dayEvents = _events.where((e) => (e['event_date'] ?? '').toString().startsWith(dateStr)).toList();
-    final dayPlans = _plans.where((p) => (p['plan_date'] ?? '').toString().startsWith(dateStr)).toList();
-    return [...dayEvents.map((e) => {...e, '_type': 'event'}), ...dayPlans.map((p) => {...p, '_type': 'plan'})];
+    final dateStr = '${day.year}-${day.month.toString().padLeft(2,'0')}-${day.day.toString().padLeft(2,'0')}';
+    final appState = context.read<AppState>();
+    final myId = appState.userId;
+
+    final items = <Map<String, dynamic>>[];
+
+    // Manuel etkinlikler
+    if (_filterActive('event')) {
+      for (final e in _events) {
+        if ((e['event_date'] ?? '').toString().startsWith(dateStr)) {
+          items.add({...e, '_type': 'event', '_color': _eventColor(e['event_type'])});
+        }
+      }
+    }
+
+    // Operasyon planları
+    if (_filterActive('plan')) {
+      for (final p in _plans) {
+        if ((p['plan_date'] ?? '').toString().startsWith(dateStr)) {
+          items.add({...p, '_type': 'plan', '_color': _kColorPlan});
+        }
+      }
+    }
+
+    // İzinler – çok günlü olabilir
+    if (_filterActive('leave')) {
+      for (final l in _leaves) {
+        final sd = DateTime.tryParse(l['start_date'] ?? '');
+        final ed = DateTime.tryParse(l['end_date'] ?? '');
+        if (sd != null && ed != null) {
+          final dayOnly = DateTime(day.year, day.month, day.day);
+          final sdOnly  = DateTime(sd.year, sd.month, sd.day);
+          final edOnly  = DateTime(ed.year, ed.month, ed.day);
+          if (!dayOnly.isBefore(sdOnly) && !dayOnly.isAfter(edOnly)) {
+            final isOwnLeave = l['user_id'] == myId;
+            final empName = l['employee'] != null
+                ? '${l['employee']['first_name'] ?? ''} ${l['employee']['last_name'] ?? ''}'.trim()
+                : '';
+            final type = isOwnLeave ? 'leave_own' : 'leave_other';
+            final leaveTypeLabel = _leaveTypeLabel(l['leave_type']);
+            items.add({
+              ...l,
+              '_type': type,
+              '_color': isOwnLeave ? _kColorLeaveOwn : _kColorLeaveOther,
+              'title': isOwnLeave ? 'Mein Urlaub ($leaveTypeLabel)' : '$empName – $leaveTypeLabel',
+              'description': l['note'],
+            });
+          }
+        }
+      }
+    }
+
+    // Araç tarihleri
+    if (_filterActive('vehicle')) {
+      for (final v in _vehicle) {
+        if ((v['date'] ?? '').toString().startsWith(dateStr)) {
+          items.add({...v, '_color': _kColorVehicle});
+        }
+      }
+    }
+
+    // Personel kritik tarihleri
+    for (final e in _expiry) {
+      if ((e['event_date'] ?? '').toString().startsWith(dateStr)) {
+        final type = e['event_type'];
+        if (type == 'vertragsende' && !_filterActive('vertragsende')) continue;
+        if (type == 'probezeit' && !_filterActive('probezeit')) continue;
+        if (type == 'ausweis_ablauf' && !_filterActive('ausweis')) continue;
+        items.add({...e, '_color': _eventColor(type)});
+      }
+    }
+
+    return items;
+  }
+
+  String _leaveTypeLabel(String? type) {
+    switch (type) {
+      case 'krank': return 'Krankheit';
+      case 'sonderurlaub': return 'Sonderurlaub';
+      default: return 'Urlaub';
+    }
+  }
+
+  bool _filterActive(String key) {
+    if (_filters.isEmpty) return true;
+    final f = _filters.where((f) => f.key == key);
+    return f.isEmpty || f.first.active;
+  }
+
+  // ─── Bir günde gösterilecek renk bar'ları ───────────────────────────────
+  List<Color> _getDayColors(DateTime day) {
+    final items = _getItemsForDay(day);
+    final colors = <Color>{};
+    for (final i in items) {
+      final c = i['_color'];
+      if (c is Color) colors.add(c);
+    }
+    return colors.take(4).toList(); // Max 4 renk
   }
 
   bool _hasItems(DateTime day) => _getItemsForDay(day).isNotEmpty;
 
+  // ─── Mini Dashboard istatistikleri ──────────────────────────────────────
+  Map<String, int> _getMiniStats() {
+    final now = DateTime.now();
+    final today = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}';
+    return {
+      'plans': _plans.where((p) => (p['plan_date'] ?? '').toString().startsWith(today)).length,
+      'vertragsende': _expiry.where((e) => e['event_type'] == 'vertragsende').length,
+      'vehicle': _vehicle.length,
+      'leaves': _leaves.length,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    _initFilters();
     final selectedItems = _getItemsForDay(_selectedDay);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        toolbarHeight: kIsWeb ? 80 : 120, // Adjust height as needed for the content
+        toolbarHeight: kIsWeb ? 80 : 120,
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -110,22 +375,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               if (!kIsWeb) ...[
                 const SizedBox(height: 8),
-                // Gün başlıkları - Mobile only (Web shows it inside grid)
                 Row(
-                  children: [
-                    tr('Pzt'),
-                    tr('Sal'),
-                    tr('Çar'),
-                    tr('Per'),
-                    tr('Cum'),
-                    tr('Cmt'),
-                    tr('Paz')
-                  ]
-                      .map((d) => Expanded(
-                            child: Text(d,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
-                          ))
+                  children: [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')]
+                      .map((d) => Expanded(child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'))))
                       .toList(),
                 ),
               ],
@@ -133,126 +385,143 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 800;
-          
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: Calendar Grid
-                SizedBox(
-                  width: 450,
-                  child: Column(
-                    children: [
-                      _buildWebDayHeaders(),
-                      _buildCalendarGrid(),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-                const VerticalDivider(width: 1),
-                // Right: Events
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildSelectedDayHeader(selectedItems),
-                      Expanded(child: _buildEventList(selectedItems)),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
+      body: Column(
+        children: [
+          // ── Mini Dashboard (sadece GF/BL) ──
+          if (_isAdmin) _buildMiniDashboard(),
 
-          return Column(
-            children: [
-              _buildCalendarGrid(),
-              const SizedBox(height: 4),
-              _buildSelectedDayHeader(selectedItems),
-              Expanded(child: _buildEventList(selectedItems)),
-            ],
-          );
-        },
+          // ── Filter chips ──
+          if (_filters.isNotEmpty) _buildFilterChips(),
+
+          // ── Takvim Grid + Detay ──
+          Expanded(
+            child: LayoutBuilder(builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 800;
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 460,
+                      child: Column(children: [
+                        _buildWebDayHeaders(),
+                        _buildCalendarGrid(),
+                        const Spacer(),
+                      ]),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(
+                      child: Column(children: [
+                        _buildSelectedDayHeader(selectedItems),
+                        Expanded(child: _buildEventList(selectedItems)),
+                      ]),
+                    ),
+                  ],
+                );
+              }
+              return Column(children: [
+                _buildCalendarGrid(),
+                const SizedBox(height: 4),
+                _buildSelectedDayHeader(selectedItems),
+                Expanded(child: _buildEventList(selectedItems)),
+              ]);
+            }),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddEventDialog(),
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(tr('Etkinlik Ekle'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
+      // FAB sadece GF+BL için
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => _showAddEventDialog(appState),
+              backgroundColor: AppTheme.primary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: Text(tr('Etkinlik Ekle'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
+            )
+          : null,
+    );
+  }
+
+  // ─── Mini Dashboard ───────────────────────────────────────────────────────
+  Widget _buildMiniDashboard() {
+    final stats = _getMiniStats();
+    final items = [
+      {'label': tr('Heute aktiv'), 'value': stats['plans'].toString(), 'icon': Icons.engineering, 'color': _kColorPlan},
+      {'label': tr('Vertragsende'), 'value': stats['vertragsende'].toString(), 'icon': Icons.gavel, 'color': _kColorVertragsende},
+      {'label': tr('Fahrzeug-Termine'), 'value': stats['vehicle'].toString(), 'icon': Icons.directions_car, 'color': _kColorVehicle},
+      {'label': tr('Urlaubstage'), 'value': stats['leaves'].toString(), 'icon': Icons.beach_access, 'color': _kColorLeaveOther},
+    ];
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
+        children: items.map((item) {
+          final color = item['color'] as Color;
+          return Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withOpacity(0.15)),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(item['icon'] as IconData, color: color, size: 18),
+                const SizedBox(height: 2),
+                Text(item['value'] as String, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color, fontFamily: 'Inter')),
+                Text(item['label'] as String, style: const TextStyle(fontSize: 9, color: AppTheme.textSub, fontFamily: 'Inter'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ]),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
+  // ─── Filter chips ─────────────────────────────────────────────────────────
+  Widget _buildFilterChips() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _filters.map((f) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: FilterChip(
+                label: Text(f.label, style: TextStyle(fontSize: 11, color: f.active ? Colors.white : AppTheme.textSub, fontFamily: 'Inter')),
+                selected: f.active,
+                selectedColor: f.color,
+                backgroundColor: AppTheme.bg,
+                checkmarkColor: Colors.white,
+                side: BorderSide(color: f.color.withOpacity(0.4)),
+                onSelected: (v) => setState(() { f.active = v; }),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // ─── Gün başlıkları (web) ─────────────────────────────────────────────────
   Widget _buildWebDayHeaders() {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
-        children: [
-          tr('Pzt'),
-          tr('Sal'),
-          tr('Çar'),
-          tr('Per'),
-          tr('Cum'),
-          tr('Cmt'),
-          tr('Paz')
-        ]
-            .map((d) => Expanded(
-                  child: Text(d,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                ))
+        children: [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')]
+            .map((d) => Expanded(child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter'))))
             .toList(),
       ),
     );
   }
 
-  Widget _buildSelectedDayHeader(List<Map<String, dynamic>> selectedItems) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        children: [
-          Text(
-            _dayLabel(_selectedDay),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
-          ),
-          if (selectedItems.isNotEmpty) ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: Text('${selectedItems.length} ${tr('Etkinlik')}', style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventList(List<Map<String, dynamic>> selectedItems) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (selectedItems.isEmpty) {
-      return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.event_busy_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.2)),
-          const SizedBox(height: 16),
-          Text(tr('Bu gün için aktivite yok'), style: const TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
-        ]),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: selectedItems.length,
-      itemBuilder: (_, i) => _CalendarItemCard(item: selectedItems[i]),
-    );
-  }
-
+  // ─── Takvim Grid ─────────────────────────────────────────────────────────
   Widget _buildCalendarGrid() {
     final firstDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final daysInMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
-    // Pazartesi = 1, Pazar = 7 → offset
     final startOffset = firstDay.weekday - 1;
     final totalCells = startOffset + daysInMonth;
     final rows = (totalCells / 7).ceil();
@@ -265,146 +534,387 @@ class _CalendarScreenState extends State<CalendarScreen> {
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 7,
           childAspectRatio: 1,
-          mainAxisSpacing: 4,
-          crossAxisSpacing: 4,
+          mainAxisSpacing: 2,
+          crossAxisSpacing: 2,
         ),
         itemCount: rows * 7,
-          itemBuilder: (_, index) {
-            final dayNum = index - startOffset + 1;
-            if (dayNum < 1 || dayNum > daysInMonth) return const SizedBox.shrink();
-            final day = DateTime(_focusedDay.year, _focusedDay.month, dayNum);
-            final isSelected = _isSameDay(day, _selectedDay);
-            final isToday = _isSameDay(day, DateTime.now());
-            final hasItems = _hasItems(day);
-  
-            return InkWell(
-              onTap: () => setState(() => _selectedDay = day),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                margin: const EdgeInsets.all(1),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primary : isToday ? AppTheme.primary.withOpacity(0.08) : null,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isToday && !isSelected ? Border.all(color: AppTheme.primary.withOpacity(0.3)) : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$dayNum',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
-                        fontFamily: 'Inter',
-                      ),
+        itemBuilder: (_, index) {
+          final dayNum = index - startOffset + 1;
+          if (dayNum < 1 || dayNum > daysInMonth) return const SizedBox.shrink();
+          final day = DateTime(_focusedDay.year, _focusedDay.month, dayNum);
+          final isSelected = _isSameDay(day, _selectedDay);
+          final isToday = _isSameDay(day, DateTime.now());
+          final dayColors = _getDayColors(day);
+
+          return InkWell(
+            onTap: () => setState(() => _selectedDay = day),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: isSelected ? AppTheme.primary : isToday ? AppTheme.primary.withOpacity(0.08) : null,
+                borderRadius: BorderRadius.circular(10),
+                border: isToday && !isSelected ? Border.all(color: AppTheme.primary.withOpacity(0.4)) : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$dayNum',
+                    style: TextStyle(
+                      fontSize: kIsWeb ? 14 : 13,
+                      fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
+                      fontFamily: 'Inter',
                     ),
-                    const SizedBox(height: 4),
-                    if (hasItems)
-                      Container(
-                        width: 6,
-                        height: 6,
+                  ),
+                  if (dayColors.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: dayColors.map((c) => Container(
+                        width: 5, height: 5,
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelected ? Colors.white : AppTheme.accent,
+                          color: isSelected ? Colors.white.withOpacity(0.85) : c,
                         ),
-                      ),
+                      )).toList(),
+                    ),
                   ],
-                ),
+                ],
               ),
-            );
-          },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── Seçili gün başlığı ───────────────────────────────────────────────────
+  Widget _buildSelectedDayHeader(List<Map<String, dynamic>> items) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      child: Row(
+        children: [
+          Text(_dayLabel(_selectedDay), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+          if (items.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text('${items.length}', style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Etkinlik listesi ─────────────────────────────────────────────────────
+  Widget _buildEventList(List<Map<String, dynamic>> items) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (items.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.event_busy_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.2)),
+        const SizedBox(height: 16),
+        Text(tr('Kein Eintrag für diesen Tag'), style: const TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter')),
+      ]));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+      itemCount: items.length,
+      itemBuilder: (_, i) => _CalendarItemCard(item: items[i]),
+    );
+  }
+
+  // ─── Etkinlik ekleme diyaloğu ─────────────────────────────────────────────
+  Future<void> _showAddEventDialog(AppState appState) async {
+    final titleCtrl = TextEditingController();
+    final descCtrl  = TextEditingController();
+    DateTime selectedDate = _selectedDay;
+    String eventType = 'general';
+    String targetMode = 'all'; // 'all' | 'dept' | 'person'
+    String? selectedDeptId;
+    String? selectedUserId;
+    String? selectedUserName;
+
+    // Departman + Personel listelerini yükle
+    final depts = await SupabaseService.getDepartments();
+    final users = await SupabaseService.getUsers(status: 'active');
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
+            const Icon(Icons.add_circle_outline, color: AppTheme.primary),
+            const SizedBox(width: 8),
+            Text(tr('Neue Veranstaltung'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 18)),
+          ]),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                // Başlık
+                TextField(
+                  controller: titleCtrl,
+                  decoration: InputDecoration(labelText: '${tr('Başlık')} *', border: const OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                // Açıklama
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(labelText: tr('Beschreibung'), border: const OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                // Etkinlik tipi
+                DropdownButtonFormField<String>(
+                  value: eventType,
+                  decoration: InputDecoration(labelText: tr('Typ'), border: const OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'general', child: Text('📋 Allgemein')),
+                    DropdownMenuItem(value: 'meeting', child: Text('🤝 Besprechung')),
+                    DropdownMenuItem(value: 'task', child: Text('📌 Aufgabe')),
+                  ],
+                  onChanged: (v) => ss(() => eventType = v!),
+                ),
+                const SizedBox(height: 12),
+                // Tarih
+                InkWell(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (d != null) ss(() => selectedDate = d);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    decoration: BoxDecoration(border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
+                      const SizedBox(width: 8),
+                      Text('${selectedDate.day.toString().padLeft(2,'0')}.${selectedDate.month.toString().padLeft(2,'0')}.${selectedDate.year}', style: const TextStyle(fontFamily: 'Inter')),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Hedef seçimi
+                Text(tr('Empfänger'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 8, children: [
+                  ChoiceChip(label: Text(tr('Alle')), selected: targetMode=='all', onSelected: (_) => ss(() => targetMode='all'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='all' ? Colors.white : null)),
+                  ChoiceChip(label: Text(tr('Abteilung')), selected: targetMode=='dept', onSelected: (_) => ss(() => targetMode='dept'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='dept' ? Colors.white : null)),
+                  ChoiceChip(label: Text(tr('Person')), selected: targetMode=='person', onSelected: (_) => ss(() => targetMode='person'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='person' ? Colors.white : null)),
+                ]),
+                if (targetMode == 'dept') ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: selectedDeptId,
+                    decoration: InputDecoration(labelText: tr('Abteilung auswählen'), border: const OutlineInputBorder()),
+                    items: depts.map((d) => DropdownMenuItem(value: d['id'].toString(), child: Text(d['name'] ?? ''))).toList(),
+                    onChanged: (v) => ss(() => selectedDeptId = v),
+                  ),
+                ],
+                if (targetMode == 'person') ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: selectedUserId,
+                    decoration: InputDecoration(labelText: tr('Person auswählen'), border: const OutlineInputBorder()),
+                    items: users.map((u) {
+                      final name = '${u['first_name']} ${u['last_name']}';
+                      return DropdownMenuItem(value: u['id'].toString(), child: Text(name));
+                    }).toList(),
+                    onChanged: (v) {
+                      ss(() {
+                        selectedUserId = v;
+                        final u = users.firstWhere((u) => u['id'].toString() == v, orElse: () => {});
+                        selectedUserName = u.isNotEmpty ? '${u['first_name']} ${u['last_name']}' : null;
+                      });
+                    },
+                  ),
+                ],
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen'))),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.check, size: 18),
+              label: Text(tr('Speichern')),
+              onPressed: () async {
+                if (titleCtrl.text.trim().isEmpty) return;
+                final dateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2,'0')}-${selectedDate.day.toString().padLeft(2,'0')}';
+
+                await SupabaseService.createCalendarEvent({
+                  'title': titleCtrl.text.trim(),
+                  'description': descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
+                  'event_date': dateStr,
+                  'event_type': eventType,
+                  'created_by': appState.userId,
+                  'target_user_id': targetMode == 'person' ? selectedUserId : null,
+                  'target_department_id': targetMode == 'dept' ? selectedDeptId : null,
+                  'is_system_generated': false,
+                });
+
+                // Bildirimler
+                final senderName = appState.fullName;
+                if (targetMode == 'person' && selectedUserId != null) {
+                  await SupabaseService.sendCalendarNotification(
+                    recipientId: selectedUserId!,
+                    senderName: senderName,
+                    eventTitle: titleCtrl.text.trim(),
+                    eventDate: dateStr,
+                    sentBy: appState.userId,
+                  );
+                } else if (targetMode == 'dept' && selectedDeptId != null) {
+                  await SupabaseService.sendCalendarNotificationToDepartment(
+                    departmentId: selectedDeptId!,
+                    senderName: senderName,
+                    eventTitle: titleCtrl.text.trim(),
+                    eventDate: dateStr,
+                    sentBy: appState.userId,
+                  );
+                } else if (targetMode == 'all') {
+                  await SupabaseService.sendCalendarNotificationToAll(
+                    senderName: senderName,
+                    eventTitle: titleCtrl.text.trim(),
+                    eventDate: dateStr,
+                    sentBy: appState.userId,
+                  );
+                }
+
+                if (ctx.mounted) Navigator.pop(ctx);
+                _load();
+              },
+            ),
+          ],
         ),
+      ),
     );
   }
 
   bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _monthLabel(DateTime d) {
-    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
     return '${tr(months[d.month - 1])} ${d.year}';
   }
 
   String _dayLabel(DateTime d) {
-    const days = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-    const months = ['', 'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    const days = ['', 'Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+    const months = ['','Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
     return '${tr(days[d.weekday])}, ${d.day} ${tr(months[d.month])}';
-  }
-
-  Future<void> _showAddEventDialog() async {
-    final titleCtrl = TextEditingController();
-    DateTime selectedDate = _selectedDay;
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr('Yeni Etkinlik'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
-            controller: titleCtrl,
-            decoration: InputDecoration(labelText: tr('Başlık'), border: const OutlineInputBorder()),
-          ),
-          const SizedBox(height: 12),
-          Text('${tr('Tarih')}: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-              style: const TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleCtrl.text.isNotEmpty) {
-                await SupabaseService.createCalendarEvent({
-                  'title': titleCtrl.text.trim(),
-                  'event_date': '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
-                });
-                if (ctx.mounted) Navigator.pop(ctx);
-                _load();
-              }
-            },
-            child: Text(tr('Kaydet')),
-          ),
-        ],
-      ),
-    );
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Etkinlik Kartı
+// ═════════════════════════════════════════════════════════════════════════════
 class _CalendarItemCard extends StatelessWidget {
   final Map<String, dynamic> item;
   const _CalendarItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final isPlan = item['_type'] == 'plan';
-    final color = isPlan ? AppTheme.accent : AppTheme.primary;
-    final icon = isPlan ? Icons.engineering : Icons.event;
-    final title = isPlan
-        ? (item['order']?['title'] ?? item['title'] ?? tr('Operasyon Planı'))
-        : (item['title'] ?? tr('Etkinlik'));
-    final subtitle = isPlan
-        ? '${item['start_time'] ?? ''} – ${item['end_time'] ?? ''} | ${item['order']?['customer']?['name'] ?? ''}'
-        : (item['description'] ?? '');
+    final type  = item['event_type'] ?? item['_type'] ?? 'general';
+    final color = (item['_color'] is Color) ? item['_color'] as Color : _eventColor(type.toString());
+    final icon  = _eventIcon(type.toString());
+    final label = _eventLabel(type.toString());
+    final title = item['title'] ?? label;
+    String subtitle = '';
+
+    if (item['_type'] == 'plan') {
+      final start = item['start_time'] ?? '';
+      final end   = item['end_time'] ?? '';
+      final cust  = item['order']?['customer']?['name'] ?? '';
+      subtitle = '${start.isNotEmpty && end.isNotEmpty ? "$start – $end" : ""}${cust.isNotEmpty ? " | $cust" : ""}';
+    } else if (item['_type'] == 'vehicle') {
+      subtitle = item['department'] ?? '';
+    } else if (type == 'leave_own' || type == 'leave_other') {
+      final s = _fmtDate(item['start_date']);
+      final e = _fmtDate(item['end_date']);
+      subtitle = '$s – $e';
+      if (item['note'] != null && (item['note'] as String).isNotEmpty) {
+        subtitle += '\n${item['note']}';
+      }
+    } else {
+      subtitle = item['description'] ?? '';
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-        subtitle: subtitle.isNotEmpty
-            ? Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'))
-            : null,
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-          child: Text(
-            isPlan ? tr('Plan') : tr('Etkinlik'),
-            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _showDetail(context, title, subtitle, label, color, icon),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter')),
+                  if (subtitle.isNotEmpty)
+                    Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter'), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  String _fmtDate(String? s) {
+    if (s == null) return '-';
+    final d = DateTime.tryParse(s);
+    return d == null ? s : '${d.day.toString().padLeft(2,'0')}.${d.month.toString().padLeft(2,'0')}.${d.year}';
+  }
+
+  void _showDetail(BuildContext context, String title, String subtitle, String label, Color color, IconData icon) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(height: 16),
+          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, fontFamily: 'Inter'), textAlign: TextAlign.center),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(subtitle, style: const TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'), textAlign: TextAlign.center),
+          ],
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+        ],
       ),
     );
   }

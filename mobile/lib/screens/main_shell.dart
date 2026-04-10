@@ -15,6 +15,7 @@ import 'personnel_screen.dart';
 import 'stammdaten_screen.dart';
 import 'verwaltung_screen.dart';
 import 'chat_screen.dart';
+import 'calendar_screen.dart';
 
 /// Yönetim rollerinin ana kabuk ekranı.
 /// Web'de: sabit sol sidebar + içerik alanı.
@@ -41,6 +42,7 @@ class _MainShellState extends State<MainShell> {
       _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
       _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('Aufträge'), screen: const OrdersHubScreen()),
       _NavItem(icon: Icons.badge_outlined, activeIcon: Icons.badge, label: tr('Personal'), screen: const PersonnelScreen()),
+      _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: tr('Kalender'), screen: const CalendarScreen()),
       _NavItem(icon: Icons.chat_outlined, activeIcon: Icons.chat, label: tr('Chatten'), screen: const ChatScreen()),
     ];
   }

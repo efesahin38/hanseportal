@@ -46,7 +46,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   final _qualifications = TextEditingController();
   final _childrenCount = TextEditingController();
 
-  DateTime? _birthDate, _entryDate, _idIssueDate, _idValidUntil, _trialPeriodUntil, _drivingLicenseSince;
+  DateTime? _birthDate, _entryDate, _idIssueDate, _idValidUntil, _trialPeriodUntil, _drivingLicenseSince, _contractEndDate;
   String _role = 'mitarbeiter';
   String _employmentType = 'Vollzeit';
   String _contractType = 'Vollzeit';
@@ -136,6 +136,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       if (d['id_issue_date'] != null) _idIssueDate = DateTime.tryParse(d['id_issue_date']);
       if (d['id_valid_until'] != null) _idValidUntil = DateTime.tryParse(d['id_valid_until']);
       if (d['trial_period_until'] != null) _trialPeriodUntil = DateTime.tryParse(d['trial_period_until']);
+      if (d['contract_end_date'] != null) _contractEndDate = DateTime.tryParse(d['contract_end_date']);
       if (d['driving_license_since'] != null) _drivingLicenseSince = DateTime.tryParse(d['driving_license_since']);
       _role = d['role'] ?? 'mitarbeiter'; _employmentType = d['employment_type'] ?? 'Vollzeit';
       _contractType = d['contract_type'] ?? 'Vollzeit'; _compensationType = d['compensation_type'] ?? 'Stundenlohn';
@@ -183,6 +184,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'birth_date': _birthDate?.toIso8601String().split('T')[0],
         'entry_date': _entryDate?.toIso8601String().split('T')[0],
         'trial_period_until': _trialPeriodUntil?.toIso8601String().split('T')[0],
+        'contract_end_date': _contractEndDate?.toIso8601String().split('T')[0],
         'role': _role, 'employment_type': _employmentType,
         'contract_type': _contractType, 'compensation_type': _compensationType,
         'has_driving_license': _hasDrivingLicense,
@@ -191,6 +193,16 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'has_qualifications': _hasQualifications, 'qualifications': _qualifications.text.trim(),
         'company_id': _companyId, 'status': 'active',
       }, serviceAreaIds: _selectedServiceAreaIds);
+      // Vertragsende → takvimde kırmızı (sadece GF/BL görebilir)
+      final appState = context.read<AppState>();
+      if (widget.userId != null) {
+        await SupabaseService.upsertContractEndEvent(
+          employeeId: widget.userId!,
+          employeeName: '${_firstName.text.trim()} ${_lastName.text.trim()}',
+          createdBy: appState.userId,
+          contractEndDate: _contractEndDate,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e'))); setState(() => _saving = false); }
@@ -293,6 +305,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             SizedBox(width: fw, child: _tf(tr('Tätigkeiten'), _activities)),
             SizedBox(width: fw, child: _df(tr('Arbeitsbeginn'), _entryDate, (d) => setState(() => _entryDate = d))),
             SizedBox(width: fw, child: _df(tr('Probezeit bis'), _trialPeriodUntil, (d) => setState(() => _trialPeriodUntil = d))),
+            SizedBox(width: fw, child: _df(tr('Vertragsende'), _contractEndDate, (d) => setState(() => _contractEndDate = d))),
             SizedBox(width: fw, child: _tf(tr('Wochenstunden'), _weeklyHours, type: TextInputType.number)),
             SizedBox(width: fw, child: _tf(tr('Monatsstunden'), _monthlyHours, type: TextInputType.number)),
             SizedBox(width: fw, child: _tf(tr('Personalnummer'), _employeeNumber)),

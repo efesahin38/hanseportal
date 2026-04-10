@@ -1824,4 +1824,283 @@ class SupabaseService {
   static Future<void> deleteOrderForm(String formId) async {
     await _client.from('order_forms').delete().eq('id', formId);
   }
+
+  // ══════════════════════════════════════════════════════════════
+  // ── KALENDER MODÜLİ – Yeni Metodlar ─────────────────────────
+  // ══════════════════════════════════════════════════════════════
+
+  /// Genişletilmiş takvim etkinlikleri – rol bazlı filtreleme destekli.
+  /// [targetUserId]: Mitarbeiter kendi etkinliklerini çeker.
+  /// [targetDepartmentId]: Bereichsleiter kendi dept'ını filtreler.
+  static Future<List<Map<String, dynamic>>> getCalendarEventsEnhanced({
+    DateTime? from,
+    DateTime? to,
+    String? targetUserId,
+    String? targetDepartmentId,
+  }) async {
+    var query = _client.from('calendar_events').select('''
+      *,
+      order:orders(id, title, order_number),
+      responsible_user:users!calendar_events_responsible_user_id_fkey(id, first_name, last_name),
+      target_user:users!calendar_events_target_user_id_fkey(id, first_name, last_name),
+      creator:users!calendar_events_created_by_fkey(id, first_name, last_name)
+    ''');
+    if (from != null) query = query.gte('event_date', from.toIso8601String().split('T')[0]) as dynamic;
+    if (to != null) query = query.lte('event_date', to.toIso8601String().split('T')[0]) as dynamic;
+
+    // Mitarbeiter: sadece kendine gelen veya herkese gönderilen
+    if (targetUserId != null && targetDepartmentId == null) {
+      // Supabase OR filter: target_user_id = me OR target_user_id IS NULL
+      // (herkese gönderilen = target_user_id NULL + target_department_id NULL)
+      // Bunu client-side filtreleriz
+    }
+    final data = await query.order('event_date').order('start_time');
+    final list = List<Map<String, dynamic>>.from(data);
+
+    // Client-side rol bazlı filtreleme
+    if (targetUserId != null) {
+      return list.where((e) {
+        final eu = e['target_user_id'];
+        final ed = e['target_department_id'];
+        // Herkese gönderilen (ikisi de null) veya bana gönderilen
+        return (eu == null && ed == null) || eu == targetUserId;
+      }).toList();
+    }
+    if (targetDepartmentId != null) {
+      return list.where((e) {
+        final eu = e['target_user_id'];
+        final ed = e['target_department_id'];
+        // Herkese gönderilen veya bu departmana gönderilen
+        return (eu == null && ed == null) || ed == targetDepartmentId;
+      }).toList();
+    }
+    return list;
+  }
+
+  /// Sözleşme bitiş tarihini takvim etkinliği olarak upsert eder (system generated).
+  static Future<void> upsertContractEndEvent({
+    required String employeeId,
+    required String employeeName,
+    required String createdBy,
+    DateTime? contractEndDate,
+  }) async {
+    // Önce bu çalışana ait vertragsende event'ini sil
+    await _client
+        .from('calendar_events')
+        .delete()
+        .eq('event_type', 'vertragsende')
+        .eq('target_user_id', employeeId)
+        .eq('is_system_generated', true);
+
+    if (contractEndDate == null) return;
+
+    await _client.from('calendar_events').insert({
+      'title': 'Vertragsende: $employeeName',
+      'event_date': contractEndDate.toIso8601String().split('T')[0],
+      'event_type': 'vertragsende',
+      'target_user_id': employeeId,
+      'created_by': createdBy,
+      'is_system_generated': true,
+      'description': 'Vertragsende für $employeeName',
+    });
+  }
+
+  /// Fuhrpark araçlarının takvimdeki kritik tarihleri.
+  /// Dönen her kayıt: {date, label, vehicle_plate, department, type}
+  static Future<List<Map<String, dynamic>>> getVehicleCalendarDates({
+    DateTime? from,
+    DateTime? to,
+    String? department,
+  }) async {
+    var query = _client.from('vehicles').select(
+      'id, license_plate, department, tuev_date, last_service_date, next_tire_change_date, license_check_date'
+    ).neq('status', 'deleted');
+    if (department != null) query = query.eq('department', department) as dynamic;
+    final data = await query;
+    final list = List<Map<String, dynamic>>.from(data);
+
+    final result = <Map<String, dynamic>>[];
+    for (final v in list) {
+      final plate = v['license_plate'] ?? '';
+      final dept = v['department'] ?? '';
+
+      void addIfInRange(String? dateStr, String type, String label) {
+        if (dateStr == null) return;
+        final date = DateTime.tryParse(dateStr);
+        if (date == null) return;
+        if (from != null && date.isBefore(from)) return;
+        if (to != null && date.isAfter(to)) return;
+        result.add({
+          'date': dateStr,
+          'event_type': type,
+          'title': '$label: $plate',
+          'description': dept,
+          'vehicle_plate': plate,
+          'department': dept,
+          '_type': 'vehicle',
+        });
+      }
+
+      addIfInRange(v['tuev_date'], 'tuev', 'TÜV-Termin');
+      addIfInRange(v['next_tire_change_date'], 'reifen', 'Reifenwechsel');
+      addIfInRange(v['license_check_date'], 'fs_kontrolle', 'FS-Kontrolle');
+
+      // Servis: son servisten 365 gün sonra
+      if (v['last_service_date'] != null) {
+        final ls = DateTime.tryParse(v['last_service_date']);
+        if (ls != null) {
+          final serviceDate = ls.add(const Duration(days: 365));
+          final serviceDateStr = serviceDate.toIso8601String().split('T')[0];
+          addIfInRange(serviceDateStr, 'wartung', 'Fahrzeug-Wartung');
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Personel kritik tarihleri: Ausweis-Ablauf, Probezeit-Ablauf, Vertragsende.
+  /// [includeContractEnd] ve [includeProbezeit] sadece GF+BL için true gönderilmeli.
+  static Future<List<Map<String, dynamic>>> getPersonnelExpiryDates({
+    DateTime? from,
+    DateTime? to,
+    bool includeContractEnd = false,
+    bool includeProbezeit = false,
+    bool includeAusweis = false,
+  }) async {
+    final data = await _client.from('users').select(
+      'id, first_name, last_name, id_valid_until, trial_period_until, contract_end_date, department_id'
+    ).eq('status', 'active');
+
+    final list = List<Map<String, dynamic>>.from(data);
+    final result = <Map<String, dynamic>>[];
+
+    for (final u in list) {
+      final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
+
+      void addIfInRange(String? dateStr, String type, String label, String color) {
+        if (dateStr == null) return;
+        final date = DateTime.tryParse(dateStr);
+        if (date == null) return;
+        if (from != null && date.isBefore(from)) return;
+        if (to != null && date.isAfter(to)) return;
+        result.add({
+          'date': dateStr,
+          'event_date': dateStr,
+          'event_type': type,
+          'title': '$label: $name',
+          'description': name,
+          'user_id': u['id'],
+          'user_name': name,
+          'department_id': u['department_id'],
+          'color': color,
+          '_type': 'system',
+        });
+      }
+
+      if (includeAusweis) {
+        addIfInRange(u['id_valid_until'], 'ausweis_ablauf', 'Ausweis-Ablauf', '#EAB308');
+      }
+      if (includeProbezeit) {
+        addIfInRange(u['trial_period_until'], 'probezeit', 'Probezeit-Ablauf', '#F97316');
+      }
+      if (includeContractEnd) {
+        addIfInRange(u['contract_end_date'], 'vertragsende', 'Vertragsende', '#EF4444');
+      }
+    }
+    return result;
+  }
+
+  // ── Urlaubsantrag (İzin Yönetimi) ────────────────────────────
+
+  /// İzin kayıtlarını getirir. Rol bazlı: [userId] → sadece o kişinin izinleri.
+  static Future<List<Map<String, dynamic>>> getLeaveRequests({
+    String? userId,
+    String? departmentId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    var query = _client.from('leave_requests').select('''
+      *,
+      employee:users!leave_requests_user_id_fkey(id, first_name, last_name, department_id),
+      created_by_user:users!leave_requests_created_by_fkey(id, first_name, last_name)
+    ''');
+    if (userId != null) query = query.eq('user_id', userId) as dynamic;
+    if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
+    if (from != null) query = query.gte('start_date', from.toIso8601String().split('T')[0]) as dynamic;
+    if (to != null) query = query.lte('end_date', to.toIso8601String().split('T')[0]) as dynamic;
+    final data = await query.order('start_date', ascending: true);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// Yeni izin kaydı oluşturur.
+  static Future<void> createLeaveRequest(Map<String, dynamic> data) async {
+    await _client.from('leave_requests').insert(data);
+  }
+
+  /// İzin kaydını siler.
+  static Future<void> deleteLeaveRequest(String id) async {
+    await _client.from('leave_requests').delete().eq('id', id);
+  }
+
+  /// Takvim etkinliği bildirimi gönderir.
+  static Future<void> sendCalendarNotification({
+    required String recipientId,
+    required String senderName,
+    required String eventTitle,
+    required String eventDate,
+    required String sentBy,
+  }) async {
+    await _client.from('notifications').insert({
+      'recipient_id': recipientId,
+      'notification_type': 'calendar_event',
+      'title': '$senderName hat Ihnen ein Ereignis hinzugefügt',
+      'body': '$eventTitle – $eventDate',
+      'sent_by': sentBy,
+    });
+  }
+
+  /// Bir departmandaki tüm aktif kullanıcılara bildirim gönderir.
+  static Future<void> sendCalendarNotificationToDepartment({
+    required String departmentId,
+    required String senderName,
+    required String eventTitle,
+    required String eventDate,
+    required String sentBy,
+  }) async {
+    final users = await _client
+        .from('users')
+        .select('id')
+        .eq('department_id', departmentId)
+        .eq('status', 'active');
+    for (final u in (users as List)) {
+      if (u['id'] == sentBy) continue;
+      await sendCalendarNotification(
+        recipientId: u['id'],
+        senderName: senderName,
+        eventTitle: eventTitle,
+        eventDate: eventDate,
+        sentBy: sentBy,
+      );
+    }
+  }
+
+  /// Tüm aktif kullanıcılara bildirim gönderir (herkese etkinlik).
+  static Future<void> sendCalendarNotificationToAll({
+    required String senderName,
+    required String eventTitle,
+    required String eventDate,
+    required String sentBy,
+  }) async {
+    final users = await _client.from('users').select('id').eq('status', 'active');
+    for (final u in (users as List)) {
+      if (u['id'] == sentBy) continue;
+      await sendCalendarNotification(
+        recipientId: u['id'],
+        senderName: senderName,
+        eventTitle: eventTitle,
+        eventDate: eventDate,
+        sentBy: sentBy,
+      );
+    }
+  }
 }
