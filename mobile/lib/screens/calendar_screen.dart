@@ -64,8 +64,8 @@ String _eventLabel(String? type) {
     case 'plan':         return 'Einsatzplan';
     case 'leave_own':    return 'Mein Urlaub';
     case 'leave_other':  return 'Urlaub';
-    case 'reminder':     return 'Erinnerung/Hatırlatıcı';
-    default:             return 'Etkinlik';
+    case 'reminder':     return 'Erinnerung (Privat)';
+    default:             return 'Ereignis';
   }
 }
 
@@ -122,9 +122,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _filtersInitialized = true;
     _filters = [
       if (_isAdmin || _isBereichsleiter) _Filter('plan', tr('Einsatzpläne'), _kColorPlan),
-      if (_isAdmin || _isBereichsleiter || _isMitarbeiter) _Filter('event', tr('Etkinlikler'), _kColorEvent),
+      if (_isAdmin || _isBereichsleiter || _isMitarbeiter) _Filter('event', tr('Ereignisse'), _kColorEvent),
       if (_isAdmin || _isBereichsleiter) _Filter('leave', tr('Urlaub'), _kColorLeaveOther),
-      _Filter('reminder', tr('Hatırlatıcı'), _kColorReminder),
+      _Filter('reminder', tr('Erinnerungen'), _kColorReminder),
       if (_isAdmin || _isBereichsleiter) _Filter('vehicle', tr('Fahrzeuge'), _kColorVehicle),
       if (_isAdmin) _Filter('vertragsende', tr('Vertragsende'), _kColorVertragsende),
       if (_isAdmin) _Filter('probezeit', tr('Probezeit'), _kColorProbezeit),
@@ -447,13 +447,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      // FAB sadece GF+BL için
+      // FABs (GF, BL, SysAdmin)
       floatingActionButton: _isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: () => _showAddEventDialog(appState),
-              backgroundColor: AppTheme.primary,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(tr('Etkinlik Ekle'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'fabReminder',
+                  onPressed: () => _showAddEventDialog(appState, defaultType: 'reminder'),
+                  backgroundColor: _kColorReminder,
+                  icon: const Icon(Icons.notifications_active, color: Colors.white),
+                  label: const Text('Erinnerung', style: TextStyle(color: Colors.white, fontFamily: 'Inter')),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'fabEvent',
+                  onPressed: () => _showAddEventDialog(appState, defaultType: 'general'),
+                  backgroundColor: AppTheme.primary,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text('Ereignis hinzufügen', style: TextStyle(color: Colors.white, fontFamily: 'Inter')),
+                ),
+              ],
             )
           : null,
     );
@@ -658,14 +673,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // ─── Etkinlik ekleme diyaloğu ─────────────────────────────────────────────
-  Future<void> _showAddEventDialog(AppState appState) async {
+  Future<void> _showAddEventDialog(AppState appState, {String defaultType = 'general'}) async {
     final titleCtrl = TextEditingController();
     final descCtrl  = TextEditingController();
     DateTime selectedDate = _selectedDay;
-    String eventType = 'general';
-    String targetMode = 'all'; // 'all' | 'dept' | 'person'
+    String eventType = defaultType;
+    String targetMode = eventType == 'reminder' ? 'person' : 'all'; // 'all' | 'dept' | 'person'
     String? selectedDeptId;
-    String? selectedUserId;
+    String? selectedUserId = eventType == 'reminder' ? appState.userId : null;
     String? selectedUserName;
 
     // Departman + Personel listelerini yükle
@@ -709,7 +724,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     DropdownMenuItem(value: 'general', child: Text('📋 Allgemein')),
                     DropdownMenuItem(value: 'meeting', child: Text('🤝 Besprechung')),
                     DropdownMenuItem(value: 'task', child: Text('📌 Aufgabe')),
-                    DropdownMenuItem(value: 'reminder', child: Text('🔔 Erinnerung/Hatırlatıcı (Özel)')),
+                    DropdownMenuItem(value: 'reminder', child: Text('🔔 Erinnerung (Privat)')),
                   ],
                   onChanged: (v) {
                     ss(() {
@@ -807,15 +822,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 // Bildirimler
                 final senderName = appState.fullName;
                 if (eventType == 'reminder') {
-                  // O güne bildirim planlamak yerine şu an hatırlatıcı kaydı atabiliriz
-                  // Ya da frontend ana ekranda bugünün hatırlatıcılarını kontrol edip tetikleyebilir
-                  // Biz anlık bildirim oluşturmaktan ziyade lokal/sistemde sadece var olmasını sağlıyoruz
-                  // Kullanıcı sadece takvimde görsün diye bildirim atmıyoruz.
-                  // Fakat eğer ısrarcı isek: 
+                  // Erinnerung (Privat)
                   await SupabaseService.sendCalendarNotification(
                     recipientId: appState.userId,
                     senderName: 'Sistem',
-                    eventTitle: 'Hatırlatıcı: ${titleCtrl.text.trim()}',
+                    eventTitle: 'Erinnerung: ${titleCtrl.text.trim()}',
                     eventDate: dateStr,
                     sentBy: appState.userId,
                   );

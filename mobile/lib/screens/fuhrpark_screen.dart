@@ -133,23 +133,32 @@ class _FuhrparkScreenState extends State<FuhrparkScreen> {
           TextField(controller: n, decoration: InputDecoration(labelText: tr('Notizen')), maxLines: 2),
           const SizedBox(height: 20),
           ElevatedButton(onPressed: () async {
-            if (lp.text.trim().isEmpty) return;
-            await SupabaseService.upsertVehicle({
-              if (v != null) 'id': v['id'],
-              'company_id': context.read<AppState>().companyId, 'license_plate': lp.text.trim(),
-              'driver_first_name': df.text.trim(), 'driver_last_name': dl.text.trim(),
-              'vehicle_ident_number': vin.text.trim(),
-              'first_registration_date': fr?.toIso8601String().split('T')[0],
-              'company_registration_date': cr?.toIso8601String().split('T')[0],
-              'tuev_date': td?.toIso8601String().split('T')[0],
-              'last_service_date': ls?.toIso8601String().split('T')[0],
-              'last_service_details': sd.text.trim(),
-              'next_tire_change_date': tc?.toIso8601String().split('T')[0],
-              'license_check_date': lc?.toIso8601String().split('T')[0],
-              'notes': n.text.trim(),
-              'department': bereichDept ?? selectedDept,
-            });
-            if (mounted) { Navigator.pop(ctx); _load(); }
+            if (lp.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Kennzeichen ist erforderlich'))));
+              return;
+            }
+            try {
+              await SupabaseService.upsertVehicle({
+                if (v != null) 'id': v['id'],
+                'company_id': context.read<AppState>().companyId, 'license_plate': lp.text.trim(),
+                'driver_first_name': df.text.trim(), 'driver_last_name': dl.text.trim(),
+                'vehicle_ident_number': vin.text.trim(),
+                'first_registration_date': fr?.toIso8601String().split('T')[0],
+                'company_registration_date': cr?.toIso8601String().split('T')[0],
+                'tuev_date': td?.toIso8601String().split('T')[0],
+                'last_service_date': ls?.toIso8601String().split('T')[0],
+                'last_service_details': sd.text.trim(),
+                'next_tire_change_date': tc?.toIso8601String().split('T')[0],
+                'license_check_date': lc?.toIso8601String().split('T')[0],
+                'notes': n.text.trim(),
+                'department': bereichDept ?? selectedDept,
+              });
+              if (mounted) { Navigator.pop(ctx); _load(); }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
+              }
+            }
           }, child: Text(tr('Speichern'))),
         ])),
       ),
