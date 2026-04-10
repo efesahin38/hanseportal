@@ -425,7 +425,7 @@ class SupabaseService {
     final deptInner = departmentId != null ? '!inner' : '';
     var query = _client.from('operation_plans').select('''
       *,
-      order:orders$deptInner(id, title, order_number, site_address, department_id, status, customer:customers(id, name)),
+      order:orders$deptInner(id, title, order_number, site_address, department_id, status, customer:customers(id, name), department:departments(name)),
       site_supervisor:users!operation_plans_site_supervisor_id_fkey(id, first_name, last_name),
       operation_plan_personnel$inner(user_id, is_supervisor, users!operation_plan_personnel_user_id_fkey(id, first_name, last_name, role))
     ''');

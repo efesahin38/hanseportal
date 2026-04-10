@@ -16,7 +16,7 @@ class PersonnelDetailDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.read<AppState>();
-    final canManageLeave = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter;
+    final canManageLeave = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin;
 
     return Scaffold(
       appBar: AppBar(title: Text('${user['first_name']} ${user['last_name']}')),

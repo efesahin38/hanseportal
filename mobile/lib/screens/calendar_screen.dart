@@ -16,6 +16,7 @@ const _kColorPlan          = Color(0xFF3B82F6); // Mavi (Operasyon)
 const _kColorEvent         = Color(0xFF8B5CF6); // Mor (Manuel etkinlik)
 const _kColorLeaveOther    = Color(0xFF06B6D4); // Turkuaz (başkasının izni)
 const _kColorLeaveOwn      = Color(0xFF1D4ED8); // Koyu Mavi (kendi izni)
+const _kColorReminder      = Color(0xFF14B8A6); // Teal (Hatırlatıcı)
 
 Color _eventColor(String? type) {
   switch (type) {
@@ -29,6 +30,7 @@ Color _eventColor(String? type) {
     case 'plan':         return _kColorPlan;
     case 'leave_own':    return _kColorLeaveOwn;
     case 'leave_other':  return _kColorLeaveOther;
+    case 'reminder':     return _kColorReminder;
     default:             return _kColorEvent;
   }
 }
@@ -45,6 +47,7 @@ IconData _eventIcon(String? type) {
     case 'plan':         return Icons.engineering;
     case 'leave_own':
     case 'leave_other':  return Icons.beach_access;
+    case 'reminder':     return Icons.notifications_active;
     default:             return Icons.event;
   }
 }
@@ -61,6 +64,7 @@ String _eventLabel(String? type) {
     case 'plan':         return 'Einsatzplan';
     case 'leave_own':    return 'Mein Urlaub';
     case 'leave_other':  return 'Urlaub';
+    case 'reminder':     return 'Erinnerung/Hatırlatıcı';
     default:             return 'Etkinlik';
   }
 }
@@ -120,6 +124,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_isAdmin || _isBereichsleiter) _Filter('plan', tr('Einsatzpläne'), _kColorPlan),
       if (_isAdmin || _isBereichsleiter || _isMitarbeiter) _Filter('event', tr('Etkinlikler'), _kColorEvent),
       if (_isAdmin || _isBereichsleiter) _Filter('leave', tr('Urlaub'), _kColorLeaveOther),
+      _Filter('reminder', tr('Hatırlatıcı'), _kColorReminder),
       if (_isAdmin || _isBereichsleiter) _Filter('vehicle', tr('Fahrzeuge'), _kColorVehicle),
       if (_isAdmin) _Filter('vertragsende', tr('Vertragsende'), _kColorVertragsende),
       if (_isAdmin) _Filter('probezeit', tr('Probezeit'), _kColorProbezeit),
@@ -218,11 +223,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final items = <Map<String, dynamic>>[];
 
-    // Manuel etkinlikler
-    if (_filterActive('event')) {
+    // Manuel etkinlikler ve Hatırlatıcılar
+    if (_filterActive('event') || _filterActive('reminder')) {
       for (final e in _events) {
         if ((e['event_date'] ?? '').toString().startsWith(dateStr)) {
-          items.add({...e, '_type': 'event', '_color': _eventColor(e['event_type'])});
+          final type = e['event_type'];
+          // Hatırlatıcı sadece kendi oluşturanına görünür
+          if (type == 'reminder') {
+            if (_filterActive('reminder') && e['created_by'] == myId) {
+              items.add({...e, '_type': 'reminder', '_color': _kColorReminder});
+            }
+          } else if (_filterActive('event')) {
+            items.add({...e, '_type': 'event', '_color': _eventColor(type)});
+          }
         }
       }
     }
@@ -301,15 +314,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return f.isEmpty || f.first.active;
   }
 
-  // ─── Bir günde gösterilecek renk bar'ları ───────────────────────────────
+  // ─── Bir günde gösterilecek renk bar'ları ve Çan (Bell) işareti ────────────────────────
   List<Color> _getDayColors(DateTime day) {
     final items = _getItemsForDay(day);
     final colors = <Color>{};
     for (final i in items) {
+      if (i['_type'] == 'reminder') continue; // Hatırlatıcıları alt noktada değil de ikon olarak göstermek isteyebiliriz
       final c = i['_color'];
       if (c is Color) colors.add(c);
     }
     return colors.take(4).toList(); // Max 4 renk
+  }
+
+  bool _hasReminderForDay(DateTime day) {
+    return _getItemsForDay(day).any((i) => i['_type'] == 'reminder');
   }
 
   bool _hasItems(DateTime day) => _getItemsForDay(day).isNotEmpty;
@@ -545,6 +563,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           final isSelected = _isSameDay(day, _selectedDay);
           final isToday = _isSameDay(day, DateTime.now());
           final dayColors = _getDayColors(day);
+          final hasReminder = _hasReminderForDay(day);
 
           return InkWell(
             onTap: () => setState(() => _selectedDay = day),
@@ -556,32 +575,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: isToday && !isSelected ? Border.all(color: AppTheme.primary.withOpacity(0.4)) : null,
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  Text(
-                    '$dayNum',
-                    style: TextStyle(
-                      fontSize: kIsWeb ? 14 : 13,
-                      fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  if (dayColors.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: dayColors.map((c) => Container(
-                        width: 5, height: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected ? Colors.white.withOpacity(0.85) : c,
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$dayNum',
+                        style: TextStyle(
+                          fontSize: kIsWeb ? 14 : 13,
+                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Colors.white : isToday ? AppTheme.primary : AppTheme.textMain,
+                          fontFamily: 'Inter',
                         ),
-                      )).toList(),
+                      ),
+                      if (dayColors.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: dayColors.map((c) => Container(
+                            width: 5, height: 5,
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isSelected ? Colors.white.withOpacity(0.85) : c,
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (hasReminder)
+                    Positioned(
+                      top: 2, right: 4,
+                      child: Icon(Icons.notifications_active, size: 10, color: isSelected ? Colors.white : _kColorReminder),
                     ),
-                  ],
                 ],
               ),
             ),
@@ -680,8 +709,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     DropdownMenuItem(value: 'general', child: Text('📋 Allgemein')),
                     DropdownMenuItem(value: 'meeting', child: Text('🤝 Besprechung')),
                     DropdownMenuItem(value: 'task', child: Text('📌 Aufgabe')),
+                    DropdownMenuItem(value: 'reminder', child: Text('🔔 Erinnerung/Hatırlatıcı (Özel)')),
                   ],
-                  onChanged: (v) => ss(() => eventType = v!),
+                  onChanged: (v) {
+                    ss(() {
+                      eventType = v!;
+                      if (eventType == 'reminder') {
+                        targetMode = 'person';
+                        selectedUserId = appState.userId;
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 12),
                 // Tarih
@@ -706,40 +744,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Hedef seçimi
-                Text(tr('Empfänger'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 8, children: [
-                  ChoiceChip(label: Text(tr('Alle')), selected: targetMode=='all', onSelected: (_) => ss(() => targetMode='all'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='all' ? Colors.white : null)),
-                  ChoiceChip(label: Text(tr('Abteilung')), selected: targetMode=='dept', onSelected: (_) => ss(() => targetMode='dept'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='dept' ? Colors.white : null)),
-                  ChoiceChip(label: Text(tr('Person')), selected: targetMode=='person', onSelected: (_) => ss(() => targetMode='person'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='person' ? Colors.white : null)),
-                ]),
-                if (targetMode == 'dept') ...[
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: selectedDeptId,
-                    decoration: InputDecoration(labelText: tr('Abteilung auswählen'), border: const OutlineInputBorder()),
-                    items: depts.map((d) => DropdownMenuItem(value: d['id'].toString(), child: Text(d['name'] ?? ''))).toList(),
-                    onChanged: (v) => ss(() => selectedDeptId = v),
-                  ),
-                ],
-                if (targetMode == 'person') ...[
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: selectedUserId,
-                    decoration: InputDecoration(labelText: tr('Person auswählen'), border: const OutlineInputBorder()),
-                    items: users.map((u) {
-                      final name = '${u['first_name']} ${u['last_name']}';
-                      return DropdownMenuItem(value: u['id'].toString(), child: Text(name));
-                    }).toList(),
-                    onChanged: (v) {
-                      ss(() {
-                        selectedUserId = v;
-                        final u = users.firstWhere((u) => u['id'].toString() == v, orElse: () => {});
-                        selectedUserName = u.isNotEmpty ? '${u['first_name']} ${u['last_name']}' : null;
-                      });
-                    },
-                  ),
+                // Hedef seçimi (Hatırlatıcı ise gizle)
+                if (eventType != 'reminder') ...[
+                  Text(tr('Empfänger'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 8, children: [
+                    ChoiceChip(label: Text(tr('Alle')), selected: targetMode=='all', onSelected: (_) => ss(() => targetMode='all'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='all' ? Colors.white : null)),
+                    ChoiceChip(label: Text(tr('Abteilung')), selected: targetMode=='dept', onSelected: (_) => ss(() => targetMode='dept'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='dept' ? Colors.white : null)),
+                    ChoiceChip(label: Text(tr('Person')), selected: targetMode=='person', onSelected: (_) => ss(() => targetMode='person'), selectedColor: AppTheme.primary, labelStyle: TextStyle(color: targetMode=='person' ? Colors.white : null)),
+                  ]),
+                  if (targetMode == 'dept') ...[
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedDeptId,
+                      decoration: InputDecoration(labelText: tr('Abteilung auswählen'), border: const OutlineInputBorder()),
+                      items: depts.map((d) => DropdownMenuItem(value: d['id'].toString(), child: Text(d['name'] ?? ''))).toList(),
+                      onChanged: (v) => ss(() => selectedDeptId = v),
+                    ),
+                  ],
+                  if (targetMode == 'person') ...[
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedUserId,
+                      decoration: InputDecoration(labelText: tr('Person auswählen'), border: const OutlineInputBorder()),
+                      items: users.map((u) {
+                        final name = '${u['first_name']} ${u['last_name']}';
+                        return DropdownMenuItem(value: u['id'].toString(), child: Text(name));
+                      }).toList(),
+                      onChanged: (v) {
+                        ss(() {
+                          selectedUserId = v;
+                          final u = users.firstWhere((u) => u['id'].toString() == v, orElse: () => {});
+                          selectedUserName = u.isNotEmpty ? '${u['first_name']} ${u['last_name']}' : null;
+                        });
+                      },
+                    ),
+                  ],
                 ],
               ]),
             ),
@@ -766,7 +806,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 // Bildirimler
                 final senderName = appState.fullName;
-                if (targetMode == 'person' && selectedUserId != null) {
+                if (eventType == 'reminder') {
+                  // O güne bildirim planlamak yerine şu an hatırlatıcı kaydı atabiliriz
+                  // Ya da frontend ana ekranda bugünün hatırlatıcılarını kontrol edip tetikleyebilir
+                  // Biz anlık bildirim oluşturmaktan ziyade lokal/sistemde sadece var olmasını sağlıyoruz
+                  // Kullanıcı sadece takvimde görsün diye bildirim atmıyoruz.
+                  // Fakat eğer ısrarcı isek: 
+                  await SupabaseService.sendCalendarNotification(
+                    recipientId: appState.userId,
+                    senderName: 'Sistem',
+                    eventTitle: 'Hatırlatıcı: ${titleCtrl.text.trim()}',
+                    eventDate: dateStr,
+                    sentBy: appState.userId,
+                  );
+                } else if (targetMode == 'person' && selectedUserId != null) {
                   await SupabaseService.sendCalendarNotification(
                     recipientId: selectedUserId!,
                     senderName: senderName,
@@ -835,7 +888,18 @@ class _CalendarItemCard extends StatelessWidget {
       final start = item['start_time'] ?? '';
       final end   = item['end_time'] ?? '';
       final cust  = item['order']?['customer']?['name'] ?? '';
-      subtitle = '${start.isNotEmpty && end.isNotEmpty ? "$start – $end" : ""}${cust.isNotEmpty ? " | $cust" : ""}';
+      final deptName = item['order']?['department']?['name'] ?? '';
+      
+      final personnelList = item['operation_plan_personnel'] as List?;
+      final workers = personnelList?.map((p) => '${p['users']?['first_name'] ?? ''} ${p['users']?['last_name'] ?? ''}').where((s) => s.trim().isNotEmpty).join(', ') ?? '';
+
+      final lines = <String>[];
+      if (start.isNotEmpty && end.isNotEmpty) lines.add('Saat: $start – $end');
+      if (deptName.isNotEmpty) lines.add('Bölüm: $deptName');
+      if (cust.isNotEmpty) lines.add('Müşteri: $cust');
+      if (workers.isNotEmpty) lines.add('Ekip: $workers');
+      
+      subtitle = lines.join(' | ');
     } else if (item['_type'] == 'vehicle') {
       subtitle = item['department'] ?? '';
     } else if (type == 'leave_own' || type == 'leave_other') {
