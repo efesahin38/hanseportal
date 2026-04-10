@@ -868,14 +868,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _monthLabel(DateTime d) {
-    const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-    return '${tr(months[d.month - 1])} ${d.year}';
+    const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    return '${months[d.month - 1]} ${d.year}';
   }
 
   String _dayLabel(DateTime d) {
-    const days = ['', 'Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
-    const months = ['','Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
-    return '${tr(days[d.weekday])}, ${d.day} ${tr(months[d.month])}';
+    const days = ['', 'Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+    const months = ['','Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    return '${days[d.weekday]}, ${d.day} ${months[d.month]}';
   }
 }
 
@@ -905,10 +905,10 @@ class _CalendarItemCard extends StatelessWidget {
       final workers = personnelList?.map((p) => '${p['users']?['first_name'] ?? ''} ${p['users']?['last_name'] ?? ''}').where((s) => s.trim().isNotEmpty).join(', ') ?? '';
 
       final lines = <String>[];
-      if (start.isNotEmpty && end.isNotEmpty) lines.add('Saat: $start – $end');
-      if (deptName.isNotEmpty) lines.add('Bölüm: $deptName');
-      if (cust.isNotEmpty) lines.add('Müşteri: $cust');
-      if (workers.isNotEmpty) lines.add('Ekip: $workers');
+      if (start.isNotEmpty && end.isNotEmpty) lines.add('${tr('Zeit')}: $start – $end');
+      if (deptName.isNotEmpty) lines.add('${tr('Abteilung')}: $deptName');
+      if (cust.isNotEmpty) lines.add('${tr('Kunde')}: $cust');
+      if (workers.isNotEmpty) lines.add('${tr('Team')}: $workers');
       
       subtitle = lines.join(' | ');
     } else if (item['_type'] == 'vehicle') {
