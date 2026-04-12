@@ -18,7 +18,7 @@ class InternePqScreen extends StatefulWidget {
 // Die vier Bereiche (Abteilungen), die bei jedem Eintrag gewählt werden müssen
 const List<String> kDepartmentOptions = [
   'Gebäudedienstleistungen',
-  'Rail Service',
+  'DB-Gleisbausicherung',
   'Gastwirtschaftsservice',
   'Personalüberlassung',
 ];

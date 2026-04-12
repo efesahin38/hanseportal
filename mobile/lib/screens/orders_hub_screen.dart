@@ -33,7 +33,7 @@ const List<_GmbhDef> kGmbhDefs = [
   ),
   _GmbhDef(
     departmentKey: 'Rail',
-    gmbhName: 'Rail Service', // veya Gleisbausicherung
+    gmbhName: 'DB-Gleisbausicherung', // veya Gleisbausicherung
     responsible: 'Peter',
     icon: Icons.train,
     color: Color(0xFF10B981),

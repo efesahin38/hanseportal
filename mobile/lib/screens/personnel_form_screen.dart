@@ -75,7 +75,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
     
     // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
     final categories = [
-      {'key': 'Rail', 'label': 'Rail Service', 'kw': ['rail', 'gleis']},
+      {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
       {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
       {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
       {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},

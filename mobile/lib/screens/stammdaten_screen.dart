@@ -5,6 +5,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import '../theme/string_utils.dart';
 import 'company_form_screen.dart';
 
 /// Meine Stammdaten – Hub-Screen
@@ -149,7 +150,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _selectedCompany?['name'] ?? tr('Firma'),
+                                    formatCompanyName(_selectedCompany?['name'] ?? tr('Firma')),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -190,7 +191,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                               style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
                               items: _authorizedCompanies.map((c) => DropdownMenuItem(
                                 value: c['id'].toString(),
-                                child: Text(c['name'] ?? ''),
+                                child: Text(formatCompanyName(c['name'] ?? '')),
                               )).toList(),
                               onChanged: (val) {
                                 if (val != null) {
@@ -219,7 +220,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                                 const Icon(Icons.verified_user, color: Colors.white, size: 14),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _selectedCompany?['name'] ?? '-',
+                                  formatCompanyName(_selectedCompany?['name'] ?? '-'),
                                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -243,7 +244,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                     _SectionCard(
                       icon: Icons.apartment,
                       title: tr('Unternehmensdaten'),
-                      subtitle: _selectedCompany?['name'] ?? '-',
+                      subtitle: formatCompanyName(_selectedCompany?['name'] ?? '-'),
                       color: const Color(0xFF3B82F6),
                       readOnly: !canEdit,
                       onTap: canEdit

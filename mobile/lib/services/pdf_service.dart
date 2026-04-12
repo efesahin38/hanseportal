@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'localization_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/string_utils.dart';
 
 
 /// Hanse Kollektiv – PDF Üretim Servisi
@@ -46,8 +47,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: order['company']?['name']),
-        footer: (context) => _buildFooter(context, font, companyName: order['company']?['name']),
+        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName(order['company']?['name'] ?? 'Hanse Kollektiv GmbH')),
+        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName(order['company']?['name'] ?? 'Hanse Kollektiv GmbH')),
         build: (context) => [
           // ── Başlık ──
           pw.Container(
@@ -266,8 +267,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: company['name']),
-        footer: (context) => _buildFooter(context, font, companyName: company['name']),
+        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName(company['name'] ?? 'Hanse Kollektiv GmbH')),
+        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName(company['name'] ?? 'Hanse Kollektiv GmbH')),
         build: (context) => [
           // ── Başlık ──
           pw.Container(
@@ -307,7 +308,7 @@ class PdfService {
                   children: [
                     pw.Text(tr('FATURALAYIN'), style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey500)),
                     pw.SizedBox(height: 4),
-                    pw.Text(company['name'] ?? '', style: pw.TextStyle(font: fontBold, fontSize: 11)),
+                    pw.Text(formatCompanyName(company['name'] ?? ''), style: pw.TextStyle(font: fontBold, fontSize: 11)),
                     if (company['address'] != null)
                       pw.Text(company['address'], style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700)),
                     if (company['iban'] != null)
@@ -475,7 +476,7 @@ class PdfService {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(companyName ?? 'Hanse Kollektiv GmbH',
+          pw.Text(formatCompanyName(companyName ?? 'Hanse Kollektiv GmbH'),
               style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.blueGrey700)),
           pw.Text(tr('Dijital Yönetim Sistemi'),
               style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
@@ -496,7 +497,7 @@ class PdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                '${companyName ?? 'Hanse Kollektiv GmbH'} • Hamburg',
+                '${formatCompanyName(companyName ?? 'Hanse Kollektiv GmbH')} • Hamburg',
                 style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600),
               ),
               pw.Text(
@@ -798,8 +799,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: 'Hanse Kollektiv GmbH'), // Toplam rapor genellikle genel holding/merkez adına olabilir
-        footer: (context) => _buildFooter(context, font, companyName: 'Hanse Kollektiv GmbH'),
+        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName('Hanse Kollektiv GmbH')), // Toplam rapor genellikle genel holding/merkez adına olabilir
+        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName('Hanse Kollektiv GmbH')),
         build: (context) => [
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
