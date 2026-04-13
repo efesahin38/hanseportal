@@ -144,9 +144,9 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                                         items: _authorizedCompanies.map((c) {
                                           String name = c['name'] ?? '';
                                           if (name.toLowerCase().contains('hanse kollektiv gmbh')) {
-                                            name = 'HANSE KOLLEKTIV GMBH';
+                                            name = 'Hanse Kollektiv GmbH';
                                           } else if (name.toLowerCase().contains('hako')) {
-                                            name = 'hako gastwirtschaftsservice';
+                                            name = 'Hako Gastwirtschaftsservice';
                                           } else if (name.toLowerCase().contains('safari')) {
                                             name = 'Safari Dienstleistungen GmbH';
                                           }

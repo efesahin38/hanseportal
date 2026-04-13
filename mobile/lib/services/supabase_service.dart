@@ -107,8 +107,11 @@ class SupabaseService {
     String? role,
     String? status,
     String? serviceAreaCode,
+    String? serviceAreaId,
     List<String>? serviceAreaIds,
   }) async {
+    final effectiveSaIds = await _resolveServiceAreaIds(serviceAreaId, serviceAreaIds);
+
     var query = _client.from('users').select('''
       *,
       company:companies(id, name, short_name),
@@ -126,11 +129,11 @@ class SupabaseService {
     var list = List<Map<String, dynamic>>.from(data);
     
     // Checkbox departman filtreleme
-    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+    if (effectiveSaIds.isNotEmpty) {
       list = list.where((user) {
         final usa = user['user_service_areas'] as List?;
         if (usa == null || usa.isEmpty) return false;
-        return usa.any((u) => serviceAreaIds.contains(u['service_area_id'].toString()));
+        return usa.any((u) => effectiveSaIds.contains(u['service_area_id'].toString()));
       }).toList();
     }
     
@@ -171,12 +174,45 @@ class SupabaseService {
   }
 
   // ── Müşteriler ────────────────────────────────────────────
+  static Future<List<String>> _resolveServiceAreaIds(String? singleId, List<String>? multipleIds) async {
+    List<String> ids = [];
+    if (multipleIds != null) ids.addAll(multipleIds);
+    if (singleId != null && !ids.contains(singleId)) ids.add(singleId);
+
+    if (ids.isEmpty) return ids;
+
+    try {
+      final sas = await _client.from('service_areas').select('id, name').inFilter('id', ids);
+      bool needsGebaude = false;
+      for (var sa in (sas as List)) {
+        final name = (sa['name'] as String).toLowerCase();
+        if (name.contains('bau-logistik') || name.contains('baulogistik') || name.contains('hausmeister') || name.contains('garten')) {
+          needsGebaude = true;
+          break;
+        }
+      }
+      if (needsGebaude) {
+        final gebList = await _client.from('service_areas').select('id').ilike('name', '%Gebäude%');
+        if (gebList.isNotEmpty) {
+          final gebId = gebList.first['id'].toString();
+          if (!ids.contains(gebId)) ids.add(gebId);
+        }
+      }
+    } catch (e) {
+      debugPrint('Hizmet miras alma hatası: $e');
+    }
+    return ids;
+  }
+
   static Future<List<Map<String, dynamic>>> getCustomers({
     String? status,
     String? companyId,
     String? departmentId,
     String? serviceAreaId,
+    List<String>? serviceAreaIds,
   }) async {
+    final effectiveSaIds = await _resolveServiceAreaIds(serviceAreaId, serviceAreaIds);
+
     // Service Area veya Departman bazlı filtreleme için join kullanıyoruz
     String selectStr = '''
       *,
@@ -186,7 +222,7 @@ class SupabaseService {
     ''';
     
     // Eğer bir filtre yoksa !inner kullanmamak gerekebilir (tüm müşterileri getirmek için)
-    if (departmentId == null && serviceAreaId == null) {
+    if (departmentId == null && effectiveSaIds.isEmpty) {
       selectStr = '''
         *,
         company:companies(id, name, short_name),
@@ -203,8 +239,8 @@ class SupabaseService {
 
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     
-    if (serviceAreaId != null) {
-      query = query.eq('customer_service_areas.service_area_id', serviceAreaId) as dynamic;
+    if (effectiveSaIds.isNotEmpty) {
+      query = query.inFilter('customer_service_areas.service_area_id', effectiveSaIds) as dynamic;
     } else if (departmentId != null) {
       // 🛡️ NAILED ISOLATION: Sadece bu departmanın service area'larına atanmış müşterileri getir
       final deptSAs = await _client.from('service_areas').select('id').eq('department_id', departmentId);

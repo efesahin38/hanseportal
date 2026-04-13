@@ -53,14 +53,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       
       final List<Map<String, dynamic>> consolidatedAreas = [];
       
-      // v17.0: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı, 3 yeni eklendi)
       final categories = [
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
         {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
-        {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
-        {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
-        {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
       ];
 
       for (var cat in categories) {
