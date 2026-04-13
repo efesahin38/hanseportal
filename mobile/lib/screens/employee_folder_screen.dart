@@ -291,14 +291,9 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
                   final appState = context.read<AppState>();
                   final isAdmin = appState.canManageEmployeeDocuments;
                   
-                  // Eğer kullanıcı admin değilse ve kendi dosyalarına bakıyorsa 
-                  // veya başkasının dosyalarına bakıyorsa (zaten başkasını seçemez ama güvenlik için)
-                  // Hassas klasörleri filtrele.
-                  final filteredFolders = _folders.where((f) {
-                    if (isAdmin) return true;
-                    final key = f['folder_key'] as String;
-                    return key != 'arbeitsvertrag' && key != 'gehaltsabrechnung';
-                  }).toList();
+                  // Tüm klasörleri göster (Hassas olanlar dahil, sadece yükleme kısıtlanacak)
+                  final filteredFolders = _folders;
+
 
                   if (filteredFolders.isEmpty) {
                     return Center(
