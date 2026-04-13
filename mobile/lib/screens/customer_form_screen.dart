@@ -405,7 +405,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
+      validator: required ? (v) => (v == null || v.trim().isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 

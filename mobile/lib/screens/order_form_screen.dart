@@ -642,7 +642,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                         radius: 16,
                                         backgroundColor: AppTheme.primary.withOpacity(0.1),
                                         child: Text(
-                                          (c['name'] ?? '?')[0].toUpperCase(),
+                                          (c['name']?.toString().trim().isEmpty ?? true) ? '?' : c['name'].toString().trim()[0].toUpperCase(),
                                           style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold),
                                         ),
                                       ),

@@ -117,7 +117,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: AppTheme.primary.withOpacity(0.1),
-                  child: Text((c['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
+                  child: Text((c['name']?.toString().trim().isEmpty ?? true) ? '?' : c['name'].toString().trim()[0].toUpperCase(), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -156,7 +156,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   decoration: BoxDecoration(color: AppTheme.bg, borderRadius: BorderRadius.circular(10)),
                   child: Row(
                     children: [
-                      CircleAvatar(radius: 16, backgroundColor: AppTheme.accent.withOpacity(0.15), child: Text((contact['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: AppTheme.accent, fontSize: 12, fontWeight: FontWeight.bold))),
+                      CircleAvatar(radius: 16, backgroundColor: AppTheme.accent.withOpacity(0.15), child: Text((contact['name']?.toString().trim().isEmpty ?? true) ? '?' : contact['name'].toString().trim()[0].toUpperCase(), style: const TextStyle(color: AppTheme.accent, fontSize: 12, fontWeight: FontWeight.bold))),
                       const SizedBox(width: 10),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(contact['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter', fontSize: 13)),

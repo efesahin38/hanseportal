@@ -224,7 +224,7 @@ class _CustomerListTile extends StatelessWidget {
                   CircleAvatar(
                     backgroundColor: saColor.withOpacity(0.12),
                     child: Text(
-                      (customer['name'] ?? '?')[0].toUpperCase(),
+                      (customer['name']?.toString().trim().isEmpty ?? true) ? '?' : customer['name'].toString().trim()[0].toUpperCase(),
                       style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                     ),
                   ),
