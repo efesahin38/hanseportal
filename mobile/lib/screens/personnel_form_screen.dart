@@ -89,26 +89,10 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       final label = cat['label'] as String;
       final kws = cat['kw'] as List<String>;
       
-      final dept = depts.firstWhere((d) {
-        final dName = (d['name'] as String? ?? '').toLowerCase();
-        return kws.any((kw) => dName.contains(kw));
-      }, orElse: () => {});
-      final deptId = dept['id']?.toString();
-
       var sa = areas.firstWhere((s) {
-        final sDeptId = s['department_id']?.toString();
-        if (deptId != null && sDeptId == deptId) return true;
         final sName = (s['name'] as String? ?? '').toLowerCase();
         return kws.any((kw) => sName.contains(kw));
       }, orElse: () => {});
-
-      if (sa.isEmpty && deptId != null) {
-        sa = {
-          'id': deptId,
-          'name': label,
-          'department_id': deptId,
-        };
-      }
 
       if (sa.isNotEmpty) {
         consolidatedAreas.add({...sa, 'display_name': label});
@@ -381,7 +365,33 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   Widget _sec(String t) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(t, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter')));
   Widget _tf(String l, TextEditingController c, {bool req = false, TextInputType? type, int maxLines = 1}) => Padding(padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(controller: c, keyboardType: type, maxLines: maxLines, decoration: InputDecoration(labelText: l), validator: req ? (v) => (v == null || v.isEmpty) ? tr('Pflichtfeld') : null : null));
-  Widget _df(String l, DateTime? v, Function(DateTime) f) => Padding(padding: const EdgeInsets.only(bottom: 12), child: InkWell(
-    onTap: () async { final d = await showDatePicker(context: context, initialDate: v ?? DateTime.now().subtract(const Duration(days: 7300)), firstDate: DateTime(1900), lastDate: DateTime.now().add(const Duration(days: 3650))); if (d != null) f(d); },
-    child: InputDecorator(decoration: InputDecoration(labelText: l), child: Text(v == null ? tr('Auswählen') : '${v.day}.${v.month}.${v.year}', style: const TextStyle(fontSize: 14)))));
+  Widget _df(String l, DateTime? v, Function(DateTime?) f) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: InkWell(
+      onTap: () async {
+        final d = await showDatePicker(
+          context: context,
+          initialDate: v ?? DateTime.now(),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now().add(const Duration(days: 3650)),
+        );
+        if (d != null) f(d);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: l,
+          suffixIcon: v != null
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () => f(null),
+                )
+              : null,
+        ),
+        child: Text(
+          v == null ? tr('Auswählen') : '${v.day}.${v.month}.${v.year}',
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+    ),
+  );
 }

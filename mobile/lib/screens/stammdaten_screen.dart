@@ -39,21 +39,14 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: null);
 
-      // v17.0: Sadece "Hanse Kollektiv" içeren şirketi göster
-      final allCompanies = companies.where((c) {
-        final cName = (c['name'] as String? ?? '').toLowerCase();
-        if (cName.contains('archiv') || cName.contains('placeholder')) return false;
-        return true;
-      }).toList();
-
-      // Hanse Kollektiv GmbH'yi bul (büyük/küçük harf bağımsız)
-      final hanseCompanies = allCompanies.where((c) {
-        final cName = (c['name'] as String? ?? '').toLowerCase();
-        return cName.contains('hanse') || cName.contains('kollektiv');
-      }).toList();
-
-      // Eğer Hanse bulunamazsa tüm listeyi göster (fallback)
-      companies = hanseCompanies.isNotEmpty ? hanseCompanies : allCompanies;
+      // v17.2: İstenen 3 şirket filtrelemesi
+      final targetUuids = [
+        'aaaaaaaa-0000-0000-0000-000000000003', // HANSE KOLLEKTIV GMBH
+        '88888888-0000-0000-0000-000000000001', // hako gastwirtschaftsservice
+        '88888888-0000-0000-0000-000000000002', // Safari Dienstleistungen Gmbh
+      ];
+      
+      companies = companies.where((c) => targetUuids.contains(c['id'].toString())).toList();
 
       if (companies.isNotEmpty) {
         _authorizedCompanies = companies;
@@ -139,15 +132,40 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                formatCompanyName(_selectedCompany?['name'] ?? tr('Hanse Kollektiv GmbH')),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
+                              _authorizedCompanies.isEmpty
+                                  ? const Text('Şirket Bulunamadı', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter'))
+                                  : DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        isExpanded: true,
+                                        dropdownColor: AppTheme.primary,
+                                        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                                        value: _selectedCompany?['id']?.toString(),
+                                        items: _authorizedCompanies.map((c) {
+                                          String name = c['name'] ?? '';
+                                          if (name.toLowerCase().contains('hanse kollektiv gmbh')) {
+                                            name = 'HANSE KOLLEKTIV GMBH';
+                                          } else if (name.toLowerCase().contains('hako')) {
+                                            name = 'hako gastwirtschaftsservice';
+                                          } else if (name.toLowerCase().contains('safari')) {
+                                            name = 'Safari Dienstleistungen GmbH';
+                                          }
+                                          return DropdownMenuItem<String>(
+                                            value: c['id'].toString(),
+                                            child: Text(name, overflow: TextOverflow.ellipsis),
+                                          );
+                                        }).toList(),
+                                        onChanged: (newId) async {
+                                          if (newId != null && _selectedCompany?['id'] != newId) {
+                                            setState(() {
+                                              _selectedCompany = _authorizedCompanies.firstWhere((c) => c['id'].toString() == newId);
+                                              _loading = true;
+                                            });
+                                            _load();
+                                          }
+                                        },
+                                      ),
+                                    ),
                               Text(
                                 tr('Meine Stammdaten'),
                                 style: TextStyle(
@@ -226,6 +244,10 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                       subtitle: '${_bankAccounts.length} ${tr('Bankverbindung(en)')}',
                       color: const Color(0xFF6366F1),
                       onTap: () => _showBankAccounts(),
+                      trailingIcon: Icons.add_circle,
+                      onTrailingTap: () {
+                        _showAddBankDialog(context, null);
+                      },
                     ),
 
                     if (canEdit)
@@ -367,7 +389,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
     );
   }
 
-  void _showAddBankDialog(BuildContext parentCtx, StateSetter setSheetState) {
+  void _showAddBankDialog(BuildContext parentCtx, StateSetter? setSheetState) {
     final bankCtrl = TextEditingController();
     final ibanCtrl = TextEditingController();
     final bicCtrl = TextEditingController();
@@ -397,8 +419,10 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
               if (mounted) {
                 Navigator.pop(ctx);
                 _load();
-                final banks = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
-                setSheetState(() => _bankAccounts = banks);
+                if (setSheetState != null) {
+                  final banks = await SupabaseService.getCompanyBankAccounts(_selectedCompany!['id']);
+                  setSheetState(() => _bankAccounts = banks);
+                }
               }
             },
             child: Text(tr('Speichern')),
@@ -517,7 +541,9 @@ class _SectionCard extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   final bool readOnly;
-  const _SectionCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap, this.readOnly = false});
+  final IconData? trailingIcon;
+  final VoidCallback? onTrailingTap;
+  const _SectionCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap, this.readOnly = false, this.trailingIcon, this.onTrailingTap});
 
   @override
   Widget build(BuildContext context) {
@@ -554,6 +580,15 @@ class _SectionCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (trailingIcon != null) ...[
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(trailingIcon, color: color, size: 28),
+                    onPressed: onTrailingTap,
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 if (readOnly)
                   Icon(Icons.visibility_outlined, color: color.withOpacity(0.4), size: 20)
                 else

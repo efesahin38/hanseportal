@@ -76,26 +76,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         final label = cat['label'] as String;
         final kws = cat['kw'] as List<String>;
         
-        final dept = depts.firstWhere((d) {
-          final dName = (d['name'] as String? ?? '').toLowerCase();
-          return kws.any((kw) => dName.contains(kw));
-        }, orElse: () => {});
-        final deptId = dept['id']?.toString();
-
         var sa = areas.firstWhere((s) {
-          final sDeptId = s['department_id']?.toString();
-          if (deptId != null && sDeptId == deptId) return true;
           final sName = (s['name'] as String? ?? '').toLowerCase();
           return kws.any((kw) => sName.contains(kw));
         }, orElse: () => {});
-
-        if (sa.isEmpty && deptId != null) {
-          sa = {
-            'id': deptId,
-            'name': label,
-            'department_id': deptId,
-          };
-        }
 
         if (sa.isNotEmpty) {
           consolidatedAreas.add({...sa, 'display_name': label});
@@ -394,9 +378,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: _dateTile(tr('Başlangıç'), _startDate, () => _pickDate(true))),
+                    Expanded(child: _dateTile(tr('Başlangıç'), _startDate, () => _pickDate(true), onClear: () => setState(() => _startDate = null))),
                     const SizedBox(width: 12),
-                    Expanded(child: _dateTile(tr('Bitiş'), _endDate, () => _pickDate(false))),
+                    Expanded(child: _dateTile(tr('Bitiş'), _endDate, () => _pickDate(false), onClear: () => setState(() => _endDate = null))),
                   ]),
                   const SizedBox(height: 24),
   
@@ -710,7 +694,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
-  Widget _dateTile(String label, DateTime? date, VoidCallback onTap) => GestureDetector(
+  Widget _dateTile(String label, DateTime? date, VoidCallback onTap, {VoidCallback? onClear}) => GestureDetector(
     onTap: onTap,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -719,14 +703,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        const SizedBox(height: 2),
-        Text(
-          date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
-          style: TextStyle(fontSize: 14, fontFamily: 'Inter', color: date == null ? AppTheme.textSub : AppTheme.textMain),
-        ),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+              const SizedBox(height: 2),
+              Text(
+                date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
+                style: TextStyle(fontSize: 14, fontFamily: 'Inter', color: date == null ? AppTheme.textSub : AppTheme.textMain),
+              ),
+            ]),
+          ),
+          if (date != null && onClear != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: GestureDetector(
+                onTap: onClear,
+                child: const Icon(Icons.clear, size: 18, color: AppTheme.textSub),
+              ),
+            ),
+        ],
+      ),
     ),
   );
 }

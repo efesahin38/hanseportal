@@ -31,10 +31,11 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   final _iban = TextEditingController();
   final _bic = TextEditingController();
   final _vatNumber = TextEditingController();
-  final _contactName2 = TextEditingController();
-  final _contactPhone2 = TextEditingController();
   String _type = 'company';
   String _status = 'active';
+
+  List<Map<String, dynamic>> _sachbearbeiters = [];
+  final List<String> _deletedSachbearbeiters = [];
   String? _selectedServiceAreaId;
   List<Map<String, dynamic>> _serviceAreas = [];
   bool _saving = false;
@@ -66,29 +67,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         final label = cat['label'] as String;
         final kws = cat['kw'] as List<String>;
         
-        // 1. Bu kategoriye uygun departmanı bul
-        final dept = depts.firstWhere((d) {
-          final dName = (d['name'] as String? ?? '').toLowerCase();
-          return kws.any((kw) => dName.contains(kw));
-        }, orElse: () => {});
-
-        final deptId = dept['id']?.toString();
-        
-        // 2. Bu departmana bağlı veya ismiyle eşleşen ilk hizmet alanını bul
         var sa = allAreas.firstWhere((s) {
-          final sDeptId = s['department_id']?.toString();
-          if (deptId != null && sDeptId == deptId) return true;
           final sName = (s['name'] as String? ?? '').toLowerCase();
           return kws.any((kw) => sName.contains(kw));
         }, orElse: () => {});
-
-        if (sa.isEmpty && deptId != null) {
-          sa = {
-            'id': deptId,
-            'name': label,
-            'department_id': deptId,
-          };
-        }
 
         if (sa.isNotEmpty) {
           consolidatedAreas.add({
@@ -129,9 +111,13 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         _iban.text = data['iban'] ?? '';
         _bic.text = data['bic'] ?? '';
         _vatNumber.text = data['vat_number'] ?? '';
-        _contactName2.text = data['secondary_contact_name'] ?? '';
-        _contactPhone2.text = data['secondary_contact_phone'] ?? '';
         _type = data['customer_type'] ?? 'company';
+
+        if (data['customer_contacts'] != null) {
+          _sachbearbeiters = List<Map<String, dynamic>>.from(
+            (data['customer_contacts'] as List).where((c) => c['role'] == 'Sachbearbeiter')
+          );
+        }
         _status = data['status'] ?? 'active';
 
         if (data['customer_service_areas'] != null) {
@@ -159,7 +145,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     }
 
     try {
-      await SupabaseService.upsertCustomer({
+      final newId = await SupabaseService.upsertCustomer({
         if (widget.customerId != null) 'id': widget.customerId,
         'name': _name.text.trim(),
         'address': _address.text.trim(),
@@ -175,13 +161,26 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         'iban': _iban.text.trim(),
         'bic': _bic.text.trim(),
         'vat_number': _vatNumber.text.trim(),
-        'secondary_contact_name': _contactName2.text.trim(),
-        'secondary_contact_phone': _contactPhone2.text.trim(),
         'customer_type': _type,
         'status': _status,
         'company_id': companyId,
         'country': 'Deutschland',
       }, serviceAreaId: _selectedServiceAreaId);
+
+      for (final id in _deletedSachbearbeiters) {
+        if (!id.startsWith('new_')) await SupabaseService.deleteCustomerContact(id);
+      }
+
+      for (final s in _sachbearbeiters) {
+        final dataToSave = Map<String, dynamic>.from(s);
+        if (dataToSave['id']?.toString().startsWith('new_') == true) {
+          dataToSave.remove('id');
+        }
+        dataToSave['customer_id'] = newId;
+        dataToSave['role'] = 'Sachbearbeiter';
+        await SupabaseService.upsertCustomerContact(dataToSave);
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -305,15 +304,38 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     const SizedBox(height: 16),
                   ],
   
-                  _section(tr('İkinci İletişim Kişisi')),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 0,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('İsim Soyisim'), _contactName2)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _contactPhone2)),
+                      _section('Sachbearbeiter'),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: AppTheme.primary),
+                        onPressed: _showAddSachbearbeiterDialog,
+                      )
                     ],
                   ),
+                  if (_sachbearbeiters.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      child: Text('Henüz eklenmemiş', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ),
+                  ..._sachbearbeiters.map((s) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(s['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                      subtitle: Text('${s['phone'] ?? ''}\n${s['email'] ?? ''}', style: const TextStyle(fontFamily: 'Inter')),
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            if (s['id'] != null) _deletedSachbearbeiters.add(s['id'].toString());
+                            _sachbearbeiters.remove(s);
+                          });
+                        },
+                      ),
+                    ),
+                  )),
                   
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -329,6 +351,45 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             },
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAddSachbearbeiterDialog() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Sachbearbeiter Ekle')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: InputDecoration(labelText: tr('İsim Soyisim'))),
+            TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: tr('Telefon'))),
+            TextField(controller: emailCtrl, decoration: InputDecoration(labelText: tr('E-posta'))),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.isEmpty) return;
+              setState(() {
+                _sachbearbeiters.add({
+                  'id': 'new_${DateTime.now().millisecondsSinceEpoch}',
+                  'name': nameCtrl.text.trim(),
+                  'phone': phoneCtrl.text.trim(),
+                  'email': emailCtrl.text.trim(),
+                });
+              });
+              Navigator.pop(ctx);
+            },
+            child: Text(tr('Ekle')),
+          ),
+        ],
       ),
     );
   }

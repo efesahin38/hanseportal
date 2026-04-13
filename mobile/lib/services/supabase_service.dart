@@ -182,7 +182,7 @@ class SupabaseService {
       *,
       company:companies(id, name, short_name),
       customer_contacts(*),
-      customer_service_areas!inner(service_area_id)
+      customer_service_areas!inner(service_area_id, service_area:service_areas(code, name, color))
     ''';
     
     // Eğer bir filtre yoksa !inner kullanmamak gerekebilir (tüm müşterileri getirmek için)
@@ -191,7 +191,7 @@ class SupabaseService {
         *,
         company:companies(id, name, short_name),
         customer_contacts(*),
-        customer_service_areas(service_area_id)
+        customer_service_areas(service_area_id, service_area:service_areas(code, name, color))
       ''';
     }
 
@@ -227,11 +227,11 @@ class SupabaseService {
       *,
       company:companies(id, name, short_name),
       customer_contacts(*),
-      customer_service_areas(service_area_id, service_areas(code, name, color))
+      customer_service_areas(service_area_id, service_area:service_areas(code, name, color))
     ''').eq('id', id).maybeSingle();
   }
 
-  static Future<void> upsertCustomer(Map<String, dynamic> data, {String? serviceAreaId}) async {
+  static Future<String> upsertCustomer(Map<String, dynamic> data, {String? serviceAreaId}) async {
     final result = await _client.from('customers').upsert(data).select('id').single();
     final customerId = result['id'];
 
@@ -242,6 +242,16 @@ class SupabaseService {
         'service_area_id': serviceAreaId,
       });
     }
+
+    return customerId;
+  }
+
+  static Future<void> upsertCustomerContact(Map<String, dynamic> data) async {
+    await _client.from('customer_contacts').upsert(data);
+  }
+
+  static Future<void> deleteCustomerContact(String id) async {
+    await _client.from('customer_contacts').delete().eq('id', id);
   }
 
   // ── İşler ─────────────────────────────────────────────────
@@ -883,7 +893,7 @@ class SupabaseService {
   }
 
   // ── Hizmet Alanları ────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>> getServiceAreas({bool activeOnly = true}) async {
+  static Future<List<Map<String, dynamic>>> getServiceAreas({bool activeOnly = false}) async {
     var query = _client
         .from('service_areas')
         .select('*, department:departments(id, name, company_id)');

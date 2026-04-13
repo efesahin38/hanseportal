@@ -148,7 +148,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
           ]),
           const SizedBox(height: 12),
           if (contacts.isNotEmpty) ...[
-            _InfoSection(tr('Muhataplar'), [
+            _InfoSection(tr('Sachbearbeiter (Muhataplar)'), [
               for (final contact in contacts)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
