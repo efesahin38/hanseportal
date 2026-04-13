@@ -57,9 +57,6 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
         {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
-        {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
-        {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
-        {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
       ];
 
       for (var cat in categories) {
