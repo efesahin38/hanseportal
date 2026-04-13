@@ -183,19 +183,30 @@ class SupabaseService {
 
     try {
       final sas = await _client.from('service_areas').select('id, name').inFilter('id', ids);
-      bool needsGebaude = false;
+      
+      bool isBuildingRelated = false;
+      bool isRailRelated = false;
+      
+      final buildingKeywords = ['bau-logistik', 'baulogistik', 'hausmeister', 'garten', 'gebäud'];
+      final railKeywords = ['rail', 'gleis'];
+
       for (var sa in (sas as List)) {
         final name = (sa['name'] as String).toLowerCase();
-        if (name.contains('bau-logistik') || name.contains('baulogistik') || name.contains('hausmeister') || name.contains('garten')) {
-          needsGebaude = true;
-          break;
-        }
+        if (buildingKeywords.any((kw) => name.contains(kw))) isBuildingRelated = true;
+        if (railKeywords.any((kw) => name.contains(kw))) isRailRelated = true;
       }
-      if (needsGebaude) {
-        final gebList = await _client.from('service_areas').select('id').ilike('name', '%Gebäude%');
-        if (gebList.isNotEmpty) {
-          final gebId = gebList.first['id'].toString();
-          if (!ids.contains(gebId)) ids.add(gebId);
+      
+      if (isBuildingRelated || isRailRelated) {
+        final allSAs = await _client.from('service_areas').select('id, name');
+        for (var sa in (allSAs as List)) {
+          final name = (sa['name'] as String).toLowerCase();
+          final saId = sa['id'].toString();
+          if (isBuildingRelated && buildingKeywords.any((kw) => name.contains(kw))) {
+            if (!ids.contains(saId)) ids.add(saId);
+          }
+          if (isRailRelated && railKeywords.any((kw) => name.contains(kw))) {
+            if (!ids.contains(saId)) ids.add(saId);
+          }
         }
       }
     } catch (e) {
