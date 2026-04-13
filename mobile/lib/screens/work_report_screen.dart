@@ -256,24 +256,53 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                           final u = s['user'];
                           final hrs = (s['approved_billable_hours'] as num?)?.toDouble() ?? (s['billable_hours'] as num?)?.toDouble() ?? 0;
                           final isApproved = s['approval_status'] == 'approved';
+                          // v17.0: Brutto ücret hesaplaması
+                          final hourlyWage = (u['hourly_gross_wage'] as num?)?.toDouble();
+                          final bruttoAmount = hourlyWage != null ? hrs * hourlyWage : null;
                           
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 13, fontFamily: 'Inter')),
                                 Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('${hrs.toStringAsFixed(1)} ${tr('saat')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                    const SizedBox(width: 6),
-                                    Icon(
-                                      isApproved ? Icons.check_circle : Icons.pending,
-                                      size: 14,
-                                      color: isApproved ? AppTheme.success : AppTheme.warning,
+                                    Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 13, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                                    Row(
+                                      children: [
+                                        Text('${hrs.toStringAsFixed(1)} ${tr('saat')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                        const SizedBox(width: 6),
+                                        Icon(
+                                          isApproved ? Icons.check_circle : Icons.pending,
+                                          size: 14,
+                                          color: isApproved ? AppTheme.success : AppTheme.warning,
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
+                                // Brutto hesaplama satırı
+                                if (hourlyWage != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.euro, size: 12, color: AppTheme.textSub),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${hrs.toStringAsFixed(1)} Std. × ${hourlyWage.toStringAsFixed(2)} €/h = ',
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter'),
+                                        ),
+                                        Text(
+                                          '${bruttoAmount!.toStringAsFixed(2)} € Brutto',
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (sessions.indexOf(s) < sessions.length - 1)
+                                  const Divider(height: 16),
                               ],
                             ),
                           );

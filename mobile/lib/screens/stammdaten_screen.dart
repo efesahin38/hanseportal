@@ -36,31 +36,28 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
   Future<void> _load() async {
     try {
       final appState = context.read<AppState>();
-      final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung;
-      final serviceAreaIds = isAdmin ? null : appState.serviceAreaIds;
 
-      var companies = await SupabaseService.getCompanies(serviceAreaIds: serviceAreaIds);
+      var companies = await SupabaseService.getCompanies(serviceAreaIds: null);
 
-      final filteredCompanies = companies.where((c) {
+      // v17.0: Sadece "Hanse Kollektiv" içeren şirketi göster
+      final allCompanies = companies.where((c) {
         final cName = (c['name'] as String? ?? '').toLowerCase();
         if (cName.contains('archiv') || cName.contains('placeholder')) return false;
         return true;
       }).toList();
 
-      if (appState.isBereichsleiter) {
-        // Bereichsleiter kendi departmanının bağlı olduğu şirkete kilitlenir
-        final myCompanyId = appState.companyId;
-        companies = filteredCompanies.where((c) => c['id'] == myCompanyId).toList();
-        // Fallback removed to prevent showing wrong company if ID is missing or wrong
-      } else {
-        // Admin, GF, Buchhaltung tüm aktifleri görür
-        companies = filteredCompanies;
-      }
+      // Hanse Kollektiv GmbH'yi bul (büyük/küçük harf bağımsız)
+      final hanseCompanies = allCompanies.where((c) {
+        final cName = (c['name'] as String? ?? '').toLowerCase();
+        return cName.contains('hanse') || cName.contains('kollektiv');
+      }).toList();
+
+      // Eğer Hanse bulunamazsa tüm listeyi göster (fallback)
+      companies = hanseCompanies.isNotEmpty ? hanseCompanies : allCompanies;
 
       if (companies.isNotEmpty) {
         _authorizedCompanies = companies;
         if (_selectedCompany == null) {
-          // Admin/Accounting için ilk şirketi seç, Bereichsleiter için zaten liste 1 elemanlı veya boş
           _selectedCompany = companies.first;
         } else {
           try {
@@ -97,12 +94,11 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header – Bereichsleiter için kilitli görünüm
+              // Header – Hanse Kollektiv GmbH (v17.0: tek şirket, dropdown yok)
               Builder(
                 builder: (context) {
                   final appState = context.read<AppState>();
-                  final isBereichsleiter = appState.isBereichsleiter;
-                  final isAdmin = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung;
+                  final canEdit = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter;
                   if (_selectedCompany == null)
                     return Center(
                       child: Padding(
@@ -128,105 +124,57 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
-                    child: Column(
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(
-                                isBereichsleiter ? Icons.lock_outline : Icons.business,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    formatCompanyName(_selectedCompany?['name'] ?? tr('Firma')),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                  Text(
-                                    isBereichsleiter
-                                        ? tr('Ihr Unternehmensbereich')
-                                        : tr('Meine Stammdaten'),
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
-                                      fontSize: 13,
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        // Yalnızca Admin/GF/BL için şirket değiştirme seçeneği
-                        if (isAdmin && _authorizedCompanies.length > 1) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: DropdownButton<String>(
-                              value: _selectedCompany?['id'],
-                              isExpanded: true,
-                              underline: const SizedBox(),
-                              dropdownColor: AppTheme.primary,
-                              iconEnabledColor: Colors.white,
-                              style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
-                              items: _authorizedCompanies.map((c) => DropdownMenuItem(
-                                value: c['id'].toString(),
-                                child: Text(formatCompanyName(c['name'] ?? '')),
-                              )).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    _selectedCompany = _authorizedCompanies.firstWhere((c) => c['id'] == val);
-                                    _loading = true;
-                                  });
-                                  _load();
-                                }
-                              },
-                            ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        ],
-                        // Bereichsleiter şirket seçemez, sabit metin olarak görür
-                        if (isBereichsleiter) ...[
-                          const SizedBox(height: 12),
+                          child: const Icon(Icons.business, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                formatCompanyName(_selectedCompany?['name'] ?? tr('Hanse Kollektiv GmbH')),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                              Text(
+                                tr('Meine Stammdaten'),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 13,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (canEdit)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.verified_user, color: Colors.white, size: 14),
-                                const SizedBox(width: 8),
-                                Text(
-                                  formatCompanyName(_selectedCompany?['name'] ?? '-'),
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                                ),
+                                Icon(Icons.edit, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text('Bearbeiten', style: TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'Inter')),
                               ],
                             ),
                           ),
-                        ],
                       ],
                     ),
                   );

@@ -125,6 +125,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
       ) : null,
       appBar: AppBar(
         title: Text(o['order_number'] ?? tr('İş Detayı')),
+        actions: [
+          // 🏠 Ana sayfaya git
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            tooltip: 'Zur Startseite (Aufträge)',
+            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: WebContentWrapper(
         padding: EdgeInsets.zero,

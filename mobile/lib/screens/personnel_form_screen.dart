@@ -46,6 +46,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   final _qualifications = TextEditingController();
   final _childrenCount = TextEditingController();
 
+  final _grossWage = TextEditingController(); // Brutto saatlik/aylık ücret
+
   DateTime? _birthDate, _entryDate, _idIssueDate, _idValidUntil, _trialPeriodUntil, _drivingLicenseSince, _contractEndDate;
   String _role = 'mitarbeiter';
   String _employmentType = 'Vollzeit';
@@ -73,12 +75,14 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
     final areas = await SupabaseService.getServiceAreas(activeOnly: false);
     final List<Map<String, dynamic>> consolidatedAreas = [];
     
-    // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
+    // v17.0: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
     final categories = [
       {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
-      {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
-      {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
-      {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+      {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+      {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+      {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
+      {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
+      {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
     ];
 
     for (var cat in categories) {
@@ -144,6 +148,12 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       _workPermit = d['work_permit'] == true; _maritalStatus = d['marital_status'] == true;
       _hasChildren = d['has_children'] == true; _hasDrivingLicense = d['has_driving_license'] == true;
       _hasQualifications = d['has_qualifications'] == true;
+      // v17.0: Brutto ücret yükle
+      if (_compensationType == 'Stundenlohn') {
+        _grossWage.text = d['hourly_gross_wage']?.toString() ?? '';
+      } else {
+        _grossWage.text = d['monthly_gross_salary']?.toString() ?? '';
+      }
       
       final usa = d['user_service_areas'] as List?;
       if (usa != null) {
@@ -192,6 +202,11 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'driving_license_since': _drivingLicenseSince?.toIso8601String().split('T')[0],
         'has_qualifications': _hasQualifications, 'qualifications': _qualifications.text.trim(),
         'company_id': _companyId, 'status': 'active',
+        // v17.0: Brutto ücret kaydet
+        if (_compensationType == 'Stundenlohn' && _grossWage.text.isNotEmpty)
+          'hourly_gross_wage': double.tryParse(_grossWage.text),
+        if (_compensationType == 'Festlohn' && _grossWage.text.isNotEmpty)
+          'monthly_gross_salary': double.tryParse(_grossWage.text),
       }, serviceAreaIds: _selectedServiceAreaIds);
       // Vertragsende → takvimde kırmızı (sadece GF/BL görebilir)
       final appState = context.read<AppState>();
@@ -300,7 +315,37 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _contractType, decoration: InputDecoration(labelText: tr('Vertragsart')),
               items: ['Vollzeit', 'Teilzeit', 'Aushilfe'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => setState(() => _contractType = v!))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _compensationType, decoration: InputDecoration(labelText: tr('Vergütungsart')),
-              items: ['Festlohn', 'Stundenlohn'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => setState(() => _compensationType = v!))),
+              items: ['Festlohn', 'Stundenlohn'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
+              onChanged: (v) => setState(() => _compensationType = v!))),
+            // v17.0: Vergütungsart'a göre Brutto ücret alanı
+            if (_compensationType == 'Stundenlohn')
+              SizedBox(width: fw, child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextFormField(
+                  controller: _grossWage,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: tr('Brutto-Stundenlohn (€/Std.)'),
+                    prefixText: '€ ',
+                    helperText: tr('Brutto saatlik ücret – rapora yansır'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              )),
+            if (_compensationType == 'Festlohn')
+              SizedBox(width: fw, child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextFormField(
+                  controller: _grossWage,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: tr('Brutto-Festlohn (€/Monat)'),
+                    prefixText: '€ ',
+                    helperText: tr('Brutto aylık ücret'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              )),
             SizedBox(width: fw, child: _tf(tr('Anstellung als'), _positionAs)),
             SizedBox(width: fw, child: _tf(tr('Tätigkeiten'), _activities)),
             SizedBox(width: fw, child: _df(tr('Arbeitsbeginn'), _entryDate, (d) => setState(() => _entryDate = d))),

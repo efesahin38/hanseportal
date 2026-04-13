@@ -88,6 +88,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
               elevation: 0,
               backgroundColor: Colors.white,
               foregroundColor: AppTheme.textMain,
+              actions: [
+                // 🏠 Ana sayfaya git
+                IconButton(
+                  icon: const Icon(Icons.home_outlined),
+                  tooltip: 'Zur Startseite (Aufträge)',
+                  onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                ),
+                const SizedBox(width: 4),
+              ],
             )
           : null,
       floatingActionButton: canCreate

@@ -48,17 +48,18 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   Future<void> _loadInitialData() async {
     try {
       final depts = await SupabaseService.getDepartments();
-      // 🛡️ v16.9: Etkin olmayanları da çekelim ki Fatma'nın bölümü eksik kalmasın
       final allAreas = await SupabaseService.getServiceAreas(activeOnly: false);
       
       final List<Map<String, dynamic>> consolidatedAreas = [];
       
-      // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
+      // v17.0: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı, 3 yeni eklendi)
       final categories = [
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
-        {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
-        {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
-        {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+        {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+        {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+        {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
+        {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
+        {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
       ];
 
       for (var cat in categories) {
@@ -81,11 +82,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           return kws.any((kw) => sName.contains(kw));
         }, orElse: () => {});
 
-        // 3. Eğer hiçbir hizmet alanı kaydı bulunamadıysa (Gastwirtschaftsservice durumu)
-        // en azından departman ID'sini kullanarak sanal bir giriş oluştur
         if (sa.isEmpty && deptId != null) {
           sa = {
-            'id': deptId, // Geçici olarak departman ID'sini kullanıyoruz (FK hatası riskine karşı sistem kontrol edilmeli)
+            'id': deptId,
             'name': label,
             'department_id': deptId,
           };

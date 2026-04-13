@@ -62,12 +62,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final areas = await SupabaseService.getServiceAreas(activeOnly: false);
       final List<Map<String, dynamic>> consolidatedAreas = [];
       
-      // 🛡️ 4 ANA KATEGORİ ZORUNLULUĞU (v16.9)
+      // v17.0: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
       final categories = [
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
-        {'key': 'Bina', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
-        {'key': 'Gast', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'otel', 'restaur', 'verpfleg', 'catering']},
-        {'key': 'Personel', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+        {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+        {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+        {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
+        {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
+        {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
       ];
 
       for (var cat in categories) {
@@ -271,52 +273,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     children: [
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown(tr('Müşteri *'), _customers, _selectedCustomerId, 'name', (v) {
-                          setState(() {
-                            _selectedCustomerId = v;
-                            if (v != null) {
-                              final customer = _customers.firstWhere((c) => c['id'].toString() == v, orElse: () => <String, dynamic>{});
-                              if (customer.isNotEmpty) {
-                                // 1. Auto-fill address
-                                final addr = customer['address']?.toString() ?? '';
-                                final street = addr; // Simple mapping if street isn't separate in customer object
-                                final plz = customer['postal_code']?.toString() ?? '';
-                                final city = customer['city']?.toString() ?? '';
-                                
-                                if (addr.isNotEmpty) _siteAddress.text = addr;
-                                if (plz.isNotEmpty) _plzCtrl.text = plz;
-                                if (city.isNotEmpty) _cityCtrl.text = city;
-                                
-                                // 2. Auto-fill Service Area if customer has one defined
-                                if (customer['customer_service_areas'] != null) {
-                                  final csa = customer['customer_service_areas'] as List;
-                                  if (csa.isNotEmpty) {
-                                    final sId = csa.first['service_area_id']?.toString();
-                                    final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == sId, orElse: () => <String, dynamic>{});
-                                    if (sArea.isNotEmpty) {
-                                      _selectedServiceAreaId = sId;
-                                      if (_title.text.isEmpty) {
-                                        _title.text = sArea['name'] ?? '';
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          });
-                        }),
+                        child: _customerSearchField(),
                       ),
                       SizedBox(
                         width: fieldWidth,
                         child: _dropdown(tr('Hizmet Alanı *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) async {
                           setState(() {
                             _selectedServiceAreaId = v;
-                            _loading = true; // Müşteriler yüklenirken gösterge
+                            _loading = true;
                           });
                           
-                          // 🛡️ NAILED ISOLATION: Bölüm içindeki tüm müşterileri göstermeye devam et 
-                          // (Sadece SA seçince daraltmak yerine departman seviyesinde tutuyoruz)
-                          // Eğer departman bilgisi varsa departman bazlı, yoksa SA bazlı getir
                           final filteredCustomers = await SupabaseService.getCustomers(
                             departmentId: widget.initialDepartmentId,
                             serviceAreaId: widget.initialDepartmentId == null ? v : null,
@@ -324,7 +290,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                           if (mounted) {
                             setState(() {
                               _customers = filteredCustomers;
-                              // Eğer önceden seçili müşteri yeni listede yoksa seçimi temizle
                               if (_selectedCustomerId != null && !filteredCustomers.any((c) => c['id'] == _selectedCustomerId)) {
                                 _selectedCustomerId = null;
                               }
@@ -510,6 +475,241 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
+  /// v17.0: Arama motorlu müşteri seçici
+  Widget _customerSearchField() {
+    final selectedCustomer = _selectedCustomerId != null
+        ? _customers.firstWhere((c) => c['id'].toString() == _selectedCustomerId, orElse: () => <String, dynamic>{})
+        : null;
+    final hasCustomer = selectedCustomer != null && selectedCustomer.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () => _showCustomerSearchDialog(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: hasCustomer ? AppTheme.primary.withOpacity(0.5) : AppTheme.border),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              hasCustomer ? Icons.business : Icons.search,
+              color: hasCustomer ? AppTheme.primary : AppTheme.textSub,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                hasCustomer ? (selectedCustomer['name'] ?? '') : tr('Müşteri seç veya ara...'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'Inter',
+                  color: hasCustomer ? AppTheme.textMain : AppTheme.textSub,
+                  fontWeight: hasCustomer ? FontWeight.w600 : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (hasCustomer)
+              GestureDetector(
+                onTap: () => setState(() => _selectedCustomerId = null),
+                child: Icon(Icons.close, size: 16, color: AppTheme.textSub),
+              )
+            else
+              Icon(Icons.arrow_drop_down, color: AppTheme.textSub),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomerSearchDialog() {
+    String searchQuery = '';
+    List<Map<String, dynamic>> filteredList = List.from(_customers);
+    final searchCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          void filterList(String q) {
+            setDialogState(() {
+              searchQuery = q;
+              filteredList = _customers.where((c) {
+                final name = (c['name'] ?? '').toString().toLowerCase();
+                final city = (c['city'] ?? '').toString().toLowerCase();
+                final email = (c['email'] ?? '').toString().toLowerCase();
+                return name.contains(q.toLowerCase()) ||
+                    city.contains(q.toLowerCase()) ||
+                    email.contains(q.toLowerCase());
+              }).toList();
+            });
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75, maxWidth: 500),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Başlık
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.business, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(tr('Müşteri Seç'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                          onPressed: () => Navigator.pop(ctx),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Arama alanı
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: TextField(
+                      controller: searchCtrl,
+                      autofocus: true,
+                      onChanged: filterList,
+                      decoration: InputDecoration(
+                        hintText: tr('İsim, şehir veya e-posta ile ara...'),
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        suffixIcon: searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  searchCtrl.clear();
+                                  filterList('');
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  // Liste
+                  Flexible(
+                    child: filteredList.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.business_outlined, size: 40, color: AppTheme.textSub),
+                                const SizedBox(height: 8),
+                                Text(tr('Müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredList.length,
+                            itemBuilder: (_, i) {
+                              final c = filteredList[i];
+                              final isSelected = c['id'].toString() == _selectedCustomerId;
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  setState(() {
+                                    _selectedCustomerId = c['id'].toString();
+                                    // Adres otomatik doldur
+                                    final addr = c['address']?.toString() ?? '';
+                                    final plz = c['postal_code']?.toString() ?? '';
+                                    final city = c['city']?.toString() ?? '';
+                                    if (addr.isNotEmpty) _siteAddress.text = addr;
+                                    if (plz.isNotEmpty) _plzCtrl.text = plz;
+                                    if (city.isNotEmpty) _cityCtrl.text = city;
+                                    // Hizmet alanı otomatik doldur
+                                    if (c['customer_service_areas'] != null) {
+                                      final csa = c['customer_service_areas'] as List;
+                                      if (csa.isNotEmpty) {
+                                        final sId = csa.first['service_area_id']?.toString();
+                                        final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == sId, orElse: () => <String, dynamic>{});
+                                        if (sArea.isNotEmpty) {
+                                          _selectedServiceAreaId = sId;
+                                        }
+                                      }
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
+                                    border: Border(bottom: BorderSide(color: AppTheme.divider, width: 0.5)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 16,
+                                        backgroundColor: AppTheme.primary.withOpacity(0.1),
+                                        child: Text(
+                                          (c['name'] ?? '?')[0].toUpperCase(),
+                                          style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(c['name'] ?? '', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                                            if (c['city'] != null)
+                                              Text(c['city'], style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        const Icon(Icons.check_circle, color: AppTheme.primary, size: 18),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  // Alt çizgi + buton
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Text('${filteredList.length} ${tr('müşteri')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            // TODO: CustomerFormScreen push eklenebilir
+                          },
+                          icon: const Icon(Icons.add, size: 16),
+                          label: Text(tr('Yeni Müşteri Ekle'), style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _dateTile(String label, DateTime? date, VoidCallback onTap) => GestureDetector(
     onTap: onTap,
     child: Container(
@@ -521,7 +721,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-        Text('v16.9', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
         const SizedBox(height: 2),
         Text(
           date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',

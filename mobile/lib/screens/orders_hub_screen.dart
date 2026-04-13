@@ -6,48 +6,51 @@ import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'orders_screen.dart';
+import 'gebaude_hub_screen.dart';
 
-// Sabit GmbH tanımları: her bölümün adı, GmbH adı, sorumlusu ve rengi
+// v17.0: Gastwirtschaftsservice kaldırıldı. 3 ana bölüm kaldı.
+// Gebäudedienstleistungen tıklanınca 4 alt klasöre yönlendiriyor.
 class _GmbhDef {
-  final String departmentKey; // kDepartmentOptions değeriyle eşleşen anahtar
+  final String departmentKey;
   final String gmbhName;
+  final String emoji;
   final String responsible;
   final IconData icon;
   final Color color;
+  final bool hasSubSections; // Gebäude için true → GebaudeHubScreen açılır
   const _GmbhDef({
     required this.departmentKey,
     required this.gmbhName,
+    required this.emoji,
     required this.responsible,
     required this.icon,
     required this.color,
+    this.hasSubSections = false,
   });
 }
 
 const List<_GmbhDef> kGmbhDefs = [
   _GmbhDef(
     departmentKey: 'Gebäude',
-    gmbhName: 'Gebäudedienstleistungen', // veya Gebäudereinigung
+    gmbhName: 'Gebäudedienstleistungen',
+    emoji: '🏗️',
     responsible: 'Sandra',
     icon: Icons.apartment,
     color: Color(0xFF3B82F6),
+    hasSubSections: true, // → GebaudeHubScreen'e yönlendiriyor
   ),
   _GmbhDef(
     departmentKey: 'Rail',
-    gmbhName: 'DB-Gleisbausicherung', // veya Gleisbausicherung
+    gmbhName: 'DB-Gleisbausicherung',
+    emoji: '🚂',
     responsible: 'Peter',
     icon: Icons.train,
     color: Color(0xFF10B981),
   ),
   _GmbhDef(
-    departmentKey: 'Gast',
-    gmbhName: 'Gastwirtschaftsservice', // veya Hotelservice
-    responsible: 'Fatma',
-    icon: Icons.restaurant,
-    color: Color(0xFFF59E0B),
-  ),
-  _GmbhDef(
     departmentKey: 'Personal',
-    gmbhName: 'Personalüberlassung', // veya Verwaltung
+    gmbhName: 'Personalüberlassung',
+    emoji: '👥',
     responsible: 'Markus',
     icon: Icons.people,
     color: Color(0xFF8B5CF6),
@@ -61,8 +64,7 @@ class OrdersHubScreen extends StatefulWidget {
 }
 
 class _OrdersHubScreenState extends State<OrdersHubScreen> {
-  /// Departman listesini DB'den alıp GmbhDef ile eşleştiriyoruz.
-  Map<String, String?> _departmentIds = {}; // departmentKey → departmentId
+  Map<String, String?> _departmentIds = {};
   bool _loading = true;
 
   @override
@@ -76,21 +78,17 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
       final depts = await SupabaseService.getDepartments();
       final Map<String, String?> ids = {};
       for (final def in kGmbhDefs) {
-        // DB'deki departman adı ile eşleştir (çoklu anahtar kelime mantığı)
         final match = depts.firstWhere(
           (d) {
             final dbName = (d['name'] as String? ?? '').toLowerCase();
             final key = def.departmentKey.toLowerCase();
             final gmbh = def.gmbhName.toLowerCase();
-            
-            // Eğer veritabanındaki isim, bizim anahtarımızı veya GmbH ismimizi İÇERİYORSA
-            return dbName.contains(key) || 
-                   dbName.contains(gmbh) || 
-                   key.contains(dbName) || 
+            return dbName.contains(key) ||
+                   dbName.contains(gmbh) ||
+                   key.contains(dbName) ||
                    gmbh.contains(dbName) ||
-                   (key == 'rail' && dbName.contains('gleis')) || // Rail -> Gleis özel eşleşmesi
-                   (key == 'gast' && dbName.contains('hotel')) || // Gast -> Hotel özel eşleşmesi
-                   (key == 'personal' && dbName.contains('verwal')); // Personal -> Verwaltung eşleşmesi (Arka plan için şart)
+                   (key == 'rail' && dbName.contains('gleis')) ||
+                   (key == 'personal' && dbName.contains('verwal'));
           },
           orElse: () => {},
         );
@@ -102,7 +100,6 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
     }
   }
 
-  /// Bereichsleiter'ın bölüm adını döner (diğerleri için null)
   String? _bereichsleiterDept(AppState appState) {
     if (!appState.isBereichsleiter) return null;
     return appState.currentUser?['department']?['name'] as String?;
@@ -115,25 +112,21 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
     final appState = context.watch<AppState>();
     final bereichDept = _bereichsleiterDept(appState);
 
-    // 🛡️ NAILED ISOLATION: Sandra, Peter, Fatma, Markus için kesin kilit
     List<_GmbhDef> visibleDefs = kGmbhDefs;
 
     if (appState.isBereichsleiter) {
       final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
-      
+
       if (firstName == 'sandra') {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Sandra').toList();
       } else if (firstName == 'peter') {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Peter').toList();
-      } else if (firstName == 'fatma') {
-        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Fatma').toList();
       } else if (firstName == 'markus') {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Markus').toList();
       } else if (bereichDept != null) {
-        // Diğer Bereichsleiter'lar için mevcut departman bazlı mantık
         final bDept = bereichDept.toLowerCase();
-        visibleDefs = kGmbhDefs.where((d) => 
-          bDept.contains(d.departmentKey.toLowerCase()) || 
+        visibleDefs = kGmbhDefs.where((d) =>
+          bDept.contains(d.departmentKey.toLowerCase()) ||
           d.departmentKey.toLowerCase().contains(bDept)).toList();
       } else {
         visibleDefs = [];
@@ -171,11 +164,11 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                           ),
                           Text(
-                            'HansePortal v16.3',
+                            'HansePortal v17.0',
                             style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
                           ),
                           Text(
-                            bereichDept != null
+                            appState.isBereichsleiter
                                 ? tr('Ihre Bereichsaufträge')
                                 : tr('Bitte Bereich wählen'),
                             style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter'),
@@ -225,12 +218,24 @@ class _GmbhCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OrdersScreen(departmentId: departmentId, customTitle: def.gmbhName),
-          ),
-        ),
+        onTap: () {
+          if (def.hasSubSections) {
+            // Gebäudedienstleistungen → 4 alt klasör hub'ına git
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GebaudeHubScreen(departmentId: departmentId),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrdersScreen(departmentId: departmentId, customTitle: '${def.emoji} ${def.gmbhName}'),
+              ),
+            );
+          }
+        },
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(20),
@@ -248,51 +253,67 @@ class _GmbhCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // İkon
+              // Emoji gösterimi
               Container(
-                width: 56,
-                height: 56,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   color: def.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(def.icon, color: def.color, size: 28),
+                child: Center(
+                  child: Text(def.emoji, style: const TextStyle(fontSize: 24)),
+                ),
               ),
               const SizedBox(width: 16),
-              // Bilgiler
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       def.gmbhName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         fontFamily: 'Inter',
-                        color: AppTheme.textMain,
+                        color: def.color,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.person_outline, size: 14, color: def.color),
+                        Icon(Icons.person_outline, size: 14, color: def.color.withOpacity(0.7)),
                         const SizedBox(width: 4),
                         Text(
-                          '${tr('Bereichsleiter')}: ${def.responsible}',
+                          'Bereichsleiter: ${def.responsible}',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: def.color,
+                            fontSize: 12,
+                            color: def.color.withOpacity(0.8),
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
+                    if (def.hasSubSections) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '4 Unterbereiche',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: def.color.withOpacity(0.6),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: def.color.withOpacity(0.6), size: 24),
+              Icon(
+                def.hasSubSections ? Icons.folder_open_outlined : Icons.chevron_right,
+                color: def.color.withOpacity(0.7),
+                size: 24,
+              ),
             ],
           ),
         ),

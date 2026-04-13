@@ -31,19 +31,31 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   List<_NavItem> _buildNavItems(AppState appState) {
-    // Boss Requirements: Exactly 6 modules
+    // v17.0: Aufträge her zaman İLK (index 0) ve ana sayfa
+    // Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung görebilir
+    final canSeeStammdaten = appState.isGeschaeftsfuehrer ||
+        appState.isSystemAdmin ||
+        appState.isBetriebsleiter ||
+        appState.isBackoffice ||
+        appState.isBuchhaltung;
+
     return [
-      // Stammdaten: GF, Admin, BL, Betriebsleiter, Bereichsleiter (kendi GmbH'sini görür)
-      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter' || appState.isBereichsleiter)
-        _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
-      // Verwaltung: GF, Admin, BL, Betriebsleiter, Bereichsleiter (Muhasebe kısmi engeli Verwaltung içinde)
-      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canManageDocuments || appState.role == 'betriebsleiter' || appState.isBereichsleiter)
-        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Verwaltung'), screen: const VerwaltungScreen()),
-      _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
+      // 1. Aufträge – herkes için ana sayfa
       _NavItem(icon: Icons.work_outline, activeIcon: Icons.work, label: tr('Aufträge'), screen: const OrdersHubScreen()),
+      // 2. Kunden
+      _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
+      // 3. Personal
       _NavItem(icon: Icons.badge_outlined, activeIcon: Icons.badge, label: tr('Personal'), screen: const PersonnelScreen()),
+      // 4. Kalender
       _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: tr('Kalender'), screen: const CalendarScreen()),
+      // 5. Chatten
       _NavItem(icon: Icons.chat_outlined, activeIcon: Icons.chat, label: tr('Chatten'), screen: const ChatScreen()),
+      // 6. Verwaltung: GF, Admin, BL, Betriebsleiter, Bereichsleiter
+      if (appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBereichsleiter || appState.isBackoffice || appState.isBuchhaltung)
+        _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: tr('Verwaltung'), screen: const VerwaltungScreen()),
+      // 7. Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung
+      if (canSeeStammdaten)
+        _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
     ];
   }
 

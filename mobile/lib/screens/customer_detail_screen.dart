@@ -65,6 +65,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         appBar: AppBar(
           title: Text(c['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 16)),
           actions: [
+            // 🏠 Ana sayfaya git
+            IconButton(
+              icon: const Icon(Icons.home_outlined),
+              tooltip: 'Zur Startseite (Aufträge)',
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => Navigator.push(context, MaterialPageRoute(

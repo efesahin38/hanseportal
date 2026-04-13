@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
+import '../theme/service_area_defs.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
@@ -200,6 +201,15 @@ class _CustomerListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = customer['status'] ?? '';
+    // Hizmet alanı rengi – müşterinin hangi bölüme ait olduğunu gösterir
+    final serviceAreas = customer['customer_service_areas'] as List?;
+    String? saName;
+    if (serviceAreas != null && serviceAreas.isNotEmpty) {
+      saName = serviceAreas.first['service_area']?['name'] as String?;
+    }
+    final saColor = ServiceAreaDefs.colorForServiceAreaName(saName);
+    final saEmoji = ServiceAreaDefs.emojiForServiceAreaName(saName);
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -208,12 +218,31 @@ class _CustomerListTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: AppTheme.primary.withOpacity(0.1),
-                child: Text(
-                  (customer['name'] ?? '?')[0].toUpperCase(),
-                  style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
-                ),
+              // Avatar + renkli köşe noktası
+              Stack(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: saColor.withOpacity(0.12),
+                    child: Text(
+                      (customer['name'] ?? '?')[0].toUpperCase(),
+                      style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                    ),
+                  ),
+                  // Renkli bölüm indikatörü (sağ alt köşe)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: saColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -226,12 +255,30 @@ class _CustomerListTile extends StatelessWidget {
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    if (customer['city'] != null)
-                      Row(children: [
-                        const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
-                        const SizedBox(width: 4),
-                        Text(customer['city'], style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                      ]),
+                    Row(
+                      children: [
+                        if (customer['city'] != null) ...[
+                          const Icon(Icons.location_on_outlined, size: 12, color: AppTheme.textSub),
+                          const SizedBox(width: 4),
+                          Text(customer['city'], style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                          const SizedBox(width: 8),
+                        ],
+                        // Hizmet alanı etiketi
+                        if (saName != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: saColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: saColor.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              '$saEmoji ${saName.length > 12 ? '${saName.substring(0, 12)}…' : saName}',
+                              style: TextStyle(fontSize: 10, color: saColor, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
