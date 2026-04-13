@@ -261,13 +261,19 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                   child: Row(children: [
                     const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
                     const SizedBox(width: 10),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(tr('Plan Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                      Text(
-                        '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
-                      ),
-                    ]),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(tr('Plan Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                        Text(
+                          '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                        ),
+                      ]),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _planDate = DateTime.now()),
+                      child: const Icon(Icons.delete_outline, color: AppTheme.error, size: 20),
+                    ),
                   ]),
                 ),
               ),

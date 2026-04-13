@@ -720,7 +720,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               padding: const EdgeInsets.only(left: 8),
               child: GestureDetector(
                 onTap: onClear,
-                child: const Icon(Icons.clear, size: 18, color: AppTheme.textSub),
+                child: const Icon(Icons.delete_outline, size: 20, color: AppTheme.error),
               ),
             ),
         ],

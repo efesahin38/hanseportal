@@ -204,10 +204,18 @@ class _CustomerListTile extends StatelessWidget {
     // Hizmet alanı rengi – müşterinin hangi bölüme ait olduğunu gösterir
     final serviceAreas = customer['customer_service_areas'] as List?;
     String? saName;
+    Color? saColorFromDb;
     if (serviceAreas != null && serviceAreas.isNotEmpty) {
-      saName = serviceAreas.first['service_area']?['name'] as String?;
+      final sa = serviceAreas.first['service_area'];
+      saName = sa?['name'] as String?;
+      final colorStr = sa?['color'] as String?;
+      if (colorStr != null && colorStr.isNotEmpty) {
+        try {
+          saColorFromDb = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
+        } catch (_) {}
+      }
     }
-    final saColor = ServiceAreaDefs.colorForServiceAreaName(saName);
+    final saColor = saColorFromDb ?? ServiceAreaDefs.colorForServiceAreaName(saName);
     final saEmoji = ServiceAreaDefs.emojiForServiceAreaName(saName);
 
     return Card(

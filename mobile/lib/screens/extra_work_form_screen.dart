@@ -24,10 +24,16 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
   final _laborCost = TextEditingController();
   final _notes = TextEditingController();
 
-  DateTime _workDate = DateTime.now();
+  DateTime? _workDate; // v17.9: Boş bırakılabilir yaptık
   bool? _isBillable; // null = değerlendirmede
   String _approvalStatus = 'recorded';
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _workDate = DateTime.now(); // Varsayılan bugün
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -48,7 +54,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
         'order_id': widget.orderId,
         'title': _title.text.trim(),
         'description': _description.text.trim(),
-        'work_date': _workDate.toIso8601String().split('T')[0],
+        'work_date': _workDate?.toIso8601String().split('T')[0],
         if (_durationH.text.isNotEmpty) 'duration_h': double.tryParse(_durationH.text),
         'is_billable': _isBillable,
         if (_materialCost.text.isNotEmpty) 'estimated_material_cost': double.tryParse(_materialCost.text),
@@ -104,13 +110,20 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
                   child: Row(children: [
                     const Icon(Icons.calendar_today, size: 18, color: AppTheme.textSub),
                     const SizedBox(width: 10),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(tr('İş Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
-                      Text(
-                        '${_workDate.day.toString().padLeft(2, '0')}.${_workDate.month.toString().padLeft(2, '0')}.${_workDate.year}',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(tr('İş Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                        Text(
+                          _workDate == null ? tr('Seçiniz') : '${_workDate!.day.toString().padLeft(2, '0')}.${_workDate!.month.toString().padLeft(2, '0')}.${_workDate!.year}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                        ),
+                      ]),
+                    ),
+                    if (_workDate != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _workDate = null),
+                        child: const Icon(Icons.delete_outline, color: AppTheme.error, size: 20),
                       ),
-                    ]),
                   ]),
                 ),
               ),

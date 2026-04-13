@@ -140,15 +140,34 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                           itemCount: _filtered.length,
                           itemBuilder: (_, i) {
                             final u = _filtered[i];
-                            final name = '${u['first_name']} ${u['last_name']}';
+                            final firstName = (u['first_name'] ?? '').toString().trim();
+                            final lastName = (u['last_name'] ?? '').toString().trim();
+                            final name = '$firstName $lastName'.trim();
                             final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+                            // Hizmet alanı rengini belirle
+                            final serviceAreas = u['user_service_areas'] as List?;
+                            String? saName;
+                            Color? saColorFromDb;
+                            if (serviceAreas != null && serviceAreas.isNotEmpty) {
+                              final sa = serviceAreas.first['service_areas'];
+                              saName = sa?['name'] as String?;
+                              final colorStr = sa?['color'] as String?;
+                              if (colorStr != null && colorStr.isNotEmpty) {
+                                try {
+                                  saColorFromDb = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
+                                } catch (_) {}
+                              }
+                            }
+                            final saColor = saColorFromDb ?? AppTheme.accent;
+
                             return Card(
                               child: ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: AppTheme.accent.withOpacity(0.15),
-                                  child: Text(initial, style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                  backgroundColor: saColor.withOpacity(0.15),
+                                  child: Text(initial, style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
-                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
+                                title: Text(name.isEmpty ? tr('İsimsiz Personel') : name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
