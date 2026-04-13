@@ -1368,6 +1368,7 @@ class SupabaseService {
       order:orders(
         id, title, order_number, service_area_id, department_id,
         customer:customers(name),
+        service_area:service_areas(id, name, color),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)

@@ -12,6 +12,7 @@ import 'notifications_screen.dart';
 import 'orders_hub_screen.dart';
 import 'customers_screen.dart';
 import 'personnel_screen.dart';
+import 'personnel_detail_dashboard.dart';
 import 'stammdaten_screen.dart';
 import 'verwaltung_screen.dart';
 import 'chat_screen.dart';
@@ -56,6 +57,13 @@ class _MainShellState extends State<MainShell> {
       // 7. Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung
       if (canSeeStammdaten)
         _NavItem(icon: Icons.business_center_outlined, activeIcon: Icons.business_center, label: tr('Meine Stammdaten'), screen: const StammdatenScreen()),
+      // 8. Mein Profil: HERKES için (EKLENDİ)
+      _NavItem(
+        icon: Icons.account_circle_outlined, 
+        activeIcon: Icons.account_circle, 
+        label: tr('Mein Profil'), 
+        screen: PersonnelDetailDashboard(user: appState.currentUser!),
+      ),
     ];
   }
 

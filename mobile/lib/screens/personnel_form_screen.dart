@@ -207,6 +207,15 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final isSelf = widget.userId == appState.userId;
+    // Admin, BL ve GF her şeyi düzenleyebilir.
+    final canEditSensitive = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin || appState.isBackoffice || appState.isBuchhaltung;
+    
+    // Kendisi düzenliyorsa ama admin değilse bazı alanlar kısıtlı
+    final restrictSensitive = isSelf && !canEditSensitive;
+
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.userId == null ? tr('Neues Personal') : tr('Personal bearbeiten'))),
       body: WebContentWrapper(child: Form(key: _formKey, child: LayoutBuilder(builder: (context, constraints) {
@@ -233,9 +242,9 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
           const SizedBox(height: 16),
           _sec(tr('Arbeitserlaubnis & Ausweis')),
           Wrap(spacing: 16, runSpacing: 12, children: [
-            SizedBox(width: fw, child: SwitchListTile(title: Text(tr('Arbeitserlaubnis')), value: _workPermit, onChanged: (v) => setState(() => _workPermit = v))),
+            SizedBox(width: fw, child: SwitchListTile(title: Text(tr('Arbeitserlaubnis')), value: _workPermit, onChanged: restrictSensitive ? null : (v) => setState(() => _workPermit = v))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _idType, decoration: InputDecoration(labelText: tr('Ausweisart')),
-              items: ['Ausweis', 'Reisepass'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => setState(() => _idType = v!))),
+              items: ['Ausweis', 'Reisepass'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _idType = v!))),
             SizedBox(width: fw, child: _tf(tr('Dokumentnummer'), _idNumber)),
             SizedBox(width: fw, child: _df(tr('Ausstellungsdatum'), _idIssueDate, (d) => setState(() => _idIssueDate = d))),
             SizedBox(width: fw, child: _df(tr('Gültig bis'), _idValidUntil, (d) => setState(() => _idValidUntil = d))),
@@ -281,7 +290,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                   return FilterChip(
                     label: Text(name),
                     selected: isSel,
-                    onSelected: (v) {
+                    onSelected: restrictSensitive ? null : (v) {
                       setState(() {
                          if (v) _selectedServiceAreaIds.add(id);
                          else _selectedServiceAreaIds.remove(id);
@@ -292,18 +301,19 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
               )
             ])),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: tr('Rolle *')),
-              items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: (v) => setState(() => _role = v!))),
+              items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _role = v!))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _contractType, decoration: InputDecoration(labelText: tr('Vertragsart')),
-              items: ['Vollzeit', 'Teilzeit', 'Aushilfe'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => setState(() => _contractType = v!))),
+              items: ['Vollzeit', 'Teilzeit', 'Aushilfe'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _contractType = v!))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _compensationType, decoration: InputDecoration(labelText: tr('Vergütungsart')),
               items: ['Festlohn', 'Stundenlohn'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
-              onChanged: (v) => setState(() => _compensationType = v!))),
+              onChanged: restrictSensitive ? null : (v) => setState(() => _compensationType = v!))),
             // v17.0: Vergütungsart'a göre Brutto ücret alanı
             if (_compensationType == 'Stundenlohn')
               SizedBox(width: fw, child: Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: TextFormField(
                   controller: _grossWage,
+                  enabled: !restrictSensitive,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: tr('Brutto-Stundenlohn (€/Std.)'),
@@ -318,6 +328,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: TextFormField(
                   controller: _grossWage,
+                  enabled: !restrictSensitive,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: tr('Brutto-Festlohn (€/Monat)'),
@@ -327,15 +338,15 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                   ),
                 ),
               )),
-            SizedBox(width: fw, child: _tf(tr('Anstellung als'), _positionAs)),
-            SizedBox(width: fw, child: _tf(tr('Tätigkeiten'), _activities)),
-            SizedBox(width: fw, child: _df(tr('Arbeitsbeginn'), _entryDate, (d) => setState(() => _entryDate = d))),
-            SizedBox(width: fw, child: _df(tr('Probezeit bis'), _trialPeriodUntil, (d) => setState(() => _trialPeriodUntil = d))),
-            SizedBox(width: fw, child: _df(tr('Vertragsende'), _contractEndDate, (d) => setState(() => _contractEndDate = d))),
-            SizedBox(width: fw, child: _tf(tr('Wochenstunden'), _weeklyHours, type: TextInputType.number)),
-            SizedBox(width: fw, child: _tf(tr('Monatsstunden'), _monthlyHours, type: TextInputType.number)),
-            SizedBox(width: fw, child: _tf(tr('Personalnummer'), _employeeNumber)),
-            SizedBox(width: fw, child: _tf(tr('PIN (Kiosk)'), _pin)),
+            SizedBox(width: fw, child: _tf(tr('Anstellung als'), _positionAs, enabled: !restrictSensitive)),
+            SizedBox(width: fw, child: _tf(tr('Tätigkeiten'), _activities, enabled: !restrictSensitive)),
+            SizedBox(width: fw, child: _df(tr('Arbeitsbeginn'), _entryDate, restrictSensitive ? (d)=>{} : (d) => setState(() => _entryDate = d))),
+            SizedBox(width: fw, child: _df(tr('Probezeit bis'), _trialPeriodUntil, restrictSensitive ? (d)=>{} : (d) => setState(() => _trialPeriodUntil = d))),
+            SizedBox(width: fw, child: _df(tr('Vertragsende'), _contractEndDate, restrictSensitive ? (d)=>{} : (d) => setState(() => _contractEndDate = d))),
+            SizedBox(width: fw, child: _tf(tr('Wochenstunden'), _weeklyHours, type: TextInputType.number, enabled: !restrictSensitive)),
+            SizedBox(width: fw, child: _tf(tr('Monatsstunden'), _monthlyHours, type: TextInputType.number, enabled: !restrictSensitive)),
+            SizedBox(width: fw, child: _tf(tr('Personalnummer'), _employeeNumber, enabled: !restrictSensitive)),
+            SizedBox(width: fw, child: _tf(tr('PIN (Kiosk)'), _pin, enabled: !restrictSensitive)),
           ]),
           const SizedBox(height: 16),
           _sec(tr('Führerschein & Qualifikationen')),
@@ -360,8 +371,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   }
 
   Widget _sec(String t) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(t, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter')));
-  Widget _tf(String l, TextEditingController c, {bool req = false, TextInputType? type, int maxLines = 1}) => Padding(padding: const EdgeInsets.only(bottom: 12),
-    child: TextFormField(controller: c, keyboardType: type, maxLines: maxLines, decoration: InputDecoration(labelText: l), validator: req ? (v) => (v == null || v.isEmpty) ? tr('Pflichtfeld') : null : null));
+  Widget _tf(String l, TextEditingController c, {bool req = false, TextInputType? type, int maxLines = 1, bool enabled = true}) => Padding(padding: const EdgeInsets.only(bottom: 12),
+    child: TextFormField(controller: c, keyboardType: type, maxLines: maxLines, enabled: enabled, decoration: InputDecoration(labelText: l), validator: req ? (v) => (v == null || v.isEmpty) ? tr('Pflichtfeld') : null : null));
   Widget _df(String l, DateTime? v, Function(DateTime?) f) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: InkWell(

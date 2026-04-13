@@ -8,6 +8,7 @@ import 'notifications_screen.dart';
 import 'my_documents_screen.dart';
 import 'chat_screen.dart';
 import 'calendar_screen.dart';
+import 'personnel_detail_dashboard.dart';
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
 class FieldWorkerShell extends StatefulWidget {
@@ -26,6 +27,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
     MyDocumentsScreen(),
     NotificationsScreen(),
     ChatScreen(),
+    PersonnelDetailDashboard(user: {}), // Placeholder, will be injected
   ];
 
   @override
@@ -37,6 +39,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
       tr('Meine Dokumente'),
       tr('Benachrichtigungen'),
       tr('Chatten'),
+      tr('Mein Profil'),
     ];
 
     return Scaffold(
@@ -160,6 +163,16 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: Icon(_selectedIndex == 5 ? Icons.account_circle : Icons.account_circle_outlined, color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Mein Profil'), style: TextStyle(color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 5 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              selected: _selectedIndex == 5,
+              selectedTileColor: AppTheme.primary.withOpacity(0.1),
+              onTap: () {
+                setState(() => _selectedIndex = 5);
+                Navigator.pop(context);
+              },
+            ),
             const Spacer(),
             const Divider(height: 1),
             ListTile(
@@ -174,7 +187,9 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
           ],
         ),
       ),
-      body: _screens[_selectedIndex],
+      body: _selectedIndex == 5 
+          ? PersonnelDetailDashboard(user: appState.currentUser!)
+          : _screens[_selectedIndex],
     );
   }
 }

@@ -370,6 +370,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
               'title': order['title'] ?? '',
               'order_number': order['order_number'] ?? '',
               'status': order['status'] ?? '',
+              'service_area': order['service_area'], // Added service area info
             });
             // Gelir ve Gideri sadece bir kere say
             final reportsRaw = order['work_reports'];
@@ -518,7 +519,35 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(displayDate, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                    Row(
+                      children: [
+                        Text(displayDate, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                        const SizedBox(width: 8),
+                        // İlk projenin rengini göster (Görsel ipucu)
+                        if ((d['orders'] as List).isNotEmpty) () {
+                          final firstOrder = (d['orders'] as List).first;
+                          final sa = firstOrder['service_area'];
+                          if (sa == null) return const SizedBox.shrink();
+                          final colorStr = sa['color'] ?? '#64748B';
+                          final saName = sa['name'] ?? '';
+                          Color dotColor;
+                          try { dotColor = Color(int.parse(colorStr.replaceFirst('#', '0xFF'))); } catch (_) { dotColor = Colors.grey; }
+                          
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: dotColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: dotColor.withOpacity(0.3))),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(width: 6, height: 6, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
+                                const SizedBox(width: 4),
+                                Text(saName, style: TextStyle(fontSize: 9, color: dotColor, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                              ],
+                            ),
+                          );
+                        }(),
+                      ],
+                    ),
                     Row(children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -574,9 +603,24 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                             children: [
                               const Icon(Icons.work_outline, size: 14, color: AppTheme.primary),
                               const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(orderTitle, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'), overflow: TextOverflow.ellipsis),
-                              ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Text(orderTitle, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'), overflow: TextOverflow.ellipsis)),
+                                      if (order['service_area'] != null) ...[
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          order['service_area']['name'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: 10, 
+                                            color: Color(int.parse(order['service_area']['color']?.replaceFirst('#', '0xFF') ?? '0xFF64748B')),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               if (isInvoiced)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

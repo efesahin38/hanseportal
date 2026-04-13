@@ -238,6 +238,17 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
     final folderName = widget.folder['folder_name'] ?? '';
     final empName = '${widget.employee['first_name']} ${widget.employee['last_name']}';
 
+    final isAdmin = appState.canManageEmployeeDocuments;
+    final isSelf = widget.employee['id'] == appState.userId;
+    final folderKey = widget.folder['folder_key'] as String;
+    
+    // Hassas klasör mü?
+    final isSensitive = folderKey == 'arbeitsvertrag' || folderKey == 'gehaltsabrechnung';
+    
+    // Yükleme yetkisi: (Admin ise her yere) VEYA (Kendi profilindeyse ve hassas klasör değilse)
+    final canUploadDocs = isAdmin || (isSelf && !isSensitive);
+
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -248,7 +259,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
           ],
         ),
         actions: [
-          if (appState.canManageEmployeeDocuments)
+          if (canUploadDocs)
             IconButton(
               icon: const Icon(Icons.upload_file),
               tooltip: tr('Dokument hochladen'),
@@ -261,7 +272,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _docs.isEmpty
-                ? _buildEmptyState(appState)
+                ? _buildEmptyState(canUploadDocs, appState)
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView.separated(
@@ -270,7 +281,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _DocumentItem(
                         doc: _docs[i],
-                        canDelete: appState.canManageEmployeeDocuments,
+                        canDelete: isAdmin || (isSelf && !isSensitive),
                         onDeleted: _load,
                       ),
                     ),
@@ -278,7 +289,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
       ),
 
       // Yönetici ise FAB de göster
-      floatingActionButton: appState.canManageEmployeeDocuments
+      floatingActionButton: canUploadDocs
           ? FloatingActionButton.extended(
               onPressed: () => _showUploadDialog(context, appState),
               icon: const Icon(Icons.upload_file),
@@ -288,7 +299,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
     );
   }
 
-  Widget _buildEmptyState(AppState appState) {
+  Widget _buildEmptyState(bool canUploadDocs, AppState appState) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -300,7 +311,7 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
           const SizedBox(height: 8),
           Text(tr('Noch keine Dokumente in diesem Ordner.'),
               style: const TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter')),
-          if (appState.canManageEmployeeDocuments) ...[
+          if (canUploadDocs) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => _showUploadDialog(context, appState),

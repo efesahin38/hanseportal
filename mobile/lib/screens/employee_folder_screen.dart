@@ -287,40 +287,56 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
         Expanded(
           child: _loadingFolders
               ? const Center(child: CircularProgressIndicator())
-              : _folders.isEmpty
-                  ? Center(
+              : () {
+                  final appState = context.read<AppState>();
+                  final isAdmin = appState.canManageEmployeeDocuments;
+                  
+                  // Eğer kullanıcı admin değilse ve kendi dosyalarına bakıyorsa 
+                  // veya başkasının dosyalarına bakıyorsa (zaten başkasını seçemez ama güvenlik için)
+                  // Hassas klasörleri filtrele.
+                  final filteredFolders = _folders.where((f) {
+                    if (isAdmin) return true;
+                    final key = f['folder_key'] as String;
+                    return key != 'arbeitsvertrag' && key != 'gehaltsabrechnung';
+                  }).toList();
+
+                  if (filteredFolders.isEmpty) {
+                    return Center(
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         const Icon(Icons.folder_off_outlined, size: 56, color: AppTheme.textSub),
                         const SizedBox(height: 12),
                         Text(tr('Keine Ordner gefunden'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                       ]),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: WebUtils.gridColumns(context, mobile: 2, tablet: 3, desktop: 4),
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                         childAspectRatio: 1.8,
                       ),
-                      itemCount: _folders.length,
-                      itemBuilder: (_, i) {
-                        final folder = _folders[i];
-                        final key = folder['folder_key'] as String;
-                        final color = _folderColors[key] ?? AppTheme.primary;
-                        final icon = _folderIcons[key] ?? Icons.folder_outlined;
-                        final count = _docCounts[folder['id'].toString()] ?? 0;
+                    itemCount: filteredFolders.length,
+                    itemBuilder: (_, i) {
+                      final folder = filteredFolders[i];
+                      final key = folder['folder_key'] as String;
+                      final color = _folderColors[key] ?? AppTheme.primary;
+                      final icon = _folderIcons[key] ?? Icons.folder_outlined;
+                      final count = _docCounts[folder['id'].toString()] ?? 0;
 
-                        return _FolderCard(
-                          folder: folder,
-                          color: color,
-                          icon: icon,
-                          docCount: count,
-                          employee: emp,
-                          onRefresh: () => _selectEmployee(emp),
-                        );
-                      },
-                    ),
+                      return _FolderCard(
+                        folder: folder,
+                        color: color,
+                        icon: icon,
+                        docCount: count,
+                        employee: emp,
+                        onRefresh: () => _selectEmployee(emp),
+                      );
+                    },
+                  );
+                }(),
         ),
       ],
     );
