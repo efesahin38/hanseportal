@@ -144,6 +144,28 @@ class SupabaseService {
     return list;
   }
 
+  static Future<List<Map<String, dynamic>>> getManagementUsers() async {
+    const managementRoles = [
+      'geschaeftsfuehrer',
+      'betriebsleiter',
+      'backoffice',
+      'buchhaltung',
+      'bereichsleiter'
+    ];
+    
+    final data = await _client
+        .from('users')
+        .select('''
+          id, first_name, last_name, role, department_id,
+          department:departments(name)
+        ''')
+        .inFilter('role', managementRoles)
+        .order('last_name');
+        
+    final list = List<Map<String, dynamic>>.from(data);
+    return list.where((u) => u['status'] != 'passive' && u['status'] != 'archived').toList();
+  }
+
   static Future<Map<String, dynamic>?> getUserById(String id) async {
     return await _client.from('users').select('''
       *,

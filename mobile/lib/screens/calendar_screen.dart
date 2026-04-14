@@ -89,6 +89,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _selectedDay = DateTime.now();
   bool _loading = true;
 
+  // Management Collaboration
+  List<Map<String, dynamic>> _managementUsers = [];
+  Map<String, dynamic>? _selectedUser;
+
   // Tüm veri listeleri
   List<Map<String, dynamic>> _events   = [];  // Manuel etkinlikler
   List<Map<String, dynamic>> _plans    = [];  // Operasyon planları
@@ -137,8 +141,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final appState = context.read<AppState>();
     setState(() => _loading = true);
 
+    // Initial load: Fetch management users if authorized
+    if (_managementUsers.isEmpty && (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung)) {
+      try {
+        final users = await SupabaseService.getManagementUsers();
+        _managementUsers = users;
+        // Default to current user
+        _selectedUser = _managementUsers.firstWhere((u) => u['id'] == appState.userId, orElse: () => _managementUsers.first);
+      } catch (e) {
+        debugPrint('[Calendar] Error fetching management users: $e');
+      }
+    }
+
     final from = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final to   = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+
+    final targetUserId = _selectedUser?['id'] ?? appState.userId;
+    final targetDeptId = _selectedUser?['department_id'] ?? appState.departmentId;
+    final isTargetMitarbeiter = _selectedUser == null ? _isMitarbeiter : (_selectedUser?['role'] == 'mitarbeiter' || _selectedUser?['role'] == 'vorarbeiter');
+    final isTargetAdmin = _selectedUser == null ? _isAdmin : (_selectedUser?['role'] == 'geschaeftsfuehrer' || _selectedUser?['role'] == 'betriebsleiter' || _selectedUser?['role'] == 'system_admin' || _selectedUser?['role'] == 'backoffice' || _selectedUser?['role'] == 'buchhaltung');
+    final isTargetBL = _selectedUser == null ? _isBereichsleiter : (_selectedUser?['role'] == 'bereichsleiter');
 
     try {
       // 1. Manuel etkinlikler
@@ -150,16 +172,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       // 2. Operasyon planları
       List<Map<String, dynamic>> plans = [];
-      if (!_isMitarbeiter || _isBereichsleiter || _isAdmin) {
+      if (!isTargetMitarbeiter || isTargetBL || isTargetAdmin) {
         plans = await SupabaseService.getOperationPlans(
           dateFrom: from, dateTo: to,
-          departmentId: _isBereichsleiter ? appState.departmentId : null,
+          departmentId: isTargetBL ? targetDeptId : null,
+          userId: isTargetMitarbeiter ? targetUserId : null,
         );
       } else {
         // Mitarbeiter sadece kendi planlarını görür
         plans = await SupabaseService.getOperationPlans(
           dateFrom: from, dateTo: to,
-          userId: appState.userId,
+          userId: targetUserId,
         );
       }
 
@@ -168,17 +191,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
       try {
         leaves = await SupabaseService.getLeaveRequests(
           from: from, to: to,
-          userId: _isMitarbeiter ? appState.userId : null,
-          departmentId: _isBereichsleiter ? appState.departmentId : null,
+          userId: isTargetMitarbeiter ? targetUserId : null,
+          departmentId: isTargetBL ? targetDeptId : null,
         );
       } catch (_) {} // Tablo henüz yoksa sessizce geç
 
       // 4. Araç tarihleri (GF/BL/Bereichsleiter)
       List<Map<String, dynamic>> vehicle = [];
-      if (_isAdmin || _isBereichsleiter) {
+      if (isTargetAdmin || isTargetBL) {
         try {
-          final deptName = _isBereichsleiter
-              ? (appState.currentUser?['department']?['name'] as String?)
+          final deptName = isTargetBL
+              ? (_selectedUser?['department']?['name'] as String?)
               : null;
           vehicle = await SupabaseService.getVehicleCalendarDates(
             from: from, to: to,
@@ -189,7 +212,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       // 5. Personel kritik tarihleri (sadece GF/BL)
       List<Map<String, dynamic>> expiry = [];
-      if (_isAdmin) {
+      if (isTargetAdmin) {
         try {
           expiry = await SupabaseService.getPersonnelExpiryDates(
             from: from, to: to,
@@ -375,9 +398,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       _load();
                     },
                   ),
-                  Text(
-                    _monthLabel(_focusedDay),
-                    style: TextStyle(color: Colors.white, fontSize: kIsWeb ? 20 : 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                  Expanded(
+                    child: _managementUsers.isEmpty 
+                      ? Text(
+                          _monthLabel(_focusedDay),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white, fontSize: kIsWeb ? 20 : 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                        )
+                      : Container(
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<Map<String, dynamic>>(
+                              value: _selectedUser,
+                              isExpanded: true,
+                              dropdownColor: AppTheme.primary,
+                              icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                              onChanged: (Map<String, dynamic>? newValue) {
+                                if (newValue != null) {
+                                  setState(() => _selectedUser = newValue);
+                                  _load();
+                                }
+                              },
+                              items: _managementUsers.map<DropdownMenuItem<Map<String, dynamic>>>((u) {
+                                return DropdownMenuItem<Map<String, dynamic>>(
+                                  value: u,
+                                  child: Text(
+                                    '${u['first_name']} ${u['last_name']} (${_monthLabel(_focusedDay)})',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right, color: Colors.white),

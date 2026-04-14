@@ -11,6 +11,7 @@ import 'calendar_screen.dart';
 import 'personnel_detail_dashboard.dart';
 import 'field_dashboard_screen.dart';
 import 'work_session_approval_screen.dart';
+import 'order_calendar_screen.dart';
 
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
@@ -42,6 +43,13 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
           'icon': Icons.fact_check,
           'iconOut': Icons.fact_check_outlined,
           'screen': const WorkSessionApprovalScreen(),
+        },
+      if (appState.isBereichsleiter)
+        {
+          'title': tr('İş Takvimi'),
+          'icon': Icons.event_note,
+          'iconOut': Icons.event_note_outlined,
+          'screen': const OrderCalendarScreen(),
         },
       {
         'title': tr('Meine Aufgaben'),
