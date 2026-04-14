@@ -150,7 +150,8 @@ class SupabaseService {
       'betriebsleiter',
       'backoffice',
       'buchhaltung',
-      'bereichsleiter'
+      'bereichsleiter',
+      'system_admin'
     ];
     
     final data = await _client

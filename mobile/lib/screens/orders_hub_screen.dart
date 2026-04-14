@@ -9,8 +9,6 @@ import 'orders_screen.dart';
 import 'gebaude_hub_screen.dart';
 import 'order_calendar_screen.dart';
 
-// v19.2.3: Gastwirtschaftsservice kaldırıldı. 3 ana bölüm kaldı.
-// Gebäudedienstleistungen tıklanınca 4 alt klasöre yönlendiriyor.
 class _GmbhDef {
   final String departmentKey;
   final String gmbhName;
@@ -18,7 +16,7 @@ class _GmbhDef {
   final String responsible;
   final IconData icon;
   final Color color;
-  final bool hasSubSections; // Gebäude için true → GebaudeHubScreen açılır
+  final bool hasSubSections;
   const _GmbhDef({
     required this.departmentKey,
     required this.gmbhName,
@@ -38,7 +36,7 @@ const List<_GmbhDef> kGmbhDefs = [
     responsible: 'Sandra',
     icon: Icons.apartment,
     color: Color(0xFF3B82F6),
-    hasSubSections: true, // → GebaudeHubScreen'e yönlendiriyor
+    hasSubSections: true,
   ),
   _GmbhDef(
     departmentKey: 'Rail',
@@ -117,7 +115,6 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
 
     if (appState.isBereichsleiter) {
       final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
-
       if (firstName == 'sandra') {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Sandra').toList();
       } else if (firstName == 'peter') {
@@ -141,126 +138,121 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.work, color: Colors.white, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tr('Aufträge'),
-                            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
-                          ),
-                          Text(
-                            'HansePortal v19.2.3',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
-                          ),
-                          Text(
-                            appState.isBereichsleiter
-                                ? tr('Ihre Bereichsaufträge')
-                                : tr('Bitte Bereich wählen'),
-                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildHeader(appState),
               const SizedBox(height: 16),
-
-              // İş Takvimi Butonu
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrderCalendarScreen()),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool isWide = constraints.maxWidth > 800;
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 450,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (visibleDefs.isEmpty)
+                                _buildEmptyState()
+                              else
+                                ...visibleDefs.map((def) => _GmbhCard(
+                                  def: def,
+                                  departmentId: _departmentIds[def.departmentKey],
+                                  compact: true,
+                                )),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        const Expanded(
+                          child: OrderCalendarWidget(showHeader: false),
+                        ),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      if (visibleDefs.isEmpty)
+                        _buildEmptyState()
+                      else
+                        ...visibleDefs.map((def) => _GmbhCard(
+                          def: def,
+                          departmentId: _departmentIds[def.departmentKey],
+                        )),
+                      const SizedBox(height: 16),
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            height: 600,
+                            child: OrderCalendarWidget(showHeader: true),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.calendar_month, color: AppTheme.primary, size: 24),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tr('İş Planı Takvimi'),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter', color: AppTheme.textMain),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              tr('Tüm siparişleri ve atamaları takvimde görün'),
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: AppTheme.primary, size: 24),
-                    ],
-                  ),
-                ),
               ),
-              const SizedBox(height: 20),
-
-              if (visibleDefs.isEmpty)
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
-                      const SizedBox(height: 12),
-                      Text(
-                        tr('Kein Bereich zugewiesen'),
-                        style: const TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter'),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                ...visibleDefs.map((def) => _GmbhCard(
-                  def: def,
-                  departmentId: _departmentIds[def.departmentKey],
-                )),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(AppState appState) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.gradientBox().copyWith(borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.work, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tr('Aufträge'),
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+                ),
+                const Text(
+                  'HansePortal v19.2.4',
+                  style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
+                ),
+                Text(
+                  appState.isBereichsleiter
+                      ? tr('Ihre Bereichsaufträge')
+                      : tr('Hizmetler ve İş Planı'),
+                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
+          const SizedBox(height: 12),
+          Text(
+            tr('Kein Bereich zugewiesen'),
+            style: const TextStyle(color: AppTheme.textSub, fontSize: 15, fontFamily: 'Inter'),
+          ),
+        ],
       ),
     );
   }
@@ -269,7 +261,8 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
 class _GmbhCard extends StatelessWidget {
   final _GmbhDef def;
   final String? departmentId;
-  const _GmbhCard({required this.def, this.departmentId});
+  final bool compact;
+  const _GmbhCard({required this.def, this.departmentId, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +271,6 @@ class _GmbhCard extends StatelessWidget {
       child: InkWell(
         onTap: () {
           if (def.hasSubSections) {
-            // Gebäudedienstleistungen → 4 alt klasör hub'ına git
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -294,36 +286,35 @@ class _GmbhCard extends StatelessWidget {
             );
           }
         },
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(compact ? 12 : 20),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(compact ? 12 : 20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(compact ? 12 : 20),
             border: Border.all(color: AppTheme.divider),
             boxShadow: [
               BoxShadow(
                 color: def.color.withOpacity(0.10),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+                blurRadius: compact ? 8 : 16,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Row(
             children: [
-              // Emoji gösterimi
               Container(
-                width: 60,
-                height: 60,
+                width: compact ? 44 : 60,
+                height: compact ? 44 : 60,
                 decoration: BoxDecoration(
                   color: def.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(compact ? 10 : 16),
                 ),
                 child: Center(
-                  child: Text(def.emoji, style: const TextStyle(fontSize: 24)),
+                  child: Text(def.emoji, style: TextStyle(fontSize: compact ? 18 : 24)),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,37 +323,41 @@ class _GmbhCard extends StatelessWidget {
                       def.gmbhName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: compact ? 14 : 16,
                         fontFamily: 'Inter',
                         color: def.color,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.person_outline, size: 14, color: def.color.withOpacity(0.7)),
-                        const SizedBox(width: 4),
+                    if (!compact) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: def.color.withOpacity(0.7)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Bereichsleiter: ${def.responsible}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: def.color.withOpacity(0.8),
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (def.hasSubSections) ...[
+                        const SizedBox(height: 4),
                         Text(
-                          'Bereichsleiter: ${def.responsible}',
+                          '4 Unterbereiche',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: def.color.withOpacity(0.8),
+                            fontSize: 11,
+                            color: def.color.withOpacity(0.6),
                             fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
-                    ),
-                    if (def.hasSubSections) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '4 Unterbereiche',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: def.color.withOpacity(0.6),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
                     ],
                   ],
                 ),
@@ -370,7 +365,7 @@ class _GmbhCard extends StatelessWidget {
               Icon(
                 def.hasSubSections ? Icons.folder_open_outlined : Icons.chevron_right,
                 color: def.color.withOpacity(0.7),
-                size: 24,
+                size: compact ? 18 : 24,
               ),
             ],
           ),

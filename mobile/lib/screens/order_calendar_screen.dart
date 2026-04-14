@@ -6,14 +6,29 @@ import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
 import '../services/localization_service.dart';
 
-class OrderCalendarScreen extends StatefulWidget {
+class OrderCalendarScreen extends StatelessWidget {
   const OrderCalendarScreen({super.key});
 
   @override
-  State<OrderCalendarScreen> createState() => _OrderCalendarScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(tr('İş Takvimi')),
+      ),
+      body: const OrderCalendarWidget(showHeader: true),
+    );
+  }
 }
 
-class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
+class OrderCalendarWidget extends StatefulWidget {
+  final bool showHeader;
+  const OrderCalendarWidget({super.key, this.showHeader = true});
+
+  @override
+  State<OrderCalendarWidget> createState() => _OrderCalendarWidgetState();
+}
+
+class _OrderCalendarWidgetState extends State<OrderCalendarWidget> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   bool _isLoading = true;
@@ -26,14 +41,13 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final appState = Provider.of<AppState>(context, listen: false);
       final startOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
       final endOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
 
-      // Fetch plans for the month
-      // Admin roles see all, Bereichsleiter see only their department
       final departmentId = appState.isBereichsleiter ? appState.departmentId : null;
       
       final plans = await SupabaseService.getOperationPlans(
@@ -42,17 +56,17 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
         departmentId: departmentId,
       );
 
-      setState(() {
-        _plans = plans;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _plans = plans;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('[OrderCalendar] Error: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // --- Helper Methods ---
 
   Color _getServiceColor(String departmentName) {
     final name = departmentName.toLowerCase();
@@ -79,45 +93,39 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
     }).toSet();
   }
 
-  // --- UI Builders ---
-
   @override
   Widget build(BuildContext context) {
     final monthStr = DateFormat('MMMM yyyy', Localizations.localeOf(context).toString()).format(_focusedDay);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('İş Takvimi')),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+    return Column(
+      children: [
+        if (widget.showHeader) _buildMonthHeader(monthStr),
+        
+        if (_isLoading)
+          const Expanded(child: Center(child: CircularProgressIndicator()))
+        else ...[
+          _buildDayHeaders(),
+          _buildCalendarGrid(),
+          const Divider(height: 1),
+          // Seçili Gün Başlığı
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: AppTheme.primary.withOpacity(0.05),
+            child: Text(
+              '${_selectedDay.day}.${_selectedDay.month}.${_selectedDay.year} - ${tr('Tagesplan')}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
+            ),
           ),
+          Expanded(child: _buildDayDetails()),
         ],
-      ),
-      body: Column(
-        children: [
-          // Month Selector
-          _buildMonthHeader(monthStr),
-          
-          if (_isLoading)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else ...[
-            // Weekday Headers
-            _buildDayHeaders(),
-            // Calendar Grid
-            _buildCalendarGrid(),
-            // Daily Detail List
-            Expanded(child: _buildDayDetails()),
-          ],
-        ],
-      ),
+      ],
     );
   }
 
   Widget _buildMonthHeader(String monthStr) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         color: AppTheme.primary,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
@@ -126,7 +134,7 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.white),
+            icon: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
             onPressed: () {
               setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1));
               _loadData();
@@ -134,10 +142,10 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
           ),
           Text(
             monthStr.toUpperCase(),
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.white),
+            icon: const Icon(Icons.chevron_right, color: Colors.white, size: 20),
             onPressed: () {
               setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1));
               _loadData();
@@ -152,10 +160,10 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
     final labels = [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')];
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: labels.map((d) => Expanded(
-          child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontWeight: FontWeight.bold))
+          child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSub, fontSize: 11, fontWeight: FontWeight.bold))
         )).toList(),
       ),
     );
@@ -175,7 +183,7 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 7,
-          childAspectRatio: 1,
+          childAspectRatio: 1.1,
         ),
         itemCount: rows * 7,
         itemBuilder: (_, index) {
@@ -190,11 +198,11 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
           return InkWell(
             onTap: () => setState(() => _selectedDay = day),
             child: Container(
-              margin: const EdgeInsets.all(2),
+              margin: const EdgeInsets.all(1),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primary.withOpacity(0.1) : null,
-                borderRadius: BorderRadius.circular(8),
-                border: isSelected ? Border.all(color: AppTheme.primary, width: 1.5) : (isToday ? Border.all(color: AppTheme.primary.withOpacity(0.3)) : null),
+                color: isSelected ? AppTheme.primary.withOpacity(0.05) : null,
+                borderRadius: BorderRadius.circular(6),
+                border: isSelected ? Border.all(color: AppTheme.primary, width: 1.2) : (isToday ? Border.all(color: AppTheme.primary.withOpacity(0.2)) : null),
               ),
               child: Stack(
                 children: [
@@ -204,21 +212,21 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
                       style: TextStyle(
                         fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
                         color: isSelected ? AppTheme.primary : AppTheme.textMain,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                   if (colors.isNotEmpty)
                     Positioned(
-                      bottom: 4,
+                      bottom: 2,
                       left: 0,
                       right: 0,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: colors.map((c) => Container(
-                          width: 6,
-                          height: 6,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                        children: colors.take(3).map((c) => Container(
+                          width: 4,
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
                           decoration: BoxDecoration(color: c, shape: BoxShape.circle),
                         )).toList(),
                       ),
@@ -239,16 +247,16 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 48, color: AppTheme.textSub.withOpacity(0.3)),
-            const SizedBox(height: 12),
-            Text(tr('Bu gün için planlanmış iş bulunmuyor.'), style: const TextStyle(color: AppTheme.textSub)),
+            Icon(Icons.event_busy, size: 32, color: AppTheme.textSub.withOpacity(0.2)),
+            const SizedBox(height: 8),
+            Text(tr('Plan yok'), style: const TextStyle(color: AppTheme.textSub, fontSize: 12)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       itemCount: dayPlans.length,
       itemBuilder: (context, index) {
         final plan = dayPlans[index];
@@ -258,15 +266,29 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
         final personnel = plan['operation_plan_personnel'] as List? ?? [];
         
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppTheme.divider.withOpacity(0.5)),
+          ),
           child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
             leading: Container(
-              width: 12,
-              height: 40,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+              width: 4,
+              height: 24,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
             ),
-            title: Text(order['title'] ?? tr('İsimsiz Sipariş'), style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${plan['start_time']} - ${plan['end_time']} | $deptName'),
+            title: Text(
+              order['title'] ?? tr('İsimsiz Sipariş'), 
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '${plan['start_time']} - ${plan['end_time']} | $deptName',
+              style: const TextStyle(fontSize: 11),
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -277,32 +299,23 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 16, color: AppTheme.textSub),
+                        const Icon(Icons.location_on, size: 14, color: AppTheme.textSub),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(order['site_address'] ?? tr('Konum belirsiz'), style: const TextStyle(fontSize: 13))),
+                        Expanded(child: Text(order['site_address'] ?? tr('Konum belirsiz'), style: const TextStyle(fontSize: 12))),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text('${tr('Çalışan Personeller')} (${personnel.length}):', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    Text('${tr('Personeller')} (${personnel.length}):', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    const SizedBox(height: 4),
                     ...personnel.map((p) {
                       final u = p['users'] ?? {};
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.only(bottom: 2),
                         child: Row(
                           children: [
-                            const Icon(Icons.person, size: 14, color: AppTheme.primary),
+                            const Icon(Icons.person, size: 12, color: AppTheme.primary),
                             const SizedBox(width: 8),
-                            Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 13)),
-                            if (p['is_supervisor'] == true)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                  child: const Text('Supervisor', style: TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
+                            Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                       );

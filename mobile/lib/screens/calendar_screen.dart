@@ -142,7 +142,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => _loading = true);
 
     // Initial load: Fetch management users if authorized
-    if (_managementUsers.isEmpty && (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung)) {
+    if (_managementUsers.isEmpty && (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung || appState.isSystemAdmin || appState.isBereichsleiter)) {
       try {
         final users = await SupabaseService.getManagementUsers();
         _managementUsers = users;
@@ -166,8 +166,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // 1. Manuel etkinlikler
       final events = await SupabaseService.getCalendarEventsEnhanced(
         from: from, to: to,
-        targetUserId: _isMitarbeiter ? appState.userId : null,
-        targetDepartmentId: _isBereichsleiter ? appState.departmentId : null,
+        targetUserId: targetUserId,
+        targetDepartmentId: isTargetBL ? targetDeptId : null,
       );
 
       // 2. Operasyon planları
@@ -251,9 +251,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final e in _events) {
         if ((e['event_date'] ?? '').toString().startsWith(dateStr)) {
           final type = e['event_type'];
-          // Hatırlatıcı sadece kendi oluşturanına görünür
+          final isPrivate = e['is_private'] == true;
+          final createdBy = e['created_by'];
+          
+          // Gizli etkinlik sadece yaratıcısına görünür
+          if (isPrivate && createdBy != myId) continue;
+
           if (type == 'reminder') {
-            if (_filterActive('reminder') && e['created_by'] == myId) {
+            if (_filterActive('reminder') && createdBy == myId) {
               items.add({...e, '_type': 'reminder', '_color': _kColorReminder});
             }
           } else if (_filterActive('event')) {
@@ -738,6 +743,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     DateTime selectedDate = _selectedDay;
     String eventType = defaultType;
     String targetMode = eventType == 'reminder' ? 'person' : 'all'; // 'all' | 'dept' | 'person'
+    bool isPrivate = (eventType == 'reminder');
     String? selectedDeptId;
     String? selectedUserId = eventType == 'reminder' ? appState.userId : null;
     String? selectedUserName;
@@ -817,7 +823,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ]),
                   ),
                 ),
-                const SizedBox(height: 12),
                 // Hedef seçimi (Hatırlatıcı ise gizle)
                 if (eventType != 'reminder') ...[
                   Text(tr('Empfänger'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
@@ -855,6 +860,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ],
                 ],
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: Text(tr('Privater Termin')),
+                  subtitle: Text(tr('Nur Sie können diesen Termin sehen')),
+                  value: isPrivate,
+                  activeColor: AppTheme.primary,
+                  onChanged: (v) => ss(() => isPrivate = v ?? false),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ]),
             ),
           ),
@@ -876,6 +890,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   'target_user_id': targetMode == 'person' ? selectedUserId : null,
                   'target_department_id': targetMode == 'dept' ? selectedDeptId : null,
                   'is_system_generated': false,
+                  'is_private': isPrivate,
                 });
 
                 // Bildirimler
