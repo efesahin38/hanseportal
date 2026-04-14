@@ -27,6 +27,8 @@ class PdfService {
 
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final customer = order['customer'] as Map<String, dynamic>? ?? {};
     final serviceArea = order['service_area'] as Map<String, dynamic>? ?? {};
@@ -47,9 +49,11 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName(order['company']?['name'] ?? 'Hanse Kollektiv GmbH')),
-        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName(order['company']?['name'] ?? 'Hanse Kollektiv GmbH')),
+        header: (context) => _buildHeader(fontBold, logo: logo),
+        footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
+          _buildMetaInfo(font, fontBold),
+          pw.SizedBox(height: 10),
           // ── Başlık ──
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
@@ -251,6 +255,8 @@ class PdfService {
 
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final customer = draft['customer'] as Map<String, dynamic>? ?? {};
     final company = draft['issuing_company'] as Map<String, dynamic>? ?? {};
@@ -267,9 +273,11 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName(company['name'] ?? 'Hanse Kollektiv GmbH')),
-        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName(company['name'] ?? 'Hanse Kollektiv GmbH')),
+        header: (context) => _buildHeader(fontBold, logo: logo),
+        footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
+          _buildMetaInfo(font, fontBold),
+          pw.SizedBox(height: 10),
           // ── Başlık ──
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
@@ -467,48 +475,93 @@ class PdfService {
   // YARDIMCI WIDGET'LAR
   // ─────────────────────────────────────────────────────────
 
-  static pw.Widget _buildHeader(pw.Font fontBold, {String? companyName}) {
+  static pw.Widget _buildHeader(pw.Font fontBold, {pw.MemoryImage? logo}) {
     return pw.Container(
+      padding: const pw.EdgeInsets.only(bottom: 10),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey200, width: 0.5)),
+        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.5)),
       ),
-      padding: const pw.EdgeInsets.only(bottom: 8),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(formatCompanyName(companyName ?? 'Hanse Kollektiv GmbH'),
-              style: pw.TextStyle(font: fontBold, fontSize: 14, color: PdfColors.blueGrey700)),
-          pw.Text(tr('Dijital Yönetim Sistemi'),
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Hanse Kollektiv GmbH', style: pw.TextStyle(font: fontBold, fontSize: 13)),
+              pw.Text('Bau- und Gebäudeservice', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+              pw.SizedBox(height: 4),
+              pw.Text('Eiffestr. 598, 20537 Hamburg', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+              pw.Text('Tel: 040 303 978 87 / Fax: 040 303 978 88', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+              pw.Text('E-Mail: info@hansekollektiv.de, www.hansekollektiv.de', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+            ],
+          ),
+          if (logo != null)
+            pw.Container(
+              height: 45,
+              child: pw.Image(logo, fit: pw.BoxFit.contain),
+            ),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildFooter(pw.Context context, pw.Font font, {String? companyName}) {
+  static pw.Widget _buildMetaInfo(pw.Font font, pw.Font fontBold) {
+    return pw.Container(
+      alignment: pw.Alignment.centerRight,
+      padding: const pw.EdgeInsets.only(top: 20),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          _metaLine('Steuer-Nr.:', '46/728/03670', font, fontBold),
+          _metaLine('UST-ID:', 'DE293806070', font, fontBold),
+          _metaLine('Tel:', '040 303 978 87', font, fontBold),
+          _metaLine('Datum:', _date.format(DateTime.now()), font, fontBold),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _metaLine(String label, String value, pw.Font font, pw.Font fontBold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.SizedBox(width: 80, child: pw.Text(label, style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey700))),
+          pw.Text(value, style: pw.TextStyle(font: font, fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildFooter(pw.Context context, pw.Font font, pw.Font fontBold) {
     return pw.Container(
       decoration: const pw.BoxDecoration(
-        border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+        border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 0.5)),
       ),
-      padding: const pw.EdgeInsets.only(top: 8),
-      child: pw.Column(
+      padding: const pw.EdgeInsets.only(top: 10),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text(
-                '${formatCompanyName(companyName ?? 'Hanse Kollektiv GmbH')} • Hamburg',
-                style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600),
-              ),
-              pw.Text(
-                'Sayfa ${context.pageNumber} / ${context.pagesCount}',
-                style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey500),
-              ),
+              pw.Text('Bankverbindung: Hamburger Sparkasse', style: pw.TextStyle(font: font, fontSize: 9)),
+              pw.Text('IBAN: DE44 2005 0550 1015 2289 82', style: pw.TextStyle(font: font, fontSize: 9)),
+              pw.Text('BIC: HASPDEHHXXX', style: pw.TextStyle(font: font, fontSize: 9)),
             ],
           ),
-          pw.SizedBox(height: 4),
-          pw.Text(tr('Bu belge dijital olarak oluşturulmuştur ve imza gerektirmez.'), 
-              style: pw.TextStyle(font: font, fontSize: 6, color: PdfColors.grey400)),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('Geschäftsführer: Ekrem Demir', style: pw.TextStyle(font: font, fontSize: 9)),
+              pw.Text('HRB: 130529', style: pw.TextStyle(font: font, fontSize: 9)),
+              pw.SizedBox(height: 4),
+              pw.Text('Sayfa ${context.pageNumber} / ${context.pagesCount}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey500)),
+            ],
+          ),
         ],
       ),
     );
@@ -790,6 +843,8 @@ class PdfService {
     final pdf = pw.Document();
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final monthNames = ['', tr('Ocak'), tr('Şubat'), tr('Mart'), tr('Nisan'), tr('Mayıs'), tr('Haziran'), tr('Temmuz'), tr('Ağustos'), tr('Eylül'), tr('Ekim'), tr('Kasım'), tr('Aralık')];
     final monthName = monthNames[month];
@@ -799,9 +854,11 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, companyName: formatCompanyName('Hanse Kollektiv GmbH')), // Toplam rapor genellikle genel holding/merkez adına olabilir
-        footer: (context) => _buildFooter(context, font, companyName: formatCompanyName('Hanse Kollektiv GmbH')),
+        header: (context) => _buildHeader(fontBold, logo: logo),
+        footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
+          _buildMetaInfo(font, fontBold),
+          pw.SizedBox(height: 10),
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
             decoration: const pw.BoxDecoration(
