@@ -19,6 +19,16 @@ class AppTheme {
   static const Color border    = Color(0xFFD1D1D6);
   static const Color divider   = Color(0xFFE5E5EA);
 
+  // ── Hizmet Alanı Renkleri (Müşteriler/Personel) ──────────
+  static const Map<String, Color> serviceAreaColors = {
+    'gebaeudereinigung':    Color(0xFF1976D2),
+    'gleisbausicherung':    Color(0xFF2E7D32),
+    'hotelservice':         Color(0xFF7B1FA2),
+    'personalueberlassung': Color(0xFF388E3C),
+    'verwaltung':           Color(0xFF455A64),
+    'other':                Color(0xFF757575),
+  };
+
   // ── Hizmet Alanı Renkleri (Sipariş Takvimi) ───────────────
   static const Map<String, Color> orderServiceColors = {
     'ray-servis':           Color(0xFF2E7D32), // Yeşil (DB-Gleisbausicherung)

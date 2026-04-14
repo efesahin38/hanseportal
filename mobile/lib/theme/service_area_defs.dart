@@ -47,6 +47,13 @@ class ServiceAreaDefs {
       'color': Color(0xFF22C55E), // Açık yeşil
       'kw': ['garten', 'grün', 'grünanlagen'],
     },
+    {
+      'key': 'Gastwirtschaft',
+      'label': 'Gastwirtschaftsservice',
+      'emoji': '🍴',
+      'color': Color(0xFFD946EF), // Pembe/Mor
+      'kw': ['gast', 'gastro', 'hospitality', 'restaurant'],
+    },
   ];
 
   /// Bir müşteri'nin hizmet alanı adına göre kategori rengi döner

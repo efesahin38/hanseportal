@@ -165,7 +165,7 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
-                        'HansePortal v16.5',
+                        'HansePortal v19.2.1',
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                       ),
                     ),
