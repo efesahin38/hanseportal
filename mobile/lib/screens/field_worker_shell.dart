@@ -9,6 +9,7 @@ import 'my_documents_screen.dart';
 import 'chat_screen.dart';
 import 'calendar_screen.dart';
 import 'personnel_detail_dashboard.dart';
+import 'field_dashboard_screen.dart';
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
 class FieldWorkerShell extends StatefulWidget {
@@ -22,18 +23,20 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
   int _selectedIndex = 0;
 
   final _screens = const [
+    FieldDashboardScreen(),
     FieldMyTasksScreen(),
     CalendarScreen(),
     MyDocumentsScreen(),
     NotificationsScreen(),
     ChatScreen(),
-    PersonnelDetailDashboard(user: {}), // Placeholder, will be injected
   ];
+
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final titles = [
+      tr('Statistik'),
       tr('Meine Aufgaben'),
       tr('Kalender'),
       tr('Meine Dokumente'),
@@ -41,6 +44,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
       tr('Chatten'),
       tr('Mein Profil'),
     ];
+
 
     return Scaffold(
       appBar: AppBar(
@@ -114,8 +118,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               ),
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 0 ? Icons.task : Icons.task_outlined, color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Meine Aufgaben'), style: TextStyle(color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 0 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 0 ? Icons.dashboard : Icons.dashboard_outlined, color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Statistik'), style: TextStyle(color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 0 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 0,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -124,8 +128,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 1 ? Icons.calendar_month : Icons.calendar_month_outlined, color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Kalender'), style: TextStyle(color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 1 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 1 ? Icons.task : Icons.task_outlined, color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Meine Aufgaben'), style: TextStyle(color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 1 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 1,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -134,8 +138,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 2 ? Icons.folder_shared : Icons.folder_shared_outlined, color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Meine Dokumente'), style: TextStyle(color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 2 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 2 ? Icons.calendar_month : Icons.calendar_month_outlined, color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Kalender'), style: TextStyle(color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 2 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 2,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -144,8 +148,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 3 ? Icons.notifications : Icons.notifications_outlined, color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Benachrichtigungen'), style: TextStyle(color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 3 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 3 ? Icons.folder_shared : Icons.folder_shared_outlined, color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Meine Dokumente'), style: TextStyle(color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 3 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 3,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -154,8 +158,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 4 ? Icons.chat : Icons.chat_outlined, color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Chatten'), style: TextStyle(color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 4 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 4 ? Icons.notifications : Icons.notifications_outlined, color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Benachrichtigungen'), style: TextStyle(color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 4 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 4,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -164,8 +168,8 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
               },
             ),
             ListTile(
-              leading: Icon(_selectedIndex == 5 ? Icons.account_circle : Icons.account_circle_outlined, color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Mein Profil'), style: TextStyle(color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 5 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              leading: Icon(_selectedIndex == 5 ? Icons.chat : Icons.chat_outlined, color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Chatten'), style: TextStyle(color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 5 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
               selected: _selectedIndex == 5,
               selectedTileColor: AppTheme.primary.withOpacity(0.1),
               onTap: () {
@@ -173,6 +177,17 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: Icon(_selectedIndex == 6 ? Icons.account_circle : Icons.account_circle_outlined, color: _selectedIndex == 6 ? AppTheme.primary : AppTheme.textSub),
+              title: Text(tr('Mein Profil'), style: TextStyle(color: _selectedIndex == 6 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 6 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
+              selected: _selectedIndex == 6,
+              selectedTileColor: AppTheme.primary.withOpacity(0.1),
+              onTap: () {
+                setState(() => _selectedIndex = 6);
+                Navigator.pop(context);
+              },
+            ),
+
             const Spacer(),
             const Divider(height: 1),
             ListTile(
@@ -187,9 +202,10 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
           ],
         ),
       ),
-      body: _selectedIndex == 5 
+      body: _selectedIndex == 6
           ? PersonnelDetailDashboard(user: appState.currentUser!)
           : _screens[_selectedIndex],
+
     );
   }
 }

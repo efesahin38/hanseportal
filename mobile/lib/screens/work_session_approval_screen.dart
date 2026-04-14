@@ -173,11 +173,13 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
   bool _isApproved = false;
   bool _isLoading = false;
   final Set<String> _approvedExtraWorks = {};
+  final Set<String> _approvedSessionIds = {};
+  final Map<String, double> _editedHours = {};
 
   @override
   Widget build(BuildContext context) {
     if (widget.sessions.isEmpty) return const SizedBox.shrink();
-    
+
     final first = widget.sessions.first;
     final order = first['order'];
     final plan = first['operation_plan'];
@@ -208,9 +210,9 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order?['title'] ?? tr('İsimsiz Proje'), 
+                      Text(order?['title'] ?? tr('İsimsiz Proje'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
-                      Text(tr('Tarih: {date} • {count} Çalışan', args: { 'date': dateStr, 'count': widget.sessions.length.toString() }), 
+                      Text(tr('Tarih: {date} • {count} Çalışan', args: { 'date': dateStr, 'count': widget.sessions.length.toString() }),
                           style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
                     ],
                   ),
@@ -218,40 +220,69 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
               ],
             ),
           ),
-          
-          // Personnel List
+
+          // Personnel List Table
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               children: widget.sessions.map((s) {
+                final sessionId = s['id'].toString();
+                final isSessionApproved = _approvedSessionIds.contains(sessionId);
                 final user = s['user'];
                 final actual = (s['actual_duration_h'] as num?)?.toDouble() ?? 0.0;
                 final planned = (plan?['estimated_duration_h'] as num?)?.toDouble() ?? 0.0;
-                
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSessionApproved ? AppTheme.success.withOpacity(0.05) : AppTheme.bg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isSessionApproved ? AppTheme.success.withOpacity(0.2) : AppTheme.divider),
+                  ),
+                  child: Column(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppTheme.secondary.withOpacity(0.1),
-                        child: Text(user != null && user['first_name'] != null ? user['first_name'][0] : '?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: AppTheme.primary.withOpacity(0.1),
+                            child: Text(user != null && user['first_name'] != null ? user['first_name'][0] : '?', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${user?['first_name'] ?? tr('Bilinmeyen')} ${user?['last_name'] ?? ''}',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          ),
+                          if (isSessionApproved)
+                            const Icon(Icons.check_circle, color: AppTheme.success, size: 20)
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text('${user?['first_name'] ?? tr('Bilinmeyen')} ${user?['last_name'] ?? ''}', 
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                        child: Text('${tr('P:')} ${planned.toStringAsFixed(1)}h', style: const TextStyle(fontSize: 11, color: Colors.blue)),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                        child: Text('${tr('G:')} ${actual.toStringAsFixed(1)}h', style: const TextStyle(fontSize: 11, color: Colors.orange)),
+                      const Divider(height: 16),
+                      Row(
+                        children: [
+                          _buildActionBtn(
+                            label: '${tr('Planlanan')}: ${planned.toStringAsFixed(1)}h',
+                            color: Colors.blue,
+                            isSelected: false,
+                            onTap: isSessionApproved ? null : () => _approveIndividual(sessionId, planned),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildActionBtn(
+                            label: '${tr('Gerçekleşen')}: ${actual.toStringAsFixed(1)}h',
+                            color: Colors.orange,
+                            isSelected: false,
+                            onTap: isSessionApproved ? null : () => _approveIndividual(sessionId, actual),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildActionBtn(
+                            label: tr('Düzenle'),
+                            color: AppTheme.textSub,
+                            icon: Icons.edit_outlined,
+                            isSelected: false,
+                            onTap: isSessionApproved ? null : () => _showEditDialog(sessionId, actual),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -259,9 +290,9 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
               }).toList(),
             ),
           ),
-          
-          // Pending Extra Works Section
-          if (order != null && order['extra_works'] != null && (order['extra_works'] as List).isNotEmpty) ...[
+
+          // Pending Extra Works Section (Remains similar but styled)
+          if (order != null && order['extra_works'] != null && (order['extra_works'] as List).where((ew) => ew['status'] == 'pending' || ew['status'] == 'recorded').isNotEmpty) ...[
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -277,135 +308,152 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                   ),
                   const SizedBox(height: 12),
                   ...(order['extra_works'] as List).where((ew) => ew['status'] == 'pending' || ew['status'] == 'recorded').map((ew) {
-                    final recordedBy = ew['recorded_by_user'];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(ew['title'] ?? tr('Ek İş'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                if (ew['description'] != null && ew['description'].isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2, bottom: 4),
-                                    child: Text(ew['description'], style: const TextStyle(fontSize: 12, color: AppTheme.textMain, fontFamily: 'Inter')),
-                                  ),
-                                Row(
-                                  children: [
-                                    Text(tr('Kaydeden: {name}', args: {'name': '${recordedBy?['first_name'] ?? ''} ${recordedBy?['last_name'] ?? ''}'}), 
-                                        style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
-                                    const Spacer(),
-                                    if (ew['duration_h'] != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                        child: Text('${ew['duration_h']} ${tr('sa')}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _approvedExtraWorks.contains(ew['id'])
-                            ? const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                child: Icon(Icons.check_circle, color: AppTheme.success, size: 24),
-                              )
-                            : ElevatedButton(
-                                onPressed: () async {
-                                  await widget.onApproveExtraWork(ew['id']);
-                                  setState(() => _approvedExtraWorks.add(ew['id']));
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.success,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(tr('Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ),
-                        ],
-                      ),
-                    );
+                    return _buildExtraWorkCard(ew);
                   }),
                 ],
               ),
             ),
           ],
-          
+
           const Divider(height: 1),
-          
-          // Actions
+
+          // Project-level Action: Bulk Approval
           Padding(
             padding: const EdgeInsets.all(12),
-            child: _isApproved 
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: null,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: Colors.grey.shade200,
-                          disabledBackgroundColor: Colors.grey.shade200,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
-                        label: Text(tr('Onaylandı'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.success, fontFamily: 'Inter')),
-                      ),
-                    ),
-                  ],
-                )
-              : _isLoading
-                  ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              setState(() => _isLoading = true);
-                              await widget.onApproveAll(true);
-                              if (mounted) setState(() { _isLoading = false; _isApproved = true; });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              side: const BorderSide(color: AppTheme.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            child: Text(tr('Planlananla Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              setState(() => _isLoading = true);
-                              await widget.onApproveAll(false);
-                              if (mounted) setState(() { _isLoading = false; _isApproved = true; });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: Colors.orange,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            child: Text(tr('Gerçekleşenle Onayla'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          ),
-                        ),
-                      ],
-                    ),
+            child: _isLoading ? const Center(child: CircularProgressIndicator()) : Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : () => _bulkApprove(true),
+                    child: Text(tr('Hepsini Planlananla Onayla'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : () => _bulkApprove(false),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                    child: Text(tr('Hepsini Gerçekleşenle Onayla'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildActionBtn({required String label, required Color color, IconData? icon, bool isSelected = false, VoidCallback? onTap}) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: onTap == null ? Colors.grey.withOpacity(0.1) : color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: onTap == null ? Colors.transparent : color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[Icon(icon, size: 14, color: color), const SizedBox(width: 4)],
+              Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: onTap == null ? AppTheme.textSub : color)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtraWorkCard(Map<String, dynamic> ew) {
+    bool isApproved = _approvedExtraWorks.contains(ew['id']);
+    final recordedBy = ew['recorded_by_user'];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ew['title'] ?? tr('Ek İş'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(tr('Kaydeden: {name}', args: {'name': '${recordedBy?['first_name'] ?? ''} ${recordedBy?['last_name'] ?? ''}'}),
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textSub)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          isApproved
+            ? const Icon(Icons.check_circle, color: AppTheme.success, size: 24)
+            : ElevatedButton(
+                onPressed: () async {
+                  await widget.onApproveExtraWork(ew['id']);
+                  setState(() => _approvedExtraWorks.add(ew['id']));
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, minimumSize: const Size(60, 32)),
+                child: Text(tr('Onayla'), style: const TextStyle(fontSize: 11, color: Colors.white)),
+              ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(String sessionId, double initialValue) async {
+    final ctrl = TextEditingController(text: initialValue.toString());
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Çalışma Saatini Düzenle')),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(labelText: tr('Onaylanan Saat')),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text)), child: Text(tr('Onayla'))),
+        ],
+      ),
+    );
+    if (result != null) {
+      _approveIndividual(sessionId, result);
+    }
+  }
+
+  Future<void> _approveIndividual(String sessionId, double hours) async {
+    final appState = context.read<AppState>();
+    try {
+      await SupabaseService.approveWorkSession(sessionId, hours, appState.userId);
+      setState(() => _approvedSessionIds.add(sessionId));
+      
+      // Check if all sessions in this card are approved to show the overall success
+      if (_approvedSessionIds.length == widget.sessions.length) {
+         setState(() => _isApproved = true);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Hata: {e}', args: {'e': e.toString()}))));
+    }
+  }
+
+  Future<void> _bulkApprove(bool usePlanned) async {
+    setState(() => _isLoading = true);
+    await widget.onApproveAll(usePlanned);
+    setState(() {
+      _isLoading = false;
+      _isApproved = true;
+      for (var s in widget.sessions) {
+        _approvedSessionIds.add(s['id'].toString());
+      }
+    });
+  }
 }
+

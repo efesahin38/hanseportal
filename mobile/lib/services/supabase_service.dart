@@ -647,6 +647,35 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  static Future<double> getApprovedHoursByMonth(String userId, DateTime month) async {
+    final start = DateTime(month.year, month.month, 1).toIso8601String();
+    final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59).toIso8601String();
+    
+    final data = await _client
+        .from('work_sessions')
+        .select('approved_billable_hours')
+        .eq('user_id', userId)
+        .eq('approval_status', 'approved')
+        .gte('actual_start', start)
+        .lte('actual_start', end);
+    
+    double total = 0;
+    for (var row in (data as List)) {
+      total += (row['approved_billable_hours'] as num?)?.toDouble() ?? 0.0;
+    }
+    return total;
+  }
+
+  static Future<void> adjustAndApproveWorkSession(String sessionId, double approvedHours, String approvedBy) async {
+    await _client.from('work_sessions').update({
+      'approval_status': 'approved',
+      'approved_billable_hours': approvedHours,
+      'approved_by': approvedBy,
+      'approved_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
+    await _syncSessionToInvoiceDraft(sessionId);
+  }
+
   static Future<void> approveWorkSession(String sessionId, double approvedHours, String approvedBy) async {
     // 1. Durumu güncelle
     await _client.from('work_sessions').update({
@@ -658,6 +687,7 @@ class SupabaseService {
 
     // 2. Fatura Taslağına Senkronize et
     await _syncSessionToInvoiceDraft(sessionId);
+
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
