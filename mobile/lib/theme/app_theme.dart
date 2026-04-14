@@ -37,6 +37,7 @@ class AppTheme {
     'garten':               Color(0xFF009688), // Turkuaz
     'logistik':             Color(0xFF795548), // Kahverengi/Gri
     'hospitality':          Color(0xFF9C27B0), // Mor (Gastwirtschafts)
+    'personal':             Color(0xFF8B5CF6), // Mor (Personalüberlassung)
   };
 
   static ThemeData get theme {

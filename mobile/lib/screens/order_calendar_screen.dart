@@ -62,6 +62,7 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
     if (name.contains('garten')) return AppTheme.orderServiceColors['garten']!;
     if (name.contains('logistik')) return AppTheme.orderServiceColors['logistik']!;
     if (name.contains('gast') || name.contains('gastro') || name.contains('hospitality')) return AppTheme.orderServiceColors['hospitality']!;
+    if (name.contains('personal')) return AppTheme.orderServiceColors['personal']!;
     return AppTheme.textSub;
   }
 

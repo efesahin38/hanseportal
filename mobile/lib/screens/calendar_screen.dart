@@ -428,7 +428,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 return DropdownMenuItem<Map<String, dynamic>>(
                                   value: u,
                                   child: Text(
-                                    '${u['first_name']} ${u['last_name']} (${_monthLabel(_focusedDay)})',
+                                    '${AppTheme.roleLabel(u['role'] ?? '')}: ${u['first_name']} ${u['last_name']} (${_monthLabel(_focusedDay)})',
                                     style: const TextStyle(color: Colors.white, fontSize: 13),
                                     overflow: TextOverflow.ellipsis,
                                   ),

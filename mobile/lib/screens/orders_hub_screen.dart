@@ -7,6 +7,7 @@ import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'orders_screen.dart';
 import 'gebaude_hub_screen.dart';
+import 'order_calendar_screen.dart';
 
 // v19.2.1: Gastwirtschaftsservice kaldırıldı. 3 ana bölüm kaldı.
 // Gebäudedienstleistungen tıklanınca 4 alt klasöre yönlendiriyor.
@@ -177,6 +178,63 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // İş Takvimi Butonu
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OrderCalendarScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.calendar_month, color: AppTheme.primary, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tr('İş Planı Takvimi'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter', color: AppTheme.textMain),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              tr('Tüm siparişleri ve atamaları takvimde görün'),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: AppTheme.primary, size: 24),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
