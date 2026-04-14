@@ -36,8 +36,15 @@ class PersonnelDetailDashboard extends StatelessWidget {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white24,
-                    child: Text('${user['first_name']?[0] ?? ''}${user['last_name']?[0] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    child: () {
+                      final f = (user['first_name'] ?? '').toString().trim();
+                      final l = (user['last_name'] ?? '').toString().trim();
+                      final initials = '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}';
+                      return Text(initials.isEmpty ? '?' : initials.toUpperCase(), 
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold));
+                    }(),
                   ),
+
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

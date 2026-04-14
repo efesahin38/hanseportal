@@ -316,9 +316,10 @@ class _EmployeeFolderScreenState extends State<EmployeeFolderScreen> {
                     itemCount: filteredFolders.length,
                     itemBuilder: (_, i) {
                       final folder = filteredFolders[i];
-                      final key = folder['folder_key'] as String;
+                      final key = (folder['folder_key'] ?? '').toString();
                       final color = _folderColors[key] ?? AppTheme.primary;
                       final icon = _folderIcons[key] ?? Icons.folder_outlined;
+
                       final count = _docCounts[folder['id'].toString()] ?? 0;
 
                       return _FolderCard(
