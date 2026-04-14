@@ -5,7 +5,7 @@ import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'orders_screen.dart';
 
-/// Gebäudedienstleistungen alt klasör hub'ı (v17.0)
+/// Gebäudedienstleistungen alt klasör hub'ı (v19.2.1)
 /// 4 alt hizmet alanı: Gebäudedienstleistungen, Bau-Logistik, Hausmeisterservice, Gartenpflege
 class GebaudeHubScreen extends StatefulWidget {
   final String? departmentId; // Gebäude departman ID'si

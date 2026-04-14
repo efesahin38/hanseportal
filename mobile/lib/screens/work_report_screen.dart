@@ -256,7 +256,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                           final u = s['user'];
                           final hrs = (s['approved_billable_hours'] as num?)?.toDouble() ?? (s['billable_hours'] as num?)?.toDouble() ?? 0;
                           final isApproved = s['approval_status'] == 'approved';
-                          // v17.0: Brutto ücret hesaplaması
+                          // v19.2.1: Brutto ücret hesaplaması
                           final hourlyWage = (u['hourly_gross_wage'] as num?)?.toDouble();
                           final bruttoAmount = hourlyWage != null ? hrs * hourlyWage : null;
                           

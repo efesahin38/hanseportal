@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// v17.0 – 6 Hizmet Alanı Tanımı (Gastwirtschaftsservice kaldırıldı)
+/// v19.2.1 – 6 Hizmet Alanı Tanımı (Gastwirtschaftsservice kaldırıldı)
 /// Tüm form ekranları bu sabitten okur.
 class ServiceAreaDefs {
   /// 6 hizmet alanı kategorisi

@@ -62,7 +62,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final areas = await SupabaseService.getServiceAreas(activeOnly: false);
       final List<Map<String, dynamic>> consolidatedAreas = [];
       
-      // v17.0: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
+      // v19.2.1: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
       final categories = [
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
@@ -459,7 +459,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
-  /// v17.0: Arama motorlu müşteri seçici
+  /// v19.2.1: Arama motorlu müşteri seçici
   Widget _customerSearchField() {
     final selectedCustomer = _selectedCustomerId != null
         ? _customers.firstWhere((c) => c['id'].toString() == _selectedCustomerId, orElse: () => <String, dynamic>{})

@@ -87,7 +87,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header – Hanse Kollektiv GmbH (v17.0: tek şirket, dropdown yok)
+              // Header – Hanse Kollektiv GmbH (v19.2.1: tek şirket, dropdown yok)
               Builder(
                 builder: (context) {
                   final appState = context.read<AppState>();

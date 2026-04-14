@@ -8,7 +8,7 @@ import '../services/localization_service.dart';
 import 'orders_screen.dart';
 import 'gebaude_hub_screen.dart';
 
-// v17.0: Gastwirtschaftsservice kaldırıldı. 3 ana bölüm kaldı.
+// v19.2.1: Gastwirtschaftsservice kaldırıldı. 3 ana bölüm kaldı.
 // Gebäudedienstleistungen tıklanınca 4 alt klasöre yönlendiriyor.
 class _GmbhDef {
   final String departmentKey;
@@ -164,7 +164,7 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                           ),
                           Text(
-                            'HansePortal v17.0',
+                            'HansePortal v19.2.1',
                             style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
                           ),
                           Text(
