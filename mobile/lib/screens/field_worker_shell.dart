@@ -10,6 +10,8 @@ import 'chat_screen.dart';
 import 'calendar_screen.dart';
 import 'personnel_detail_dashboard.dart';
 import 'field_dashboard_screen.dart';
+import 'work_session_approval_screen.dart';
+
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
 class FieldWorkerShell extends StatefulWidget {
@@ -22,39 +24,79 @@ class FieldWorkerShell extends StatefulWidget {
 class _FieldWorkerShellState extends State<FieldWorkerShell> {
   int _selectedIndex = 0;
 
-  final _screens = const [
-    FieldDashboardScreen(),
-    FieldMyTasksScreen(),
-    CalendarScreen(),
-    MyDocumentsScreen(),
-    NotificationsScreen(),
-    ChatScreen(),
-  ];
-
-
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final titles = [
-      tr('Statistik'),
-      tr('Meine Aufgaben'),
-      tr('Kalender'),
-      tr('Meine Dokumente'),
-      tr('Benachrichtigungen'),
-      tr('Chatten'),
-      tr('Mein Profil'),
+
+    // Building the items list dynamically based on user role
+    final List<Map<String, dynamic>> items = [
+      {
+        'title': tr('Statistik'),
+        'icon': Icons.dashboard,
+        'iconOut': Icons.dashboard_outlined,
+        'screen': const FieldDashboardScreen(),
+      },
+      if (appState.isBereichsleiter)
+        {
+          'title': tr('Genehmigungen'),
+          'icon': Icons.fact_check,
+          'iconOut': Icons.fact_check_outlined,
+          'screen': const WorkSessionApprovalScreen(),
+        },
+      {
+        'title': tr('Meine Aufgaben'),
+        'icon': Icons.task,
+        'iconOut': Icons.task_outlined,
+        'screen': const FieldMyTasksScreen(),
+      },
+      {
+        'title': tr('Kalender'),
+        'icon': Icons.calendar_month,
+        'iconOut': Icons.calendar_month_outlined,
+        'screen': const CalendarScreen(),
+      },
+      {
+        'title': tr('Meine Dokumente'),
+        'icon': Icons.folder_shared,
+        'iconOut': Icons.folder_shared_outlined,
+        'screen': const MyDocumentsScreen(),
+      },
+      {
+        'title': tr('Benachrichtigungen'),
+        'icon': Icons.notifications,
+        'iconOut': Icons.notifications_outlined,
+        'screen': const NotificationsScreen(),
+      },
+      {
+        'title': tr('Chatten'),
+        'icon': Icons.chat,
+        'iconOut': Icons.chat_outlined,
+        'screen': const ChatScreen(),
+      },
+      {
+        'title': tr('Mein Profil'),
+        'icon': Icons.account_circle,
+        'iconOut': Icons.account_circle_outlined,
+        'screen': PersonnelDetailDashboard(user: appState.currentUser!),
+      },
     ];
 
+    // Safety check for index overflow after role-based filtering
+    if (_selectedIndex >= items.length) _selectedIndex = 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_selectedIndex]),
+        title: Text(items[_selectedIndex]['title']),
         actions: [
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => setState(() => _selectedIndex = 3),
+                onPressed: () {
+                  // Find index of Notifications screen
+                  final idx = items.indexWhere((it) => it['screen'] is NotificationsScreen);
+                  if (idx != -1) setState(() => _selectedIndex = idx);
+                },
               ),
               if (appState.unreadNotifications > 0)
                 Positioned(
@@ -117,78 +159,36 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
                 ],
               ),
             ),
-            ListTile(
-              leading: Icon(_selectedIndex == 0 ? Icons.dashboard : Icons.dashboard_outlined, color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Statistik'), style: TextStyle(color: _selectedIndex == 0 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 0 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 0,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 0);
-                Navigator.pop(context);
-              },
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final it = items[index];
+                  final isSelected = _selectedIndex == index;
+                  return ListTile(
+                    leading: Icon(
+                      isSelected ? it['icon'] : it['iconOut'],
+                      color: isSelected ? AppTheme.primary : AppTheme.textSub,
+                    ),
+                    title: Text(
+                      it['title'],
+                      style: TextStyle(
+                        color: isSelected ? AppTheme.primary : AppTheme.textMain,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedTileColor: AppTheme.primary.withOpacity(0.1),
+                    onTap: () {
+                      setState(() => _selectedIndex = index);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
             ),
-            ListTile(
-              leading: Icon(_selectedIndex == 1 ? Icons.task : Icons.task_outlined, color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Meine Aufgaben'), style: TextStyle(color: _selectedIndex == 1 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 1 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 1,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 1);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(_selectedIndex == 2 ? Icons.calendar_month : Icons.calendar_month_outlined, color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Kalender'), style: TextStyle(color: _selectedIndex == 2 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 2 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 2,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 2);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(_selectedIndex == 3 ? Icons.folder_shared : Icons.folder_shared_outlined, color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Meine Dokumente'), style: TextStyle(color: _selectedIndex == 3 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 3 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 3,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 3);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(_selectedIndex == 4 ? Icons.notifications : Icons.notifications_outlined, color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Benachrichtigungen'), style: TextStyle(color: _selectedIndex == 4 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 4 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 4,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 4);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(_selectedIndex == 5 ? Icons.chat : Icons.chat_outlined, color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Chatten'), style: TextStyle(color: _selectedIndex == 5 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 5 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 5,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 5);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(_selectedIndex == 6 ? Icons.account_circle : Icons.account_circle_outlined, color: _selectedIndex == 6 ? AppTheme.primary : AppTheme.textSub),
-              title: Text(tr('Mein Profil'), style: TextStyle(color: _selectedIndex == 6 ? AppTheme.primary : AppTheme.textMain, fontWeight: _selectedIndex == 6 ? FontWeight.w600 : FontWeight.normal, fontFamily: 'Inter')),
-              selected: _selectedIndex == 6,
-              selectedTileColor: AppTheme.primary.withOpacity(0.1),
-              onTap: () {
-                setState(() => _selectedIndex = 6);
-                Navigator.pop(context);
-              },
-            ),
-
-            const Spacer(),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.error),
@@ -202,10 +202,23 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
           ],
         ),
       ),
-      body: _selectedIndex == 6
-          ? PersonnelDetailDashboard(user: appState.currentUser!)
-          : _screens[_selectedIndex],
-
+      body: items[_selectedIndex]['screen'],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex >= items.length ? 0 : _selectedIndex,
+        onTap: (idx) => setState(() => _selectedIndex = idx),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppTheme.primary,
+        unselectedItemColor: AppTheme.textSub,
+        showUnselectedLabels: true,
+        selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+        unselectedLabelStyle: const TextStyle(fontSize: 10, fontFamily: 'Inter'),
+        items: items.map((it) => BottomNavigationBarItem(
+          icon: Icon(it['iconOut'], size: 20),
+          activeIcon: Icon(it['icon'], size: 20),
+          label: it['title'],
+        )).toList(),
+      ),
     );
   }
 }
+
