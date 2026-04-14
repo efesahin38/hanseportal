@@ -33,7 +33,7 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   List<_NavItem> _buildNavItems(AppState appState) {
-    // v19.2.1: Aufträge her zaman İLK (index 0) ve ana sayfa
+    // v19.2.3: Aufträge her zaman İLK (index 0) ve ana sayfa
     // Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung görebilir
     final canSeeStammdaten = appState.isGeschaeftsfuehrer ||
         appState.isSystemAdmin ||
@@ -48,9 +48,6 @@ class _MainShellState extends State<MainShell> {
       _NavItem(icon: Icons.group_outlined, activeIcon: Icons.group, label: tr('Kunden'), screen: const CustomersScreen()),
       // 3. Personal
       _NavItem(icon: Icons.badge_outlined, activeIcon: Icons.badge, label: tr('Personal'), screen: const PersonnelScreen()),
-      // 4. İş Takvimi (Aufträge Kalender): GF, BL, Backoffice, Accounting, Bereichsleiter
-      if (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung || appState.isBereichsleiter || appState.isSystemAdmin)
-        _NavItem(icon: Icons.event_note_outlined, activeIcon: Icons.event_note, label: tr('İş Takvimi'), screen: const OrderCalendarScreen()),
       // 5. Kalender (Personal/Availability)
       _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: tr('Kalender'), screen: const CalendarScreen()),
       // 6. Chatten
@@ -165,7 +162,7 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
-                        'HansePortal v19.2.1',
+                        'HansePortal v19.2.3',
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                       ),
                     ),
@@ -320,8 +317,8 @@ class _WebSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HansePortal v19.2.1', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          const Text('v19.2.1', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          const Text('HansePortal v19.2.3', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          const Text('v19.2.3', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                         ],
                       ),
                     ),
