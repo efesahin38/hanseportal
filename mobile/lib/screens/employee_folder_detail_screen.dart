@@ -239,14 +239,17 @@ class _EmployeeFolderDetailScreenState extends State<EmployeeFolderDetailScreen>
     final empName = '${widget.employee['first_name']} ${widget.employee['last_name']}';
 
     final isAdmin = appState.canManageEmployeeDocuments;
-    final isSelf = widget.employee['id'] == appState.userId;
-    final folderKey = widget.folder['folder_key'] as String;
+    final currentUserId = appState.userId.trim();
+    final employeeId = (widget.employee['id'] ?? '').toString().trim();
+    final isSelf = employeeId == currentUserId;
+    final folderKey = (widget.folder['folder_key'] ?? '').toString().toLowerCase().trim();
     
     // Hassas klasör mü?
     final isSensitive = folderKey == 'arbeitsvertrag' || folderKey == 'gehaltsabrechnung';
     
     // Yükleme yetkisi: (Admin ise her yere) VEYA (Kendi profilindeyse ve hassas klasör değilse)
     final canUploadDocs = isAdmin || (isSelf && !isSensitive);
+
 
 
     return Scaffold(
