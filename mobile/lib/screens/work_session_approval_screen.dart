@@ -80,18 +80,11 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
         await SupabaseService.approveWorkSession(s['id'], approvedHours, appState.userId);
       }
       
-      // Siparişi tamamlandı olarak işaretle
+      // Siparişi tamamlandı olarak işaretle (Tüm seanslar bittiyse)
       if (sessions.isNotEmpty) {
         final orderId = sessions.first['order_id'] ?? sessions.first['order']?['id'];
         if (orderId != null) {
-          try {
-            final order = await SupabaseService.client.from('orders').select('status').eq('id', orderId).single();
-            if (order['status'] != 'completed' && order['status'] != 'invoiced') {
-              await SupabaseService.updateOrderStatus(orderId, 'completed', tr('Mesailer onaylandı'), appState.userId);
-            }
-          } catch (e) {
-            print('Status complete error: $e');
-          }
+          await SupabaseService.checkAndMarkOrderCompleted(orderId.toString(), appState.userId);
         }
       }
 
@@ -112,7 +105,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(tr('Toplu Mesai Onayı'), style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+        title: const Text('Arbeitszeiterfassung', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
@@ -212,8 +205,22 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                     children: [
                       Text(order?['title'] ?? tr('İsimsiz Proje'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.business, size: 12, color: AppTheme.textSub.withOpacity(0.7)),
+                          const SizedBox(width: 4),
+                          Text('${order?['customer']?['name'] ?? tr('Bilinmeyen Müşteri')} • ',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontWeight: FontWeight.w500)),
+                          Icon(Icons.apartment, size: 12, color: AppTheme.textSub.withOpacity(0.7)),
+                          const SizedBox(width: 4),
+                          Text(order?['department']?['name'] ?? tr('Genel'),
+                              style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
                       Text(tr('Tarih: {date} • {count} Çalışan', args: { 'date': dateStr, 'count': widget.sessions.length.toString() }),
-                          style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+                          style: TextStyle(fontSize: 11, color: AppTheme.textSub.withOpacity(0.8))),
                     ],
                   ),
                 ),

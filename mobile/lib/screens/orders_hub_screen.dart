@@ -164,8 +164,23 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                           ),
                         ),
                         const SizedBox(width: 24),
-                        const Expanded(
-                          child: OrderCalendarWidget(showHeader: false),
+                        Expanded(
+                          child: Container(
+                            height: 650,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: const OrderCalendarWidget(showHeader: false),
+                          ),
                         ),
                       ],
                     );

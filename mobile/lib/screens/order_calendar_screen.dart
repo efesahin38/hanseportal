@@ -183,7 +183,7 @@ class _OrderCalendarWidgetState extends State<OrderCalendarWidget> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 7,
-          childAspectRatio: 1.1,
+          childAspectRatio: 1.4,
         ),
         itemCount: rows * 7,
         itemBuilder: (_, index) {
@@ -198,11 +198,11 @@ class _OrderCalendarWidgetState extends State<OrderCalendarWidget> {
           return InkWell(
             onTap: () => setState(() => _selectedDay = day),
             child: Container(
-              margin: const EdgeInsets.all(1),
+              margin: const EdgeInsets.all(0.5),
               decoration: BoxDecoration(
                 color: isSelected ? AppTheme.primary.withOpacity(0.05) : null,
-                borderRadius: BorderRadius.circular(6),
-                border: isSelected ? Border.all(color: AppTheme.primary, width: 1.2) : (isToday ? Border.all(color: AppTheme.primary.withOpacity(0.2)) : null),
+                borderRadius: BorderRadius.circular(4),
+                border: isSelected ? Border.all(color: AppTheme.primary, width: 1.0) : (isToday ? Border.all(color: AppTheme.primary.withOpacity(0.2)) : null),
               ),
               child: Stack(
                 children: [

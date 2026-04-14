@@ -7,6 +7,7 @@ import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'personnel_form_screen.dart';
 import 'personnel_detail_dashboard.dart';
+import 'work_session_approval_screen.dart';
 
 class PersonnelScreen extends StatefulWidget {
   const PersonnelScreen({super.key});
@@ -92,13 +93,38 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               children: [
-                TextField(
-                  onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                  decoration: InputDecoration(
-                    hintText: tr('Ad, e-posta, görev ara...'),
-                    prefixIcon: const Icon(Icons.search),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
+                        decoration: InputDecoration(
+                          hintText: tr('Ad, e-posta, görev ara...'),
+                          prefixIcon: const Icon(Icons.search),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        ),
+                      ),
+                    ),
+                    if (context.watch<AppState>().isGeschaeftsfuehrer || 
+                        context.watch<AppState>().isBetriebsleiter || 
+                        context.watch<AppState>().isBereichsleiter || 
+                        context.watch<AppState>().isBackoffice || 
+                        context.watch<AppState>().isBuchhaltung ||
+                        context.watch<AppState>().isSystemAdmin) ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen())),
+                        icon: const Icon(Icons.access_time, size: 18),
+                        label: const Text('Arbeitszeiterfassung', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 10),
                 SizedBox(

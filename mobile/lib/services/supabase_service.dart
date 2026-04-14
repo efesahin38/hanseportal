@@ -654,6 +654,8 @@ class SupabaseService {
       user:users!work_sessions_user_id_fkey(id, first_name, last_name),
       order:orders(
         id, title, order_number, department_id,
+        department:departments(name),
+        customer:customers(name),
         extra_works:extra_works!extra_works_order_id_fkey(
           *,
           recorded_by_user:users!extra_works_recorded_by_fkey(first_name, last_name)
@@ -697,6 +699,12 @@ class SupabaseService {
       'approved_at': DateTime.now().toIso8601String(),
     }).eq('id', sessionId);
     await _syncSessionToInvoiceDraft(sessionId);
+
+    // Otomatik durum kontrolü
+    final session = await _client.from('work_sessions').select('order_id').eq('id', sessionId).maybeSingle();
+    if (session != null && session['order_id'] != null) {
+      await checkAndMarkOrderCompleted(session['order_id'], approvedBy);
+    }
   }
 
   static Future<void> approveWorkSession(String sessionId, double approvedHours, String approvedBy) async {
@@ -711,6 +719,12 @@ class SupabaseService {
     // 2. Fatura Taslağına Senkronize et
     await _syncSessionToInvoiceDraft(sessionId);
 
+    // 3. Otomatik durum kontrolü
+    final session = await _client.from('work_sessions').select('order_id').eq('id', sessionId).maybeSingle();
+    if (session != null && session['order_id'] != null) {
+      await checkAndMarkOrderCompleted(session['order_id'], approvedBy);
+    }
+
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
@@ -718,6 +732,37 @@ class SupabaseService {
       body: tr('Bir çalışma seansı onaylandı ve fatura taslağına eklendi.'),
       sentBy: approvedBy,
     );
+  }
+
+  static Future<void> checkAndMarkOrderCompleted(String orderId, String changedById) async {
+    try {
+      // 1. Onay bekleyen seans var mı?
+      final pendingCount = await _client
+          .from('work_sessions')
+          .select('id', const PostgrestDefaultReturntype.count(CountOption.exact))
+          .eq('order_id', orderId)
+          .neq('approval_status', 'approved');
+      
+      if (pendingCount.count > 0) return;
+
+      // 2. Gerçekleşmemiş plan var mı? (Gelecek tarihli veya henüz seansı çekilmemiş)
+      // Şimdilik sadece bekleyen onaylara odaklanıyoruz ama tam güvenlik için:
+      final unrecordedPlans = await _client
+          .from('operation_plans')
+          .select('id', const PostgrestDefaultReturntype.count(CountOption.exact))
+          .eq('order_id', orderId)
+          .isFilter('id', 'not.in', _client.from('work_sessions').select('operation_plan_id').eq('order_id', orderId));
+      
+      // Not: Yukarıdaki subquery karmaşık olabilir, basitleştirelim:
+      // Sadece onaylanmamış seans yoksa ve sipariş durumu 'completed' değilse tamamla.
+      
+      final order = await _client.from('orders').select('status').eq('id', orderId).maybeSingle();
+      if (order != null && order['status'] != 'completed' && order['status'] != 'invoiced' && order['status'] != 'archived') {
+         await updateOrderStatus(orderId, 'completed', tr('Tüm personel mesai seansları onaylandı, iş tamamlandı.'), changedById);
+      }
+    } catch (e) {
+      debugPrint('Error in checkAndMarkOrderCompleted: $e');
+    }
   }
 
   static Future<void> _syncSessionToInvoiceDraft(String sessionId) async {

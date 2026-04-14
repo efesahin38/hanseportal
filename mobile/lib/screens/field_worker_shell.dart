@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
@@ -211,7 +212,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
         ),
       ),
       body: items[_selectedIndex]['screen'],
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: kIsWeb ? null : BottomNavigationBar(
         currentIndex: _selectedIndex >= items.length ? 0 : _selectedIndex,
         onTap: (idx) => setState(() => _selectedIndex = idx),
         type: BottomNavigationBarType.fixed,

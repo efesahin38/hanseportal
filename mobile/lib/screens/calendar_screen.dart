@@ -141,8 +141,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final appState = context.read<AppState>();
     setState(() => _loading = true);
 
-    // Initial load: Fetch management users if authorized
-    if (_managementUsers.isEmpty && (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung || appState.isSystemAdmin || appState.isBereichsleiter)) {
+    // Initial load: Fetch management users if authorized (Excluding Bereichsleiter from switching)
+    if (_managementUsers.isEmpty && (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBackoffice || appState.isBuchhaltung || appState.isSystemAdmin)) {
       try {
         final users = await SupabaseService.getManagementUsers();
         _managementUsers = users;
