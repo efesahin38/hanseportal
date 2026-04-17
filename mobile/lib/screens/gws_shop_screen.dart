@@ -15,8 +15,10 @@ class GwsShopScreen extends StatefulWidget {
   State<GwsShopScreen> createState() => _GwsShopScreenState();
 }
 
-class _GwsShopScreenState extends State<GwsShopScreen> {
+class _GwsShopScreenState extends State<GwsShopScreen> with SingleTickerProviderStateMixin {
   static const Color _color = AppTheme.gwsColor;
+
+  late TabController _tabController;
 
   String? _selectedObjectId;
   final List<Map<String, dynamic>> _cart = [];
@@ -62,7 +64,14 @@ class _GwsShopScreenState extends State<GwsShopScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadOrders();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -82,8 +91,7 @@ class _GwsShopScreenState extends State<GwsShopScreen> {
         backgroundColor: _color,
         title: const Text('🛒 Shop / Bestellungen', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
         bottom: TabBar(
-          controller: TabController(length: 2, vsync: Scaffold.of(context) as TickerProvider)
-            ..addListener(() {}),
+          controller: _tabController,
           tabs: [
             Tab(text: 'Shop (${_filteredCatalog.length})'),
             Tab(text: 'Bestellungen (${_shopOrders.length})'),
@@ -105,18 +113,12 @@ class _GwsShopScreenState extends State<GwsShopScreen> {
             ),
         ],
       ),
-      body: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            Expanded(
-              child: TabBarView(children: [
-                _buildShopTab(),
-                _buildOrdersTab(),
-              ]),
-            ),
-          ],
-        ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildShopTab(),
+          _buildOrdersTab(),
+        ],
       ),
     );
   }

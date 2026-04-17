@@ -15,8 +15,8 @@ class PersonnelDetailDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.read<AppState>();
-    final canManageLeave = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin;
+    final isExternalManager = (user['role'] ?? '') == 'external_manager';
+    final canManageLeave = (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) && !isExternalManager;
 
     return Scaffold(
       appBar: AppBar(title: Text('${user['first_name']} ${user['last_name']}')),
@@ -68,23 +68,25 @@ class PersonnelDetailDashboard extends StatelessWidget {
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PersonnelFormScreen(userId: user['id']))),
             ),
 
-            _MenuCard(
-              icon: Icons.folder,
-              title: tr('Unterlagen / Dokumente'),
-              subtitle: tr('Lohnabrechnungen, Urlaubsanträge, Krankmeldungen'),
-              color: const Color(0xFF10B981),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeFolderScreen(initialEmployee: user))),
-            ),
+            if (!isExternalManager)
+              _MenuCard(
+                icon: Icons.folder,
+                title: tr('Unterlagen / Dokumente'),
+                subtitle: tr('Lohnabrechnungen, Urlaubsanträge, Krankmeldungen'),
+                color: const Color(0xFF10B981),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeFolderScreen(initialEmployee: user))),
+              ),
 
-            _MenuCard(
-              icon: Icons.access_time,
-              title: tr('Arbeitszeiterfassung'),
-              subtitle: tr('Einsatzdaten & Stundenzettel'),
-              color: const Color(0xFFF59E0B),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen()));
-              },
-            ),
+            if (!isExternalManager)
+              _MenuCard(
+                icon: Icons.access_time,
+                title: tr('Arbeitszeiterfassung'),
+                subtitle: tr('Einsatzdaten & Stundenzettel'),
+                color: const Color(0xFFF59E0B),
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen()));
+                },
+              ),
 
             // ── Urlaubstage – Nur für GF und Betriebsleiter ──
             if (canManageLeave)

@@ -57,7 +57,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
         {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
-        {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality']},
+        {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality', 'beherber']},
       ];
 
       for (var cat in categories) {
@@ -77,9 +77,17 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         }
       }
 
+      final appState = context.read<AppState>();
+      final isDeptHead = appState.role == 'bereichsleiter';
+      final userDeptId = appState.currentUser?['department_id'];
+
       if (mounted) {
         setState(() {
-          _serviceAreas = consolidatedAreas;
+          if (isDeptHead && userDeptId != null) {
+            _serviceAreas = consolidatedAreas.where((sa) => sa['department_id'] == userDeptId).toList();
+          } else {
+            _serviceAreas = consolidatedAreas;
+          }
         });
       }
     } catch (e) {

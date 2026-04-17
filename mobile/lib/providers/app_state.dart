@@ -14,11 +14,13 @@ class AppState extends ChangeNotifier {
   bool _isInitialized = false;
   bool _isLoading = false;
   int _unreadNotifications = 0;
+  Locale _locale = const Locale('de');
 
   Map<String, dynamic>? get currentUser => _currentUser;
   bool get isInitialized => _isInitialized;
   bool get isLoading => _isLoading;
   int get unreadNotifications => _unreadNotifications;
+  Locale get locale => _locale;
 
   String get role => _currentUser?['role'] ?? '';
   String get userId => _currentUser?['id'] ?? '';
@@ -207,5 +209,10 @@ class AppState extends ChangeNotifier {
       _unreadNotifications--;
       notifyListeners();
     }
+  }
+
+  void setLocale(Locale loc) {
+    _locale = loc;
+    notifyListeners();
   }
 }

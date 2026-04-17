@@ -324,6 +324,11 @@ class SupabaseService {
     await _client.from('customer_contacts').delete().eq('id', id);
   }
 
+  static Future<List<Map<String, dynamic>>> getCustomerContacts(String customerId) async {
+    final data = await _client.from('customer_contacts').select().eq('customer_id', customerId).order('name');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
   /// Bir siparişe yorum / talimat / genehmigung ekler (order_status_history tablosunu kullanır)
   static Future<void> addOrderComment({
     required String orderId,
@@ -2398,6 +2403,7 @@ class SupabaseService {
   static Future<Map<String, dynamic>?> getGwsDailyPlan(String id) async {
     return await _client.from('gws_daily_plans').select('''
       *,
+      order:orders(id, title),
       object:customers(id, name, address),
       leader:users!gws_daily_plans_internal_leader_fkey(id, first_name, last_name),
       rooms:gws_plan_rooms(*),
@@ -2500,10 +2506,52 @@ class SupabaseService {
     String? assignedUserId,
   }) async {
     final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
-    final Map<String, dynamic> payload = {'status': status};
+    final Map<String, dynamic> payload = {'status': status, 'updated_at': DateTime.now().toIso8601String()};
     if (assignedUserId != null) payload['assigned_user_id'] = assignedUserId;
     
     await _client.from(table).update(payload).eq('id', id);
+  }
+
+  static Future<void> updateGwsItemDetails({
+    required String type, // 'room' | 'area'
+    required String id,
+    Map<String, dynamic>? checklistData,
+    String? workerNotes,
+    List<String>? photos,
+    String? checkerStatus,
+    String? checkerNotes,
+    String? status,
+  }) async {
+    final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
+    final Map<String, dynamic> payload = {
+      if (checklistData != null) 'checklist_data': checklistData,
+      if (workerNotes != null) 'worker_notes': workerNotes,
+      if (photos != null) 'photos': photos,
+      if (checkerStatus != null) 'checker_status': checkerStatus,
+      if (checkerNotes != null) 'checker_notes': checkerNotes,
+      if (status != null) 'status': status,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    await _client.from(table).update(payload).eq('id', id);
+  }
+
+  static Future<void> updateGwsPlanCustomerFeedback({
+    required String planId,
+    required String comment,
+    required String signatureBase64,
+  }) async {
+    await _client.from('gws_daily_plans').update({
+      'customer_comment': comment,
+      'customer_signature': signatureBase64,
+      'signed_at': DateTime.now().toIso8601String(),
+      'status': 'released', // Müşteri imzalayınca released (tamamlandı) statüsüne geçer
+    }).eq('id', planId);
+  }
+
+  static Future<void> shareGwsPlanWithCustomer(String planId, bool shared) async {
+    await _client.from('gws_daily_plans').update({
+      'is_shared_with_customer': shared,
+    }).eq('id', planId);
   }
 
   static Future<List<Map<String, dynamic>>> getGwsTasksForUser(String userId) async {
@@ -2561,9 +2609,20 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getGwsPlansForLeader(String userId) async {
     final assignments = await _client
         .from('gws_plan_assignments')
-        .select('plan_id, plan:gws_daily_plans(*, object:customers(name))')
+        .select('plan_id, plan:gws_daily_plans(*, object:customers(name), order:orders(title))')
         .eq('user_id', userId)
         .eq('is_team_leader', true);
+    return (assignments as List).map((a) => a['plan'] as Map<String, dynamic>).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsOrders({String? departmentId}) async {
+    // Gastwirtschaftsservice (veya belirli departman) için aktif siparişleri getir
+    var query = _client.from('orders').select('id, title, customer_id, customer:customers(name)');
+    if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
+    
+    final data = await query.eq('status', 'active');
+    return List<Map<String, dynamic>>.from(data);
+  }
     
     return (assignments as List).map((a) => Map<String, dynamic>.from(a['plan'])).toList();
   }

@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'localization_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/string_utils.dart';
@@ -220,6 +221,146 @@ class PdfService {
     );
 
     return pdf.save();
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // GASTWIRTSCHAFTSSERVICE (GWS) RAPORU
+  // ─────────────────────────────────────────────────────────
+  static Future<Uint8List> buildGwsReportPdf({
+    required Map<String, dynamic> plan,
+    required List<Map<String, dynamic>> rooms,
+    required List<Map<String, dynamic>> areas,
+  }) async {
+    final pdf = pw.Document();
+
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
+
+    final order = plan['order'] as Map<String, dynamic>? ?? {};
+    final object = plan['object'] as Map<String, dynamic>? ?? {};
+    final leader = plan['leader'] as Map<String, dynamic>? ?? {};
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        theme: pw.ThemeData.withFont(base: font, bold: fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
+        footer: (context) => _buildFooter(context, font, fontBold),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('OPERATİONEL GWS RAPORU', style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
+                pw.Text('v1.19.8', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          
+          _sectionTitle('Genel Bilgiler', fontBold),
+          _infoTable([
+            ['Müşteri / Otel', object['name'] ?? '-'],
+            ['Sipariş (Auftrag)', order['title'] ?? '-'],
+            ['Plan Tarihi', _fmtDate(plan['plan_date'])],
+            ['Saha Sorumlusu', '${leader['first_name'] ?? ''} ${leader['last_name'] ?? ''}'],
+            ['Rapor Durumu', plan['status'] ?? 'Draft'],
+          ], font, fontBold),
+          pw.SizedBox(height: 20),
+
+          if (rooms.isNotEmpty) ...[
+            _sectionTitle('Zimmerliste / Oda Detayları', fontBold),
+            _gwsItemsTable(rooms, true, font, fontBold),
+            pw.SizedBox(height: 20),
+          ],
+
+          if (areas.isNotEmpty) ...[
+            _sectionTitle('Bereiche / Ortak Alanlar', fontBold),
+            _gwsItemsTable(areas, false, font, fontBold),
+            pw.SizedBox(height: 20),
+          ],
+
+          _sectionTitle('Müşteri Onayı (External Manager)', fontBold),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Müşteri Notu:', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                pw.Text(plan['customer_comment'] ?? '-', style: pw.TextStyle(font: font, fontSize: 10)),
+                pw.SizedBox(height: 15),
+                if (plan['customer_signature'] != null) ...[
+                  pw.Text('Elektronik İmza:', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                  pw.SizedBox(height: 5),
+                  pw.Container(
+                    height: 60,
+                    width: 150,
+                    child: pw.Image(pw.MemoryImage(base64Decode(plan['customer_signature'])), fit: pw.BoxFit.contain),
+                  ),
+                  pw.SizedBox(height: 5),
+                  pw.Text('İmza Tarihi: ${_fmtTimestamp(plan['signed_at'])}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
+                ] else
+                  pw.Text('Dijital imza henüz atılmamıştır.', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.red)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static pw.Widget _gwsItemsTable(List<Map<String, dynamic>> items, bool isRoom, pw.Font font, pw.Font fontBold) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey200),
+      columnWidths: {
+        0: const pw.FixedColumnWidth(80),
+        1: const pw.FlexColumnWidth(2),
+        2: const pw.FlexColumnWidth(1),
+        3: const pw.FixedColumnWidth(60),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
+          children: [
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isRoom ? 'Oda No' : 'Alan Adı', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Checklist / Notlar', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Çalışan', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Durum', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+          ],
+        ),
+        ...items.map((itm) {
+          final checklist = itm['checklist_data'] as Map? ?? {};
+          final checklistStr = checklist.entries.where((e) => e.value == true).map((e) => 'v ${e.key}').join(', ');
+          
+          return pw.TableRow(children: [
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isRoom ? '${itm['room_number']}' : '${itm['area_name']}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(checklistStr.isEmpty ? 'Kayıt bulunmuyor' : checklistStr, style: pw.TextStyle(font: font, fontSize: 8)),
+                if (itm['worker_notes'] != null)
+                  pw.Text('Not: ${itm['worker_notes']}', style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600), fontStyle: pw.FontStyle.italic),
+              ],
+            )),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('-', style: pw.TextStyle(font: font, fontSize: 8))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(
+              itm['checker_status']?.toUpperCase() ?? 'PENDING',
+              style: pw.TextStyle(font: fontBold, fontSize: 8, color: itm['checker_status'] == 'ok' ? PdfColors.green700 : PdfColors.red700),
+            )),
+          ]);
+        }),
+      ],
+    );
   }
 
   // ─────────────────────────────────────────────────────────

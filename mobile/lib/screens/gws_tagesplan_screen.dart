@@ -24,7 +24,10 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   // Block A – Tageskopf
   DateTime _planDate = DateTime.now();
   String? _selectedObjectId;
+  String? _selectedOrderId;
   String _status = 'draft';
+  bool _isShared = false;
+  List<Map<String, dynamic>> _gwsOrders = [];
 
   // Block B – Zimmer
   final List<Map<String, dynamic>> _rooms = [];
@@ -78,26 +81,39 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
 
   Future<void> _checkPermissions() async {
     final appState = context.read<AppState>();
-    if (widget.planId != null) {
-      // Mevcut planı yükle
-      setState(() => _loading = true);
-      try {
-        final rooms = await SupabaseService.getGwsPlanRooms(widget.planId!);
-        final areas = await SupabaseService.getGwsPlanAreas(widget.planId!);
-        final isLeader = await SupabaseService.isUserGwsTeamLeader(widget.planId!, appState.userId);
-        
-        if (mounted) {
-          setState(() {
-            _rooms.clear(); _rooms.addAll(rooms);
-            _areas.clear(); _areas.addAll(areas);
-            _isTeamLeader = isLeader;
-            // Diğer detaylar (date, objectId) widget constructor veya initial data'dan gelebilir
-            _loading = false;
-          });
+    setState(() => _loading = true);
+    try {
+      // Load active orders for GWS
+      final orders = await SupabaseService.getGwsOrders(departmentId: widget.departmentId);
+      
+      if (widget.planId != null) {
+        // Mevcut planı yükle
+        final plan = await SupabaseService.getGwsDailyPlan(widget.planId!);
+        if (plan != null) {
+          _planDate = DateTime.tryParse(plan['plan_date']) ?? DateTime.now();
+          _selectedObjectId = plan['object_id']?.toString();
+          _selectedOrderId = plan['order_id']?.toString();
+          _status = plan['status'] ?? 'draft';
+          _isShared = plan['is_shared_with_customer'] == true;
+          
+          final rooms = await SupabaseService.getGwsPlanRooms(widget.planId!);
+          final areas = await SupabaseService.getGwsPlanAreas(widget.planId!);
+          final isLeader = await SupabaseService.isUserGwsTeamLeader(widget.planId!, appState.userId);
+          
+          _rooms.clear(); _rooms.addAll(rooms);
+          _areas.clear(); _areas.addAll(areas);
+          _isTeamLeader = isLeader;
         }
-      } catch (_) {
-        if (mounted) setState(() => _loading = false);
       }
+      
+      if (mounted) {
+        setState(() {
+          _gwsOrders = orders;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -170,15 +186,21 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Objekt
+          // Auftrag / Sipariş
           DropdownButtonFormField<String>(
-            value: _selectedObjectId,
-            decoration: const InputDecoration(labelText: 'Objekt / Kunde *', prefixIcon: Icon(Icons.hotel)),
-            items: widget.objects.map((obj) => DropdownMenuItem<String>(
-              value: obj['id'].toString(),
-              child: Text(obj['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
+            value: _selectedOrderId,
+            decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
+            items: _gwsOrders.map((ord) => DropdownMenuItem<String>(
+              value: ord['id'].toString(),
+              child: Text('${ord['customer']?['name']}: ${ord['title']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis),
             )).toList(),
-            onChanged: (v) => setState(() => _selectedObjectId = v),
+            onChanged: (v) {
+              final ord = _gwsOrders.firstWhere((element) => element['id'] == v);
+              setState(() {
+                _selectedOrderId = v;
+                _selectedObjectId = ord['customer_id'];
+              });
+            },
           ),
           const SizedBox(height: 12),
           // Status
@@ -193,6 +215,24 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ],
             onChanged: (v) => setState(() => _status = v!),
           ),
+          if (widget.planId != null && (appState.role == 'GF' || appState.fullName == 'Fatma')) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Müşteriyle Paylaş', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                Switch(
+                  value: _isShared,
+                  activeColor: AppTheme.gwsColor,
+                  onChanged: (v) async {
+                    setState(() => _isShared = v);
+                    await SupabaseService.shareGwsPlanWithCustomer(widget.planId!, v);
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -667,13 +707,23 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     setState(() => _saving = true);
     try {
       final appState = context.read<AppState>();
-      final planId = await SupabaseService.createGwsDailyPlan({
+      final Map<String, dynamic> insertData = {
         'plan_date': _planDate.toIso8601String().split('T')[0],
         'object_id': _selectedObjectId,
+        'order_id': _selectedOrderId,
         'internal_leader': appState.userId,
         'status': _status,
         'created_by': appState.userId,
-      });
+      };
+      
+      String planId;
+      if (widget.planId != null) {
+        await SupabaseService.updateGwsDailyPlan(widget.planId!, insertData);
+        planId = widget.planId!;
+      } else {
+        planId = await SupabaseService.createGwsDailyPlan(insertData);
+      }
+      
       await SupabaseService.upsertGwsPlanRooms(planId, _rooms);
       await SupabaseService.upsertGwsPlanAreas(planId, _areas);
       if (mounted) {

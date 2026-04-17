@@ -5,6 +5,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import 'gws_item_form_screen.dart';
 
 class GwsOperativeViewScreen extends StatefulWidget {
   const GwsOperativeViewScreen({super.key});
@@ -131,9 +132,9 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                      onPressed: () => _updateStatus(t, 'done'),
-                                      icon: const Icon(Icons.check),
-                                      label: const Text('Erledigt'),
+                                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area'))).then((_) => _load()),
+                                      icon: const Icon(Icons.assignment_turned_in),
+                                      label: const Text('Formular & Abschliessen'),
                                     ),
                                   )
                                 else if (t['status'] == 'done')
@@ -157,6 +158,7 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
   Widget _buildLeaderApprovalButton(Map<String, dynamic> t) {
     final assignments = t['plan']?['assignments'] as List?;
     final isLeader = assignments?.any((a) => a['is_team_leader'] == true) ?? false;
+    final isRoom = t['type'] == 'room';
 
     if (!isLeader) {
        return const Expanded(child: Center(child: Text('Wartet auf Kontrolle...', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 13))));
@@ -165,7 +167,7 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
     return Expanded(
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-        onPressed: () => _updateStatus(t, 'checked'),
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area'))).then((_) => _load()),
         icon: const Icon(Icons.verified_user),
         label: const Text('Kontrol Et & Onayla'),
       ),

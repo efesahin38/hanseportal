@@ -36,6 +36,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   String? _selectedCustomerId;
   String? _selectedServiceAreaId;
+  String? _selectedContactId;
+  String? _responsibleUserId;
   String _priority = 'normal';
   String _orderType = 'Standardauftrag';
   String _negotiationType = 'Pauschal';
@@ -48,6 +50,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<Map<String, dynamic>> _customers = [];
   List<Map<String, dynamic>> _serviceAreas = [];
   List<Map<String, dynamic>> _departments = [];
+  List<Map<String, dynamic>> _customerContacts = [];
+  List<Map<String, dynamic>> _internalUsers = [];
 
   @override
   void initState() {
@@ -110,10 +114,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         serviceAreaId: widget.initialDepartmentId == null ? defaultSAId : null,
       );
 
+      // Internal Users fetch (Sachbearbeiterlar için)
+      final internalUsers = await SupabaseService.getUsers(status: 'active');
+      final filteredInternal = internalUsers.where((u) => 
+        ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'backoffice', 'buchhaltung'].contains(u['role'])
+      ).toList();
+
       if (mounted) {
         setState(() {
           _customers = customers;
           _serviceAreas = filteredServiceAreas;
+          _internalUsers = filteredInternal;
           
           if (widget.orderId == null && defaultSAId != null) {
             _selectedServiceAreaId = defaultSAId;
@@ -149,10 +160,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _selectedServiceAreaId = order['service_area_id'];
         _priority = order['priority'] ?? 'normal';
         _minBillableHours = (order['minimum_billable_hours'] as num?)?.toDouble() ?? 4.0;
+        _selectedContactId = order['customer_contact_id'];
+        _responsibleUserId = order['responsible_user_id'];
+
         if (order['planned_start_date'] != null) _startDate = DateTime.parse(order['planned_start_date']);
         if (order['planned_end_date'] != null) _endDate = DateTime.parse(order['planned_end_date']);
+        
+        if (_selectedCustomerId != null) _loadCustomerContacts(_selectedCustomerId!);
       });
     }
+  }
+
+  Future<void> _loadCustomerContacts(String customerId) async {
+    try {
+      final contacts = await SupabaseService.getCustomerContacts(customerId);
+      if (mounted) {
+        setState(() {
+          _customerContacts = contacts;
+          if (_selectedContactId != null && !contacts.any((c) => c['id'] == _selectedContactId)) {
+            _selectedContactId = null;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _pickDate(bool isStart) async {
@@ -204,6 +234,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         'department_id': autoDeptId,
         'customer_id': _selectedCustomerId,
         'service_area_id': _selectedServiceAreaId,
+        'customer_contact_id': _selectedContactId,
+        'responsible_user_id': _responsibleUserId,
         'priority': _priority,
         'order_type': _orderType,
         'negotiation_type': _negotiationType,
@@ -289,7 +321,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                           }
                         }),
                       ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _dropdown(tr('Muhattap Kişi (Kunde)'), _customerContacts, _selectedContactId, 'name', (v) {
+                          setState(() => _selectedContactId = v);
+                        }),
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _dropdown(tr('Sachbearbeiter (Zuständig)'), _internalUsers.map((u) => {
+                      'id': u['id'],
+                      'display_name': '${u['first_name']} ${u['last_name']}'
+                    }).toList(), _responsibleUserId, 'display_name', (v) {
+                      setState(() => _responsibleUserId = v);
+                    }),
                   ),
                   const SizedBox(height: 24),
 
@@ -610,6 +658,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                   Navigator.pop(ctx);
                                   setState(() {
                                     _selectedCustomerId = c['id'].toString();
+                                    _loadCustomerContacts(_selectedCustomerId!);
+                                    
                                     // Adres otomatik doldur
                                     final addr = c['address']?.toString() ?? '';
                                     final plz = c['postal_code']?.toString() ?? '';

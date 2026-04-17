@@ -232,7 +232,15 @@ class _GwsHubScreenState extends State<GwsHubScreen> {
             ),
           )
         else
-          ...(_todayPlans.map((plan) => _PlanCard(plan: plan, color: _color))),
+          ...(_todayPlans.map((plan) => InkWell(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+              departmentId: widget.departmentId, 
+              objects: _objects,
+              initialPlanId: plan['id'],
+            ))),
+            borderRadius: BorderRadius.circular(14),
+            child: _PlanCard(plan: plan, color: _color),
+          ))),
       ],
     );
   }
@@ -246,33 +254,41 @@ class _GwsHubScreenState extends State<GwsHubScreen> {
         if (_objects.isEmpty)
           const Text('Keine Objekte zugewiesen', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'))
         else
-          ...(_objects.map((obj) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.divider),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: _color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Icon(Icons.hotel_outlined, color: _color, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(obj['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter', fontSize: 14)),
-                      if (obj['address'] != null) Text(obj['address'], style: const TextStyle(color: AppTheme.textSub, fontSize: 12, fontFamily: 'Inter'), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
+          ...(_objects.map((obj) => InkWell(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+              departmentId: widget.departmentId, 
+              objects: _objects,
+              initialObjectId: obj['id'],
+            ))),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.divider),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: _color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Icon(Icons.hotel_outlined, color: _color, size: 18),
                   ),
-                ),
-                Icon(Icons.chevron_right, color: _color.withOpacity(0.5)),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(obj['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter', fontSize: 14)),
+                        if (obj['address'] != null) Text(obj['address'], style: const TextStyle(color: AppTheme.textSub, fontSize: 12, fontFamily: 'Inter'), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: _color.withOpacity(0.5)),
+                ],
+              ),
             ),
           ))),
       ],
