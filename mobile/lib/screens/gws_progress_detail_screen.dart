@@ -232,6 +232,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
         Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(
           item: item, 
           type: isRoom ? 'room' : 'area',
+          planId: widget.planId,
           isExternalManager: widget.isExternalManager,
         ))).then((_) => _load());
       },

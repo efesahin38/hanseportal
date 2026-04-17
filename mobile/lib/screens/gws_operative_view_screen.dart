@@ -132,7 +132,7 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area'))).then((_) => _load()),
+                                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area', planId: t['plan_id'] ?? t['plan']?['id'] ?? ''))).then((_) => _load()),
                                       icon: const Icon(Icons.assignment_turned_in),
                                       label: const Text('Formular & Abschliessen'),
                                     ),
@@ -167,7 +167,7 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
     return Expanded(
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area'))).then((_) => _load()),
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(item: t, type: isRoom ? 'room' : 'area', planId: t['plan_id'] ?? t['plan']?['id'] ?? ''))).then((_) => _load()),
         icon: const Icon(Icons.verified_user),
         label: const Text('Kontrol Et & Onayla'),
       ),

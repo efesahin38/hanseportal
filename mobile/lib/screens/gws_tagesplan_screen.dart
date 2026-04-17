@@ -6,6 +6,7 @@ import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'gws_personnel_planning_screen.dart';
+import 'gws_item_form_screen.dart';
 
 /// GWS Tagesplanungsmaske
 /// Operative Herzstück: Zimmer, Bereiche, Zusatzleistungen, kaufmännische Vorschau
@@ -273,7 +274,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ...(_rooms.asMap().entries.map((entry) {
               final i = entry.key;
               final r = entry.value;
-              return Container(
+              final card = Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
@@ -300,9 +301,20 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     if (appState.role == 'GF' || appState.fullName == 'Fatma')
                       Text('€ ${(r['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
+                    if (r['id'] != null)
+                      Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
                     IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
                   ],
                 ),
+              );
+              if (r['id'] == null || widget.planId == null) return card;
+              return InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(
+                  item: r, type: 'room', planId: widget.planId!,
+                  isExternalManager: context.read<AppState>().role == 'external_manager',
+                ))).then((ok) { if (ok == true) _checkPermissions(); }),
+                child: card,
               );
             })),
           if (_rooms.isNotEmpty) ...[
@@ -400,7 +412,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ...(_areas.asMap().entries.map((entry) {
               final i = entry.key;
               final a = entry.value;
-              return Container(
+              final areaCard = Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(color: _color.withOpacity(0.04), borderRadius: BorderRadius.circular(10), border: Border.all(color: _color.withOpacity(0.2))),
@@ -421,9 +433,20 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     if (appState.role == 'GF' || appState.fullName == 'Fatma')
                       Text('€ ${(a['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
+                    if (a['id'] != null)
+                      Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
                     IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
                   ],
                 ),
+              );
+              if (a['id'] == null || widget.planId == null) return areaCard;
+              return InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsItemFormScreen(
+                  item: a, type: 'area', planId: widget.planId!,
+                  isExternalManager: context.read<AppState>().role == 'external_manager',
+                ))).then((ok) { if (ok == true) _checkPermissions(); }),
+                child: areaCard,
               );
             })),
           if (_areas.isNotEmpty) ...[

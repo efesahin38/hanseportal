@@ -2616,11 +2616,57 @@ class SupabaseService {
   }
 
   static Future<List<Map<String, dynamic>>> getGwsOrders({String? departmentId}) async {
-    // Gastwirtschaftsservice (veya belirli departman) için aktif siparişleri getir
-    var query = _client.from('orders').select('id, title, customer_id, customer:customers(name)');
-    if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
-    
-    final data = await query.eq('status', 'active');
+    // GWS için aktif/draft/in_progress siparişleri getir (customer_contact bilgisi dahil)
+    var query = _client.from('orders').select(
+      'id, title, customer_id, status, customer:customers(name, customer_contacts(id, name, role, email, phone, user_id))'
+    );
+    if (departmentId != null) {
+      try { query = query.eq('department_id', departmentId) as dynamic; } catch (_) {}
+    }
+    // Filter: active, draft veya in_progress siparişler
+    final data = await query.inFilter('status', ['active', 'draft', 'in_progress', 'freigegeben']);
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  /// GWS oda/alan item'ini External Manager ile paylaş veya geri al
+  static Future<void> shareGwsItemWithExternal({
+    required String type, // 'room' | 'area'
+    required String id,
+    required bool shared,
+  }) async {
+    final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
+    await _client.from(table).update({
+      'is_shared_with_external': shared,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
+  }
+
+  /// External Manager'ın yorum ve imzasını kaydet
+  static Future<void> saveGwsExternalFeedback({
+    required String type, // 'room' | 'area'
+    required String id,
+    required String comment,
+    required String signatureBase64,
+  }) async {
+    final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
+    await _client.from(table).update({
+      'external_comment': comment,
+      'external_signature': signatureBase64,
+      'external_returned_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
+  }
+
+  /// PDF URL'lerini güncelle
+  static Future<void> updateGwsItemPdfs({
+    required String type,
+    required String id,
+    required List<String> pdfUrls,
+  }) async {
+    final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
+    await _client.from(table).update({
+      'pdf_urls': pdfUrls,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
   }
 }

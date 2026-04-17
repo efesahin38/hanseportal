@@ -36,8 +36,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   String? _selectedCustomerId;
   String? _selectedServiceAreaId;
-  String? _selectedContactId;
-  String? _responsibleUserId;
+  String? _selectedContactId;       // Muhattap (ExtManager)
+  String? _selectedSachbearbeiterContactId; // Sachbearbeiter contact
+  String? _responsibleUserId;       // Internal responsible user
   String _priority = 'normal';
   String _orderType = 'Standardauftrag';
   String _negotiationType = 'Pauschal';
@@ -50,7 +51,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<Map<String, dynamic>> _customers = [];
   List<Map<String, dynamic>> _serviceAreas = [];
   List<Map<String, dynamic>> _departments = [];
-  List<Map<String, dynamic>> _customerContacts = [];
+  List<Map<String, dynamic>> _muhattapContacts = [];     // ExtManager type
+  List<Map<String, dynamic>> _sachbearbeiterContacts = []; // Sachbearbeiter type
   List<Map<String, dynamic>> _internalUsers = [];
 
   @override
@@ -176,9 +178,22 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final contacts = await SupabaseService.getCustomerContacts(customerId);
       if (mounted) {
         setState(() {
-          _customerContacts = contacts;
-          if (_selectedContactId != null && !contacts.any((c) => c['id'] == _selectedContactId)) {
+          // Muhattap = ExtManager tipi kontaklar
+          _muhattapContacts = contacts.where((c) {
+            final r = (c['role'] ?? '').toString().toLowerCase();
+            return r == 'extmanager' || r == 'external_manager' || r == 'muhattap';
+          }).toList();
+          // Sachbearbeiter = Sachbearbeiter tipi kontaklar
+          _sachbearbeiterContacts = contacts.where((c) {
+            final r = (c['role'] ?? '').toString().toLowerCase();
+            return r == 'sachbearbeiter';
+          }).toList();
+          // Reset selections if no longer valid
+          if (!_muhattapContacts.any((c) => c['id'] == _selectedContactId)) {
             _selectedContactId = null;
+          }
+          if (!_sachbearbeiterContacts.any((c) => c['id'] == _selectedSachbearbeiterContactId)) {
+            _selectedSachbearbeiterContactId = null;
           }
         });
       }
@@ -235,6 +250,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         'customer_id': _selectedCustomerId,
         'service_area_id': _selectedServiceAreaId,
         'customer_contact_id': _selectedContactId,
+        if (_selectedSachbearbeiterContactId != null)
+          'sachbearbeiter_contact_id': _selectedSachbearbeiterContactId,
         'responsible_user_id': _responsibleUserId,
         'priority': _priority,
         'order_type': _orderType,
@@ -323,9 +340,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown(tr('Muhattap Kişi (Kunde)'), _customerContacts, _selectedContactId, 'name', (v) {
-                          setState(() => _selectedContactId = v);
-                        }),
+                        child: _contactDropdown(
+                          tr('Muhattap Kişi (Externer Ansprechpartner)'),
+                          _muhattapContacts,
+                          _selectedContactId,
+                          Icons.person_pin_outlined,
+                          (v) => setState(() => _selectedContactId = v),
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _contactDropdown(
+                          tr('Sachbearbeiter (Kunde)'),
+                          _sachbearbeiterContacts,
+                          _selectedSachbearbeiterContactId,
+                          Icons.manage_accounts_outlined,
+                          (v) => setState(() => _selectedSachbearbeiterContactId = v),
+                        ),
                       ),
                     ],
                   ),
@@ -777,4 +808,40 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
     ),
   );
+
+  Widget _contactDropdown(
+    String label,
+    List<Map<String, dynamic>> contacts,
+    String? selectedId,
+    IconData icon,
+    void Function(String?) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: selectedId,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: contacts.isEmpty ? '$label (—)' : label,
+          prefixIcon: Icon(icon, size: 20),
+        ),
+        items: [
+          const DropdownMenuItem<String>(value: null, child: Text('— Kein Ansprechpartner —', style: TextStyle(fontFamily: 'Inter', color: Colors.grey))),
+          ...contacts.map((c) => DropdownMenuItem<String>(
+            value: c['id'].toString(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(c['name'] ?? '', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 13)),
+                if (c['email'] != null && (c['email'] as String).isNotEmpty)
+                  Text(c['email'], style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppTheme.textSub)),
+              ],
+            ),
+          )),
+        ],
+        onChanged: onChanged,
+      ),
+    );
+  }
 }

@@ -289,39 +289,150 @@ class _GwsShopScreenState extends State<GwsShopScreen> with SingleTickerProvider
         final order = _shopOrders[i];
         final items = (order['items'] as List?) ?? [];
         final obj = order['object'] as Map<String, dynamic>?;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.divider)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: _color.withOpacity(0.05), borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
-                child: Row(
-                  children: [
-                    Icon(Icons.shopping_cart_outlined, color: _color, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(obj?['name'] ?? 'Objekt', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter'))),
-                    _statusBadge(order['status']),
-                  ],
+        final total = items.fold<double>(0, (s, it) => s + ((it['price'] as num? ?? 0) * (it['quantity'] as num? ?? 1)));
+
+        return InkWell(
+          onTap: () => _showOrderDetail(order),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.divider)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: _color.withOpacity(0.05), borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shopping_cart_outlined, color: _color, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(obj?['name'] ?? 'Objekt', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter'))),
+                      _statusBadge(order['status']),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${items.length} Artikel', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13)),
-                    if (order['notes'] != null && (order['notes'] as String).isNotEmpty)
-                      Padding(padding: const EdgeInsets.only(top: 6), child: Text(order['notes'], style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'))),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 16, color: AppTheme.textSub),
+                      const SizedBox(width: 6),
+                      Text('${items.length} Artikel', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13)),
+                      const Spacer(),
+                      Text('€ ${total.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right, size: 16, color: _color.withOpacity(0.5)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  void _showOrderDetail(Map<String, dynamic> order) {
+    final items = (order['items'] as List?) ?? [];
+    final obj = order['object'] as Map<String, dynamic>?;
+    final total = items.fold<double>(0, (s, it) => s + ((it['price'] as num? ?? 0) * (it['quantity'] as num? ?? 1)));
+    final dateStr = order['desired_date'] != null
+        ? (() { final d = DateTime.tryParse(order['desired_date']); return d != null ? '${d.day}.${d.month}.${d.year}' : '—'; })()
+        : '—';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, sc) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _color,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(obj?['name'] ?? 'Bestellung', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter'))),
+                  _statusBadge(order['status']),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                controller: sc,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Lieferdatum + Notiz
+                  Row(
+                    children: [
+                      const Icon(Icons.local_shipping_outlined, size: 16, color: AppTheme.textSub),
+                      const SizedBox(width: 6),
+                      Text('Liefertermin: $dateStr', style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppTheme.textSub)),
+                    ],
+                  ),
+                  if (order['notes'] != null && (order['notes'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: AppTheme.bg, borderRadius: BorderRadius.circular(10)),
+                      child: Text(order['notes'], style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  Text('Bestellte Artikel (${items.length})', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 12),
+                  ...items.map((it) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.divider),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(it['product_name'] ?? '—', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 13)),
+                              Text('${it['quantity']} ${it['unit'] ?? 'Stk.'}', style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppTheme.textSub)),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '€ ${((it['price'] as num? ?? 0) * (it['quantity'] as num? ?? 1)).toStringAsFixed(2)}',
+                          style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, color: _color),
+                        ),
+                      ],
+                    ),
+                  )),
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Gesamt:', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('€ ${total.toStringAsFixed(2)}', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, color: _color, fontSize: 18)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
