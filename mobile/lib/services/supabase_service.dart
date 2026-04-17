@@ -2623,7 +2623,4 @@ class SupabaseService {
     final data = await query.eq('status', 'active');
     return List<Map<String, dynamic>>.from(data);
   }
-    
-    return (assignments as List).map((a) => Map<String, dynamic>.from(a['plan'])).toList();
-  }
 }

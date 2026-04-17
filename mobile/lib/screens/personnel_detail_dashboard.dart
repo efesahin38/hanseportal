@@ -15,6 +15,7 @@ class PersonnelDetailDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.read<AppState>();
     final isExternalManager = (user['role'] ?? '') == 'external_manager';
     final canManageLeave = (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) && !isExternalManager;
 

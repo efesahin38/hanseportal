@@ -233,11 +233,12 @@ class _GwsHubScreenState extends State<GwsHubScreen> {
           )
         else
           ...(_todayPlans.map((plan) => InkWell(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
-              departmentId: widget.departmentId, 
-              objects: _objects,
-              initialPlanId: plan['id'],
-            ))),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+                planId: plan['id'],
+                objects: const [], // Will be loaded by the screen
+              ))).then((_) => _load());
+            },
             borderRadius: BorderRadius.circular(14),
             child: _PlanCard(plan: plan, color: _color),
           ))),
@@ -258,8 +259,7 @@ class _GwsHubScreenState extends State<GwsHubScreen> {
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
               departmentId: widget.departmentId, 
               objects: _objects,
-              initialObjectId: obj['id'],
-            ))),
+            ))).then((_) => _load()),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               margin: const EdgeInsets.only(bottom: 8),

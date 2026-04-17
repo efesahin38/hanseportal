@@ -349,7 +349,7 @@ class PdfService {
               children: [
                 pw.Text(checklistStr.isEmpty ? 'Kayıt bulunmuyor' : checklistStr, style: pw.TextStyle(font: font, fontSize: 8)),
                 if (itm['worker_notes'] != null)
-                  pw.Text('Not: ${itm['worker_notes']}', style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600), fontStyle: pw.FontStyle.italic),
+                  pw.Text('Not: ${itm['worker_notes']}', style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic)),
               ],
             )),
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('-', style: pw.TextStyle(font: font, fontSize: 8))),
