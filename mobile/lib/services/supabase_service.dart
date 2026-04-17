@@ -324,6 +324,26 @@ class SupabaseService {
     await _client.from('customer_contacts').delete().eq('id', id);
   }
 
+  /// Bir siparişe yorum / talimat / genehmigung ekler (order_status_history tablosunu kullanır)
+  static Future<void> addOrderComment({
+    required String orderId,
+    required String comment,
+    required String commentType, // 'feedback' | 'instruction' | 'approval'
+    String? createdBy,
+  }) async {
+    // Mevcut durumu al
+    final order = await _client.from('orders').select('status').eq('id', orderId).maybeSingle();
+    final currentStatus = order?['status'] ?? 'in_progress';
+
+    await _client.from('order_status_history').insert({
+      'order_id': orderId,
+      'old_status': currentStatus,
+      'new_status': currentStatus,
+      'changed_by': createdBy,
+      'note': '[$commentType] $comment',
+    });
+  }
+
   // ── İşler ─────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> getOrders({
     String? status,
@@ -737,25 +757,16 @@ class SupabaseService {
   static Future<void> checkAndMarkOrderCompleted(String orderId, String changedById) async {
     try {
       // 1. Onay bekleyen seans var mı?
-      final pendingCount = await _client
+      final sessionsResp = await _client
           .from('work_sessions')
-          .select('id', const PostgrestDefaultReturntype.count(CountOption.exact))
+          .select('id')
           .eq('order_id', orderId)
           .neq('approval_status', 'approved');
       
-      if (pendingCount.count > 0) return;
+      final pendingCount = (sessionsResp as List).length;
+      if (pendingCount > 0) return;
 
-      // 2. Gerçekleşmemiş plan var mı? (Gelecek tarihli veya henüz seansı çekilmemiş)
-      // Şimdilik sadece bekleyen onaylara odaklanıyoruz ama tam güvenlik için:
-      final unrecordedPlans = await _client
-          .from('operation_plans')
-          .select('id', const PostgrestDefaultReturntype.count(CountOption.exact))
-          .eq('order_id', orderId)
-          .isFilter('id', 'not.in', _client.from('work_sessions').select('operation_plan_id').eq('order_id', orderId));
-      
-      // Not: Yukarıdaki subquery karmaşık olabilir, basitleştirelim:
-      // Sadece onaylanmamış seans yoksa ve sipariş durumu 'completed' değilse tamamla.
-      
+      // 2. Sipariş durumunu güncelle
       final order = await _client.from('orders').select('status').eq('id', orderId).maybeSingle();
       if (order != null && order['status'] != 'completed' && order['status'] != 'invoiced' && order['status'] != 'archived') {
          await updateOrderStatus(orderId, 'completed', tr('Tüm personel mesai seansları onaylandı, iş tamamlandı.'), changedById);
@@ -1928,6 +1939,38 @@ class SupabaseService {
     final data = await query.order('last_name');
     final allUsers = List<Map<String, dynamic>>.from(data);
 
+    final roleLower = role.toLowerCase();
+
+    // Externer Manager: sadece yetkili iç rollere yazabilir
+    if (roleLower == 'external_manager') {
+      const allowedRoles = ['geschaeftsfuehrer', 'betriebsleiter', 'buchhaltung', 'backoffice', 'bereichsleiter'];
+      final filtered = allUsers.where((u) {
+        final uRole = (u['role'] as String? ?? '').toLowerCase();
+        if (!allowedRoles.contains(uRole)) return false;
+        // Bereichsleiter ise sadece Fatma (GWS sorumlusu)
+        if (uRole == 'bereichsleiter') {
+          final firstName = (u['first_name'] as String? ?? '').toLowerCase();
+          return firstName == 'fatma';
+        }
+        return true;
+      }).toList();
+      return filtered;
+    }
+
+    // Diğer roller: external_manager'ı görmez (sadece GF, BL, Fatma görebilir)
+    const managerVisibleRoles = ['geschaeftsfuehrer', 'betriebsleiter', 'system_admin'];
+    if (!managerVisibleRoles.contains(roleLower) && roleLower != 'bereichsleiter') {
+      return allUsers.where((u) => (u['role'] as String? ?? '').toLowerCase() != 'external_manager').toList();
+    }
+    if (roleLower == 'bereichsleiter') {
+      // Fatma (GWS) externer manager'ı görebilir; diğer bereichsleiter göremez
+      final currentUserData = await _client.from('users').select('first_name').eq('id', currentUserId).maybeSingle();
+      final currentFirstName = (currentUserData?['first_name'] as String? ?? '').toLowerCase();
+      if (currentFirstName != 'fatma') {
+        return allUsers.where((u) => (u['role'] as String? ?? '').toLowerCase() != 'external_manager').toList();
+      }
+    }
+
     return allUsers; 
   }
 
@@ -2258,5 +2301,247 @@ class SupabaseService {
         sentBy: sentBy,
       );
     }
+  }
+
+  // ── Externer Manager ─────────────────────────────────────
+  /// Bir Ansprechpartner için otomatik external_manager kullanıcısı oluşturur.
+  /// Returns: {'userId': String, 'password': String}
+  static Future<Map<String, String>> createExternalManagerUser({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String companyId,
+  }) async {
+    // 4 haneli rastgele şifre
+    final rand = DateTime.now().millisecondsSinceEpoch % 10000;
+    final password = rand.toString().padLeft(4, '0');
+
+    // Mevcut kullanıcı var mı kontrol et
+    final existing = await _client
+        .from('users')
+        .select('id, password')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+    if (existing != null) {
+      return {'userId': existing['id'].toString(), 'password': existing['password']?.toString() ?? password};
+    }
+
+    final result = await _client.from('users').insert({
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email.toLowerCase(),
+      'phone': phone,
+      'password': password,
+      'role': 'external_manager',
+      'status': 'active',
+      'company_id': companyId,
+    }).select('id').single();
+
+    return {'userId': result['id'].toString(), 'password': password};
+  }
+
+  /// Externer Manager'ın muhattabı olduğu siparişleri getirir (customer_contacts.user_id üzerinden)
+  static Future<List<Map<String, dynamic>>> getOrdersForExternalManager(String userId) async {
+    // Önce bu kullanıcının email'i ile eşleşen customer_contacts'ları bul
+    final userRow = await _client.from('users').select('email').eq('id', userId).maybeSingle();
+    if (userRow == null) return [];
+    final email = userRow['email'] as String? ?? '';
+
+    // customer_contacts içinde bu email'e sahip olanları bul
+    final contacts = await _client
+        .from('customer_contacts')
+        .select('id, customer_id')
+        .eq('email', email);
+    
+    final contactList = List<Map<String, dynamic>>.from(contacts);
+    if (contactList.isEmpty) return [];
+
+    final customerIds = contactList.map((c) => c['customer_id'].toString()).toSet().toList();
+
+    // Bu müşterilere ait siparişleri getir
+    final data = await _client.from('orders').select('''
+      *,
+      customer:customers(id, name),
+      service_area:service_areas(id, code, name, color),
+      responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
+      department:departments(id, name)
+    ''').inFilter('customer_id', customerIds).order('created_at', ascending: false);
+
+    final list = List<Map<String, dynamic>>.from(data);
+    return list.where((item) => item['status'] != 'passive').toList();
+  }
+
+  // ── Gastwirtschaftsservice (GWS) ─────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getGwsDailyPlans({
+    String? objectId,
+    DateTime? date,
+    String? status,
+  }) async {
+    var query = _client.from('gws_daily_plans').select('''
+      *,
+      object:customers(id, name, address),
+      leader:users!gws_daily_plans_internal_leader_fkey(id, first_name, last_name),
+      created_by_user:users!gws_daily_plans_created_by_fkey(id, first_name, last_name),
+      rooms:gws_plan_rooms(*),
+      areas:gws_plan_areas(*)
+    ''');
+    if (objectId != null) query = query.eq('object_id', objectId) as dynamic;
+    if (date != null) query = query.eq('plan_date', date.toIso8601String().split('T')[0]) as dynamic;
+    if (status != null) query = query.eq('status', status) as dynamic;
+    final data = await query.order('plan_date', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<Map<String, dynamic>?> getGwsDailyPlan(String id) async {
+    return await _client.from('gws_daily_plans').select('''
+      *,
+      object:customers(id, name, address),
+      leader:users!gws_daily_plans_internal_leader_fkey(id, first_name, last_name),
+      rooms:gws_plan_rooms(*),
+      areas:gws_plan_areas(*)
+    ''').eq('id', id).maybeSingle();
+  }
+
+  static Future<String> createGwsDailyPlan(Map<String, dynamic> data) async {
+    final result = await _client.from('gws_daily_plans').insert(data).select('id').single();
+    return result['id'].toString();
+  }
+
+  static Future<void> updateGwsDailyPlan(String id, Map<String, dynamic> data) async {
+    await _client.from('gws_daily_plans').update({...data, 'updated_at': DateTime.now().toIso8601String()}).eq('id', id);
+  }
+
+  static Future<void> upsertGwsPlanRooms(String planId, List<Map<String, dynamic>> rooms) async {
+    await _client.from('gws_plan_rooms').delete().eq('plan_id', planId);
+    if (rooms.isNotEmpty) {
+      final items = rooms.map((r) => {...r, 'plan_id': planId}).toList();
+      await _client.from('gws_plan_rooms').insert(items);
+    }
+  }
+
+  static Future<void> upsertGwsPlanAreas(String planId, List<Map<String, dynamic>> areas) async {
+    await _client.from('gws_plan_areas').delete().eq('plan_id', planId);
+    if (areas.isNotEmpty) {
+      final items = areas.map((a) => {...a, 'plan_id': planId}).toList();
+      await _client.from('gws_plan_areas').insert(items);
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsShopOrders({String? objectId, String? status}) async {
+    var query = _client.from('gws_shop_orders').select('''
+      *,
+      object:customers(id, name),
+      ordered_by_user:users!gws_shop_orders_ordered_by_fkey(id, first_name, last_name),
+      items:gws_shop_order_items(*)
+    ''');
+    if (objectId != null) query = query.eq('object_id', objectId) as dynamic;
+    if (status != null) query = query.eq('status', status) as dynamic;
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<String> createGwsShopOrder(Map<String, dynamic> data, List<Map<String, dynamic>> items) async {
+    final result = await _client.from('gws_shop_orders').insert(data).select('id').single();
+    final orderId = result['id'].toString();
+    if (items.isNotEmpty) {
+      final inserts = items.map((i) => {...i, 'order_id': orderId}).toList();
+      await _client.from('gws_shop_order_items').insert(inserts);
+    }
+    return orderId;
+  }
+
+  static Future<void> updateGwsShopOrderStatus(String id, String status) async {
+    await _client.from('gws_shop_orders').update({'status': status}).eq('id', id);
+  }
+  // ── GWS (Gastwirtschaftsservice) Ek Metodlar ────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getGwsPersonnel() async {
+    final data = await _client
+        .from('users')
+        .select('*, user_service_areas!inner(service_area:service_areas(name))')
+        .eq('status', 'active')
+        .or('department_id.ilike.%gast%,user_service_areas.service_areas.name.ilike.%gast%');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> assignGwsPersonnel({
+    required String planId,
+    required List<Map<String, dynamic>> assignments,
+  }) async {
+    // Önce eskileri sil (temiz temiz)
+    await _client.from('gws_plan_assignments').delete().eq('plan_id', planId);
+    
+    if (assignments.isNotEmpty) {
+      final payload = assignments.map((a) => {
+        'plan_id': planId,
+        'user_id': a['user_id'],
+        'role_in_plan': a['role_in_plan'],
+        'is_team_leader': a['is_team_leader'] ?? false,
+      }).toList();
+      await _client.from('gws_plan_assignments').insert(payload);
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsPlanAssignments(String planId) async {
+    final data = await _client
+        .from('gws_plan_assignments')
+        .select('*, user:users(first_name, last_name, role)')
+        .eq('plan_id', planId);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> updateGwsTaskStatus({
+    required String type, // 'room' veya 'area'
+    required String id,
+    required String status,
+    String? assignedUserId,
+  }) async {
+    final table = type == 'room' ? 'gws_plan_rooms' : 'gws_plan_areas';
+    final Map<String, dynamic> payload = {'status': status};
+    if (assignedUserId != null) payload['assigned_user_id'] = assignedUserId;
+    
+    await _client.from(table).update(payload).eq('id', id);
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsTasksForUser(String userId) async {
+    final rooms = await _client
+        .from('gws_plan_rooms')
+        .select('*, plan:gws_daily_plans(plan_date, object:customers(name))')
+        .eq('assigned_user_id', userId)
+        .neq('status', 'checked')
+        .order('room_number');
+    
+    final areas = await _client
+        .from('gws_plan_areas')
+        .select('*, plan:gws_daily_plans(plan_date, object:customers(name))')
+        .eq('assigned_user_id', userId)
+        .neq('status', 'checked');
+
+    final List<Map<String, dynamic>> all = [];
+    for (var r in (rooms as List)) all.add({...r, 'type': 'room'});
+    for (var a in (areas as List)) all.add({...a, 'type': 'area'});
+    
+    return all;
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllGwsRoomsByStatus(String status) async {
+    final data = await _client
+        .from('gws_plan_rooms')
+        .select('*, plan:gws_daily_plans(object:customers(name)), assigned_user:users!gws_plan_rooms_assigned_user_id_fkey(first_name, last_name)')
+        .eq('status', status);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsPlanRooms(String planId) async {
+    final data = await _client.from('gws_plan_rooms').select('*').eq('plan_id', planId);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsPlanAreas(String planId) async {
+    final data = await _client.from('gws_plan_areas').select('*').eq('plan_id', planId);
+    return List<Map<String, dynamic>>.from(data);
   }
 }

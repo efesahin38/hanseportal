@@ -57,6 +57,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
         {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+        {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality']},
       ];
 
       for (var cat in categories) {
@@ -355,37 +356,126 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    String contactType = 'Sachbearbeiter';
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr('Sachbearbeiter Ekle')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: InputDecoration(labelText: tr('İsim Soyisim'))),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: tr('Telefon'))),
-            TextField(controller: emailCtrl, decoration: InputDecoration(labelText: tr('E-posta'))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(tr('Ansprechpartner Ekle')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: contactType,
+                decoration: InputDecoration(labelText: tr('Typ'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: const [
+                  DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Sachbearbeiter')),
+                  DropdownMenuItem(value: 'ExtManager', child: Text('🏨 Externer Manager (Kundenportal)')),
+                ],
+                onChanged: (v) => setLocal(() => contactType = v!),
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: tr('İsim Soyisim *'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+              const SizedBox(height: 8),
+              TextField(controller: phoneCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: tr('Telefon'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+              const SizedBox(height: 8),
+              TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(
+                labelText: contactType == 'ExtManager' ? tr('E-posta * (Portal girişi için)') : tr('E-posta'),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                suffixIcon: contactType == 'ExtManager' ? const Icon(Icons.vpn_key_outlined, color: AppTheme.gwsColor) : null,
+              )),
+              if (contactType == 'ExtManager') ...
+                [const SizedBox(height: 8), Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppTheme.gwsColor.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+                  child: const Row(children: [
+                    Icon(Icons.info_outline, color: AppTheme.gwsColor, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('E-posta girilirse otomatik portal hesabı oluşturulur.', style: TextStyle(fontSize: 12, color: AppTheme.gwsColor, fontFamily: 'Inter'))),
+                  ]),
+                )],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: contactType == 'ExtManager' ? AppTheme.gwsColor : AppTheme.primary),
+              onPressed: () async {
+                if (nameCtrl.text.isEmpty) return;
+                Navigator.pop(ctx);
+
+                final nameParts = nameCtrl.text.trim().split(' ');
+                final firstName = nameParts.isNotEmpty ? nameParts.first : nameCtrl.text.trim();
+                final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+                // Externer Manager ise otomatik kullanıcı oluştur
+                String? autoUserId;
+                String? autoPassword;
+                if (contactType == 'ExtManager' && emailCtrl.text.trim().isNotEmpty) {
+                  try {
+                    final companyId = context.read<AppState>().currentUser?['company_id'];
+                    final result = await SupabaseService.createExternalManagerUser(
+                      firstName: firstName,
+                      lastName: lastName,
+                      email: emailCtrl.text.trim(),
+                      phone: phoneCtrl.text.trim(),
+                      companyId: companyId ?? '',
+                    );
+                    autoUserId = result['userId'];
+                    autoPassword = result['password'];
+
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Row(children: [Icon(Icons.check_circle, color: AppTheme.success), SizedBox(width: 8), Text('Portal Hesabı Oluşturuldu', style: TextStyle(fontFamily: 'Inter', fontSize: 15))]),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Externer Manager bu bilgilerle giriş yapabilir:', style: TextStyle(fontFamily: 'Inter')),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(color: AppTheme.gwsColor.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.gwsColor.withOpacity(0.3))),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [const Icon(Icons.email_outlined, size: 16, color: AppTheme.gwsColor), const SizedBox(width: 6), Text(emailCtrl.text.trim(), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold))]),
+                                    const SizedBox(height: 6),
+                                    Row(children: [const Icon(Icons.lock_outlined, size: 16, color: AppTheme.gwsColor), const SizedBox(width: 6), Text('Passwort: $autoPassword', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.gwsColor))]),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text('Bitte das Passwort dem Externer Manager mitteilen!', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                            ],
+                          ),
+                          actions: [ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gwsColor), onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Portal hesabı hatası: $e'), backgroundColor: AppTheme.error));
+                  }
+                }
+
+                setState(() {
+                  _sachbearbeiters.add({
+                    'id': 'new_${DateTime.now().millisecondsSinceEpoch}',
+                    'name': nameCtrl.text.trim(),
+                    'phone': phoneCtrl.text.trim(),
+                    'email': emailCtrl.text.trim(),
+                    'role': contactType,
+                    if (autoUserId != null) 'user_id': autoUserId,
+                  });
+                });
+              },
+              child: Text(contactType == 'ExtManager' ? 'Ekle + Hesap Oluştur' : tr('Ekle')),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.isEmpty) return;
-              setState(() {
-                _sachbearbeiters.add({
-                  'id': 'new_${DateTime.now().millisecondsSinceEpoch}',
-                  'name': nameCtrl.text.trim(),
-                  'phone': phoneCtrl.text.trim(),
-                  'email': emailCtrl.text.trim(),
-                });
-              });
-              Navigator.pop(ctx);
-            },
-            child: Text(tr('Ekle')),
-          ),
-        ],
       ),
     );
   }

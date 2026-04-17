@@ -94,58 +94,6 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
-      
-      // Add from approved sessions first
-      for (var s in approvedSessions) {
-        final key = s['order_id'] ?? 'misc';
-        if (!groups.containsKey(key)) groups[key] = [];
-        groups[key]!.add(s);
-      }
-
-      // Add from past orders if not already in groups
-      for (var order in pastOrders) {
-        final key = order['id'];
-        if (!groups.containsKey(key)) {
-          groups[key] = [];
-          // Create dummy session if empty, just so it renders the project card
-          final sessions = order['work_sessions'] as List?;
-          if (sessions != null && sessions.isNotEmpty) {
-            for (var s in sessions) {
-              final mapped = Map<String, dynamic>.from(s);
-              mapped['order'] = order;
-              mapped['order_id'] = key;
-              groups[key]!.add(mapped);
-            }
-          } else {
-             groups[key]!.add({
-                'order': order,
-                'order_id': key,
-                'actual_start': order['planned_start_date'] ?? DateTime.now().toIso8601String(),
-             });
-          }
-        }
-      }
-
-      Map<String, Map<String, dynamic>> reports = {};
-      for (var orderId in groups.keys) {
-        try {
-          final report = await SupabaseService.getWorkReportByOrderId(orderId);
-          if (report != null) reports[orderId] = report;
-        } catch (_) {}
-      }
-
-      setState(() {
-        _groupedSessions = groups;
-        _workReports = reports;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
-        setState(() => _loading = false);
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

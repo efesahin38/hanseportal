@@ -13,6 +13,7 @@ import 'personnel_detail_dashboard.dart';
 import 'field_dashboard_screen.dart';
 import 'work_session_approval_screen.dart';
 import 'order_calendar_screen.dart';
+import 'gws_operative_view_screen.dart';
 
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
@@ -58,6 +59,13 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
         'iconOut': Icons.task_outlined,
         'screen': const FieldMyTasksScreen(),
       },
+      if (appState.serviceAreaIds.any((id) => id.toString().toLowerCase().contains('gast')) || appState.departmentId?.toLowerCase().contains('gast') == true)
+        {
+          'title': 'GWS Zimmerliste',
+          'icon': Icons.bed,
+          'iconOut': Icons.bed_outlined,
+          'screen': const GwsOperativeViewScreen(),
+        },
       {
         'title': tr('Kalender'),
         'icon': Icons.calendar_month,

@@ -317,8 +317,8 @@ class _WebSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HansePortal v19.4.0', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          const Text('v19.4.0', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          const Text('HansePortal v19.4.30', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          const Text('v19.4.30', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                         ],
                       ),
                     ),

@@ -39,6 +39,11 @@ class AppState extends ChangeNotifier {
   bool get isBuchhaltung => role.toLowerCase() == 'buchhaltung';
   bool get isBackoffice => role.toLowerCase() == 'backoffice';
   bool get isSystemAdmin => role.toLowerCase() == 'system_admin';
+  bool get isExternalManager => role.toLowerCase() == 'external_manager';
+
+  /// Externer Manager'ın muhattap olduğu customer contact ID'leri
+  String get externalManagerEmail => _currentUser?['email'] ?? '';
+  String get externalManagerContactRef => _currentUser?['id'] ?? '';
 
   bool get canManageCompanies => isGeschaeftsfuehrer || isSystemAdmin;
   bool get canManageUsers => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin || isBackoffice;

@@ -60,7 +60,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
   List<Map<String, dynamic>> _serviceAreas = [];
   List<String> _selectedServiceAreaIds = [];
 
-  final _roles = {'mitarbeiter': 'Mitarbeiter', 'vorarbeiter': 'Vorarbeiter', 'bereichsleiter': 'Bereichsleiter', 'betriebsleiter': 'Betriebsleiter', 'buchhaltung': 'Buchhaltung', 'backoffice': 'Backoffice', 'geschaeftsfuehrer': 'Geschäftsführer', 'system_admin': 'System Admin'};
+  final _roles = {'mitarbeiter': 'Mitarbeiter', 'vorarbeiter': 'Vorarbeiter', 'bereichsleiter': 'Bereichsleiter', 'betriebsleiter': 'Betriebsleiter', 'buchhaltung': 'Buchhaltung', 'backoffice': 'Backoffice', 'geschaeftsfuehrer': 'Geschäftsführer', 'system_admin': 'System Admin', 'external_manager': 'Externer Manager'};
 
   @override
   void initState() {
@@ -75,11 +75,12 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
     final areas = await SupabaseService.getServiceAreas(activeOnly: false);
     final List<Map<String, dynamic>> consolidatedAreas = [];
     
-    // v19.2.1: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
+    // v19.5.0: 4 ANA KATEGORİ (Gastwirtschaftsservice eklendi)
     final categories = [
       {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
       {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
       {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
+      {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality']},
     ];
 
     for (var cat in categories) {

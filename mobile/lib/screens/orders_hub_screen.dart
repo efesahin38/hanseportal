@@ -7,6 +7,7 @@ import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'orders_screen.dart';
 import 'gebaude_hub_screen.dart';
+import 'gws_hub_screen.dart';
 import 'order_calendar_screen.dart';
 
 class _GmbhDef {
@@ -54,6 +55,15 @@ const List<_GmbhDef> kGmbhDefs = [
     icon: Icons.people,
     color: Color(0xFF8B5CF6),
   ),
+  _GmbhDef(
+    departmentKey: 'Gastwirtschaft',
+    gmbhName: 'Gastwirtschaftsservice',
+    emoji: '🏨',
+    responsible: 'Fatma',
+    icon: Icons.hotel,
+    color: AppTheme.gwsColor,
+    hasSubSections: true,
+  ),
 ];
 
 class OrdersHubScreen extends StatefulWidget {
@@ -87,7 +97,8 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                    key.contains(dbName) ||
                    gmbh.contains(dbName) ||
                    (key == 'rail' && dbName.contains('gleis')) ||
-                   (key == 'personal' && dbName.contains('verwal'));
+                   (key == 'personal' && dbName.contains('verwal')) ||
+                   (key == 'gastwirtschaft' && (dbName.contains('gast') || dbName.contains('hotel')));
           },
           orElse: () => {},
         );
@@ -121,6 +132,8 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Peter').toList();
       } else if (firstName == 'markus') {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Markus').toList();
+      } else if (firstName == 'fatma') {
+        visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Fatma').toList();
       } else if (bereichDept != null) {
         final bDept = bereichDept.toLowerCase();
         visibleDefs = kGmbhDefs.where((d) =>
@@ -285,7 +298,14 @@ class _GmbhCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: InkWell(
         onTap: () {
-          if (def.hasSubSections) {
+          if (def.hasSubSections && def.departmentKey == 'Gastwirtschaft') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GwsHubScreen(departmentId: departmentId),
+              ),
+            );
+          } else if (def.hasSubSections) {
             Navigator.push(
               context,
               MaterialPageRoute(

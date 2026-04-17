@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -27,7 +28,7 @@ class PdfService {
 
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
-    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
     final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final customer = order['customer'] as Map<String, dynamic>? ?? {};
@@ -47,33 +48,12 @@ class PdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, logo: logo),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
         footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
-          _buildMetaInfo(font, fontBold),
-          pw.SizedBox(height: 10),
-          // ── Başlık ──
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(vertical: 12),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300)),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(tr('İŞ SONU RAPORU'),
-                    style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
-                pw.Text(
-                  '${tr('Oluşturma')}: ${_date.format(DateTime.now())}',
-                  style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey600),
-                ),
-              ],
-            ),
-          ),
-          pw.SizedBox(height: 16),
-
+          pw.SizedBox(height: 4),
           // ── İş Özeti ──
           _sectionTitle(tr('İş Bilgileri'), fontBold),
           _infoTable([
@@ -87,7 +67,7 @@ class PdfService {
               '${_fmtDate(order['planned_start_date'])} – ${_fmtDate(order['planned_end_date'])}'
             ],
           ], font, fontBold),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 12),
 
           // ── Çalışma Süreleri ──
           _sectionTitle(tr('Çalışma Süre Özeti'), fontBold),
@@ -105,7 +85,7 @@ class PdfService {
             pw.SizedBox(height: 6),
             _sessionsTable(sessions, font, fontBold),
           ],
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 8),
 
           // ── Ek İşler ──
           _sectionTitle('${tr('Ek İşler')} (${extraWorks.length})', fontBold),
@@ -114,7 +94,7 @@ class PdfService {
                 style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey500))
           else
             _extraWorksTable(extraWorks, font, fontBold),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 8),
 
           // ── Maliyet ve Gelir (Yönetici Özeti) ──
           () {
@@ -255,7 +235,7 @@ class PdfService {
 
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
-    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
     final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final customer = draft['customer'] as Map<String, dynamic>? ?? {};
@@ -271,13 +251,12 @@ class PdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, logo: logo),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
         footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
-          _buildMetaInfo(font, fontBold),
-          pw.SizedBox(height: 10),
+          pw.SizedBox(height: 2),
           // ── Başlık ──
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
@@ -475,50 +454,54 @@ class PdfService {
   // YARDIMCI WIDGET'LAR
   // ─────────────────────────────────────────────────────────
 
-  static pw.Widget _buildHeader(pw.Font fontBold, {pw.MemoryImage? logo}) {
+  static pw.Widget _buildHeader(pw.Context context, pw.Font font, pw.Font fontBold, {pw.MemoryImage? logo}) {
     return pw.Container(
-      padding: const pw.EdgeInsets.only(bottom: 10),
+      padding: const pw.EdgeInsets.only(bottom: 6),
+      margin: const pw.EdgeInsets.only(bottom: 6),
       decoration: const pw.BoxDecoration(
         border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.5)),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
         children: [
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text('Hanse Kollektiv GmbH', style: pw.TextStyle(font: fontBold, fontSize: 13)),
-              pw.Text('Bau- und Gebäudeservice', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-              pw.SizedBox(height: 4),
-              pw.Text('Eiffestr. 598, 20537 Hamburg', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-              pw.Text('Tel: 040 303 978 87 / Fax: 040 303 978 88', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-              pw.Text('E-Mail: info@hansekollektiv.de, www.hansekollektiv.de', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+              pw.Text('Bau- und Gebäudeservice', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+              pw.SizedBox(height: 2),
+              pw.Text('Eiffestr. 598, 20537 Hamburg', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+              pw.Text('Tel: 040 303 978 87 / Fax: 040 303 978 88', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+              pw.Text('E-Mail: info@hansekollektiv.de, www.hansekollektiv.de', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
             ],
           ),
-          if (logo != null)
-            pw.Container(
-              height: 45,
-              child: pw.Image(logo, fit: pw.BoxFit.contain),
-            ),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              if (logo != null)
+                pw.Container(
+                  height: 40,
+                  child: pw.Image(logo, fit: pw.BoxFit.contain),
+                ),
+              pw.SizedBox(height: 6),
+              _buildMetaInfo(font, fontBold),
+            ],
+          ),
         ],
       ),
     );
   }
 
   static pw.Widget _buildMetaInfo(pw.Font font, pw.Font fontBold) {
-    return pw.Container(
-      alignment: pw.Alignment.centerRight,
-      padding: const pw.EdgeInsets.only(top: 20),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+    return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
         children: [
-          _metaLine('Steuer-Nr.:', '46/728/03670', font, fontBold),
+          _metaLine('Steuer-Nr:', '46/728/03670', font, fontBold),
           _metaLine('UST-ID:', 'DE293806070', font, fontBold),
           _metaLine('Tel:', '040 303 978 87', font, fontBold),
           _metaLine('Datum:', _date.format(DateTime.now()), font, fontBold),
         ],
-      ),
     );
   }
 
@@ -569,14 +552,14 @@ class PdfService {
 
   static pw.Widget _sectionTitle(String title, pw.Font fontBold) {
     return pw.Container(
-      padding: const pw.EdgeInsets.only(bottom: 6),
-      margin: const pw.EdgeInsets.only(bottom: 8),
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      margin: const pw.EdgeInsets.only(bottom: 4, top: 2),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey100, width: 1)),
+        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey100, width: 0.5)),
       ),
       child: pw.Text(
         title,
-        style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey700),
+        style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blueGrey700),
       ),
     );
   }
@@ -591,12 +574,12 @@ class PdfService {
       children: rows.map((row) {
         return pw.TableRow(children: [
           pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+            padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
             child: pw.Text(row[0],
                 style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey600)),
           ),
           pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+            padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 4),
             child: pw.Text(row.length > 1 ? row[1] : '-',
                 style: pw.TextStyle(font: font, fontSize: 10)),
           ),
@@ -843,7 +826,7 @@ class PdfService {
     final pdf = pw.Document();
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
-    final logoImage = await rootBundle.load('mobile/assets/logo.jpeg');
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
     final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
 
     final monthNames = ['', tr('Ocak'), tr('Şubat'), tr('Mart'), tr('Nisan'), tr('Mayıs'), tr('Haziran'), tr('Temmuz'), tr('Ağustos'), tr('Eylül'), tr('Ekim'), tr('Kasım'), tr('Aralık')];
@@ -852,13 +835,12 @@ class PdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold, logo: logo),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
         footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
-          _buildMetaInfo(font, fontBold),
-          pw.SizedBox(height: 10),
+          pw.SizedBox(height: 2),
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
             decoration: const pw.BoxDecoration(
@@ -930,11 +912,12 @@ class PdfService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(fontBold),
-        footer: (context) => _buildFooter(context, font),
+        header: (context) => _buildHeader(context, font, fontBold),
+        footer: (context) => _buildFooter(context, font, fontBold),
         build: (context) => [
+          pw.SizedBox(height: 2),
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(vertical: 12),
             decoration: const pw.BoxDecoration(

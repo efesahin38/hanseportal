@@ -13,6 +13,7 @@ import 'providers/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/field_worker_shell.dart';
+import 'screens/external_manager_shell.dart';
 import 'screens/documents_screen.dart';
 import 'screens/archive_screen.dart';
 import 'screens/role_management_screen.dart';
@@ -79,6 +80,10 @@ class HanseApp extends StatelessWidget {
           // Saha çalışanları (mitarbeiter, vorarbeiter) sade ekran görüyor
           if (appState.isMitarbeiter || appState.isVorarbeiter) {
             return const FieldWorkerShell();
+          }
+          // Externer Manager → kendi portalı
+          if (appState.isExternalManager) {
+            return const ExternalManagerShell();
           }
           // Diğer tüm roller → tam yönetim paneli
           return const MainShell();
