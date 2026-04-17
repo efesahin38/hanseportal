@@ -360,16 +360,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: fieldWidth,
-                    child: _dropdown(tr('Sachbearbeiter (Zuständig)'), _internalUsers.map((u) => {
-                      'id': u['id'],
-                      'display_name': '${u['first_name']} ${u['last_name']}'
-                    }).toList(), _responsibleUserId, 'display_name', (v) {
-                      setState(() => _responsibleUserId = v);
-                    }),
-                  ),
+
                   const SizedBox(height: 24),
 
                   _section(tr('Temel Bilgiler')),
@@ -701,13 +692,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                     // Hizmet alanı otomatik doldur
                                     if (c['customer_service_areas'] != null) {
                                       final csa = c['customer_service_areas'] as List;
-                                      if (csa.isNotEmpty) {
-                                        final sId = csa.first['service_area_id']?.toString();
-                                        final sArea = _serviceAreas.firstWhere((s) => s['id']?.toString() == sId, orElse: () => <String, dynamic>{});
-                                        if (sArea.isNotEmpty) {
-                                          _selectedServiceAreaId = sId;
-                                        }
+                                      final availableSIds = csa.map((e) => e['service_area_id']?.toString()).toSet();
+                                      final matchedSA = _serviceAreas.where((sa) => availableSIds.contains(sa['id']?.toString())).toList();
+                                      if (matchedSA.isNotEmpty) {
+                                        _selectedServiceAreaId = matchedSA.first['id']?.toString();
+                                      } else {
+                                        _selectedServiceAreaId = null;
                                       }
+                                    } else {
+                                      _selectedServiceAreaId = null;
                                     }
                                   });
                                 },

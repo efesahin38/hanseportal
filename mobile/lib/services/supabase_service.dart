@@ -2340,6 +2340,7 @@ class SupabaseService {
       'email': email.toLowerCase(),
       'phone': phone,
       'password': password,
+      'pin_code': password,
       'role': 'external_manager',
       'status': 'active',
       'company_id': companyId,

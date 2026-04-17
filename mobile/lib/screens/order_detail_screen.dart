@@ -46,8 +46,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
           _order = order;
           _siteUpdates = updates;
           
-          final isGebaeude = order?['service_area']?['name']?.toString().toLowerCase().contains('gebäude') ?? false;
-          final targetLen = isGebaeude ? 6 : 5;
+          final saName = order?['service_area']?['name']?.toString().toLowerCase() ?? '';
+          final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
+          final targetLen = isFormEnabled ? 6 : 5;
           if (_tabs.length != targetLen) {
             _tabs.dispose();
             _tabs = TabController(length: targetLen, vsync: this);
@@ -90,7 +91,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
     final canSeeReport = appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isBuchhaltung || appState.isSystemAdmin;
     // Ek işi saha lideri ve yetkili personeller ekleyebilir.
     final canAddExtraWork = isAssignedForeman || appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isSystemAdmin;
-    final isGebaeude = serviceArea?['name']?.toString().toLowerCase().contains('gebäude') ?? false;
+    final saName = serviceArea?['name']?.toString().toLowerCase() ?? '';
+    final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
 
     return Scaffold(
       floatingActionButton: (canSeeReport || canAddExtraWork || appState.canPlanOperations) ? Column(
@@ -181,7 +183,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                         Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
                         Tab(text: '${tr('Belgeler')} (${docs.length})'),
                         Tab(text: '${tr('Geçmiş')} (${history.length})'),
-                        if (isGebaeude) const Tab(text: 'Formulare'),
+                        if (isFormEnabled) const Tab(text: 'Formulare'),
                       ],
                   ),
                 ],
@@ -472,8 +474,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                             );
                           },
                         ),
-                  // Tab 6: Formulare (Gebäudedienstleistungen)
-                  if (isGebaeude)
+                  // Tab 6: Formulare (Gebäude & GWS)
+                  if (isFormEnabled)
                     OrderFormulareTab(
                       orderId: widget.orderId,
                       orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
