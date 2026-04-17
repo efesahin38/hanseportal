@@ -4,6 +4,10 @@ import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import '../services/pdf_service.dart';
+import 'package:printing/printing.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -504,20 +508,82 @@ class _FormScaffoldState extends State<_FormScaffold> {
   }
 
   Future<void> _pickAndUploadPhoto() async {
-    // A placeholder for actual upload logic. In web, you might use image_picker_web.
-    // For now, since generic file_picker isn't fully set up for web storage in this file without imports,
-    // we will show a snackbar explaining that the upload requires a file picker.
-    // To implement fully, we would need image_picker imported and setup Supabase storage.
-    // But since this is requested quickly without new plugins, we simulate or prompt.
-    // NOTE: This assumes standard file_picker or image_picker is available.
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Foto/Dokument Upload ist in der Vorbereitung!')));
+    showModalBottomSheet(context: context, builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Foto (Kamera / Galerie)'),
+            subtitle: const Text('Wird komprimiert, um Speicherplatz zu sparen.'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _handleImagePick();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.insert_drive_file),
+            title: const Text('Dokument (PDF, Doc)'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _handleFilePick();
+            },
+          ),
+        ],
+      ),
+    ));
+  }
+
+  Future<void> _handleImagePick() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50, maxWidth: 1024);
+      if (picked == null) return;
+
+      setState(() => _uploading = true);
+      final bytes = await picked.readAsBytes();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+      
+      final url = await SupabaseService.uploadDocument(fileName, bytes);
+      if (mounted) setState(() { _photos.add(url); _uploading = false; });
+    } catch (e) {
+      if (mounted) { setState(() => _uploading = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Fehler: $e'))); }
+    }
+  }
+
+  Future<void> _handleFilePick() async {
+    try {
+      // Import needed inline or ensure file_picker is imported at top
+      // We will ensure file_picker is imported below.
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'doc', 'docx', 'txt']);
+      if (result == null || result.files.single.bytes == null) return;
+
+      setState(() => _uploading = true);
+      final bytes = result.files.single.bytes!;
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}';
+      
+      final url = await SupabaseService.uploadDocument(fileName, bytes);
+      if (mounted) setState(() { _photos.add(url); _uploading = false; });
+    } catch (e) {
+      if (mounted) { setState(() => _uploading = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Fehler: $e'))); }
+    }
   }
 
   Future<void> _downloadPdf() async {
-    // Generate a generic PDF representing the fields
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF wird generiert...')));
-    // Typically: final bytes = await PdfService.generateGenericForm(...); 
-    // Printing.layoutPdf(onLayout: (_) => bytes);
+    try {
+      final bytes = await PdfService.generateGenericFormPdf(
+        title: widget.title,
+        subtitle: widget.subtitle,
+        orderId: widget.args.orderId,
+        data: widget.buildData(),
+      );
+      await Printing.layoutPdf(onLayout: (_) => bytes, name: 'Formular_${widget.formType}.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Fehler: $e')));
+      }
+    }
   }
 
   @override

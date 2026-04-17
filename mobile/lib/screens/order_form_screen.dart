@@ -341,7 +341,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       SizedBox(
                         width: fieldWidth,
                         child: _contactDropdown(
-                          tr('Muhattap Kişi (Externer Ansprechpartner)'),
+                          tr('External Management'),
                           _muhattapContacts,
                           _selectedContactId,
                           Icons.person_pin_outlined,

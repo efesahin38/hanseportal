@@ -1109,5 +1109,57 @@ class PdfService {
     );
     return pdf.save();
   }
-}
+  static Future<Uint8List> generateGenericFormPdf({
+    required String title,
+    required String subtitle,
+    required String orderId,
+    required Map<String, dynamic> data,
+  }) async {
+    final pdf = pw.Document();
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
 
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context context) {
+        return pw.Padding(
+          padding: const pw.EdgeInsets.all(24),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(title, style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.blueGrey900)),
+              pw.SizedBox(height: 4),
+              pw.Text(subtitle, style: pw.TextStyle(font: font, fontSize: 14, color: PdfColors.blueGrey500)),
+              pw.SizedBox(height: 16),
+              pw.Divider(color: PdfColors.grey300),
+              pw.SizedBox(height: 16),
+              
+              // Print each Key/Value pair from the data map
+              ...data.entries.where((e) => e.key != 'photos' && e.value != null).map((entry) {
+                final keyStr = entry.key.replaceAll('_', ' ').toUpperCase();
+                final valStr = entry.value.toString();
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 12),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.SizedBox(
+                        width: 150,
+                        child: pw.Text(keyStr, style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.black)),
+                      ),
+                      pw.Expanded(
+                        child: pw.Text(valStr, style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.black)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    ));
+
+    return pdf.save();
+  }
+}
