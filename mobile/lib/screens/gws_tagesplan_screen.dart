@@ -11,8 +11,9 @@ import 'gws_personnel_planning_screen.dart';
 /// Operative Herzstück: Zimmer, Bereiche, Zusatzleistungen, kaufmännische Vorschau
 class GwsTagesplanScreen extends StatefulWidget {
   final String? departmentId;
+  final String? planId; // Mevcut planı yüklemek için
   final List<Map<String, dynamic>> objects;
-  const GwsTagesplanScreen({super.key, this.departmentId, required this.objects});
+  const GwsTagesplanScreen({super.key, this.departmentId, this.planId, required this.objects});
   @override
   State<GwsTagesplanScreen> createState() => _GwsTagesplanScreenState();
 }
@@ -35,6 +36,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   final List<Map<String, dynamic>> _extras = [];
 
   bool _saving = false;
+  bool _isTeamLeader = false;
 
   // Preise
   static const Map<String, double> _roomPrices = {
@@ -69,6 +71,39 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   double get _grandTotal => _roomTotal + _areaTotal + _extraTotal;
 
   @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final appState = context.read<AppState>();
+    if (widget.planId != null) {
+      // Mevcut planı yükle
+      setState(() => _loading = true);
+      try {
+        final rooms = await SupabaseService.getGwsPlanRooms(widget.planId!);
+        final areas = await SupabaseService.getGwsPlanAreas(widget.planId!);
+        final isLeader = await SupabaseService.isUserGwsTeamLeader(widget.planId!, appState.userId);
+        
+        if (mounted) {
+          setState(() {
+            _rooms.clear(); _rooms.addAll(rooms);
+            _areas.clear(); _areas.addAll(areas);
+            _isTeamLeader = isLeader;
+            // Diğer detaylar (date, objectId) widget constructor veya initial data'dan gelebilir
+            _loading = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _loading = false);
+      }
+    }
+  }
+
+  bool _loading = false;
+
+  @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
 
@@ -87,25 +122,32 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ),
         ],
       ),
-      body: WebContentWrapper(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildBlockA(appState),
-            const SizedBox(height: 16),
-            _buildPersonnelAssignment(),
-            const SizedBox(height: 16),
-            _buildBlockB(),
-            const SizedBox(height: 16),
-            _buildBlockC(),
-            const SizedBox(height: 16),
-            _buildBlockD(),
-            const SizedBox(height: 16),
-            _buildBlockE(),
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
+      body: _loading 
+        ? const Center(child: CircularProgressIndicator())
+        : WebContentWrapper(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildBlockA(appState),
+                const SizedBox(height: 16),
+                if (appState.role == 'GF' || appState.fullName == 'Fatma') ...[
+                  _buildPersonnelAssignment(),
+                  const SizedBox(height: 16),
+                ],
+                _buildBlockB(appState),
+                const SizedBox(height: 16),
+                _buildBlockC(appState),
+                const SizedBox(height: 16),
+                _buildBlockD(appState),
+                const SizedBox(height: 16),
+                if (appState.role == 'GF' || appState.fullName == 'Fatma') ...[
+                  _buildBlockE(),
+                  const SizedBox(height: 16),
+                ],
+                const SizedBox(height: 80),
+              ],
+            ),
+          ),
     );
   }
 
@@ -157,7 +199,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   }
 
   // ── Block B: Zimmerliste ───────────────────────────────────
-  Widget _buildBlockB() {
+  Widget _buildBlockB(AppState appState) {
     return _buildSection(
       title: 'Block B – Zimmerliste',
       icon: Icons.bed,
@@ -215,7 +257,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     ),
                     _statusMiniBadge(r['status']),
                     const SizedBox(width: 8),
-                    Text('€ ${(r['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
+                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                      Text('€ ${(r['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
                     IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
                   ],
@@ -228,7 +271,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('${_rooms.length} Zimmer', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                Text('€ ${_roomTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
+                if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                  Text('€ ${_roomTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
               ],
             ),
           ],
@@ -285,7 +329,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   }
 
   // ── Block C: Bereichsliste ─────────────────────────────────
-  Widget _buildBlockC() {
+  Widget _buildBlockC(AppState appState) {
     return _buildSection(
       title: 'Block C – Bereichsliste',
       icon: Icons.location_city,
@@ -334,7 +378,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                         ],
                       ),
                     ),
-                    Text('€ ${(a['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
+                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                      Text('€ ${(a['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
                     IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
                   ],
@@ -347,7 +392,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('${_areas.length} Bereiche', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                Text('€ ${_areaTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
+                if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                  Text('€ ${_areaTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
               ],
             ),
           ],
@@ -357,7 +403,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
   }
 
   // ── Block D: Zusatzleistungen ──────────────────────────────
-  Widget _buildBlockD() {
+  Widget _buildBlockD(AppState appState) {
     return _buildSection(
       title: 'Block D – Zusatzleistungen',
       icon: Icons.add_task,
@@ -381,7 +427,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('€ ${(e['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
+                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                      Text('€ ${(e['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
                     IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _extras.removeAt(i))),
                   ],
                 ),

@@ -136,8 +136,11 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
                                       label: const Text('Erledigt'),
                                     ),
                                   )
+                                else if (t['status'] == 'done')
+                                  // Eğer takım lideriyse onaylayabilir
+                                  _buildLeaderApprovalButton(t)
                                 else
-                                  const Expanded(child: Center(child: Text('Wartet auf Kontrolle...', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold)))),
+                                  const Expanded(child: Center(child: Text('Geprüft ✓', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)))),
                               ],
                             ),
                           ],
@@ -147,6 +150,24 @@ class _GwsOperativeViewScreenState extends State<GwsOperativeViewScreen> {
                   },
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildLeaderApprovalButton(Map<String, dynamic> t) {
+    final assignments = t['plan']?['assignments'] as List?;
+    final isLeader = assignments?.any((a) => a['is_team_leader'] == true) ?? false;
+
+    if (!isLeader) {
+       return const Expanded(child: Center(child: Text('Wartet auf Kontrolle...', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 13))));
+    }
+
+    return Expanded(
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+        onPressed: () => _updateStatus(t, 'checked'),
+        icon: const Icon(Icons.verified_user),
+        label: const Text('Kontrol Et & Onayla'),
       ),
     );
   }

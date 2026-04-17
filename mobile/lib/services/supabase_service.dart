@@ -2509,16 +2509,18 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getGwsTasksForUser(String userId) async {
     final rooms = await _client
         .from('gws_plan_rooms')
-        .select('*, plan:gws_daily_plans(plan_date, object:customers(name))')
+        .select('*, plan:gws_daily_plans(id, plan_date, object:customers(name), assignments:gws_plan_assignments!inner(user_id, is_team_leader))')
         .eq('assigned_user_id', userId)
         .neq('status', 'checked')
+        .eq('plan.assignments.user_id', userId)
         .order('room_number');
     
     final areas = await _client
         .from('gws_plan_areas')
-        .select('*, plan:gws_daily_plans(plan_date, object:customers(name))')
+        .select('*, plan:gws_daily_plans(id, plan_date, object:customers(name), assignments:gws_plan_assignments!inner(user_id, is_team_leader))')
         .eq('assigned_user_id', userId)
-        .neq('status', 'checked');
+        .neq('status', 'checked')
+        .eq('plan.assignments.user_id', userId);
 
     final List<Map<String, dynamic>> all = [];
     for (var r in (rooms as List)) all.add({...r, 'type': 'room'});
@@ -2543,5 +2545,26 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getGwsPlanAreas(String planId) async {
     final data = await _client.from('gws_plan_areas').select('*').eq('plan_id', planId);
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<bool> isUserGwsTeamLeader(String planId, String userId) async {
+    final data = await _client
+        .from('gws_plan_assignments')
+        .select('id')
+        .eq('plan_id', planId)
+        .eq('user_id', userId)
+        .eq('is_team_leader', true)
+        .maybeSingle();
+    return data != null;
+  }
+
+  static Future<List<Map<String, dynamic>>> getGwsPlansForLeader(String userId) async {
+    final assignments = await _client
+        .from('gws_plan_assignments')
+        .select('plan_id, plan:gws_daily_plans(*, object:customers(name))')
+        .eq('user_id', userId)
+        .eq('is_team_leader', true);
+    
+    return (assignments as List).map((a) => Map<String, dynamic>.from(a['plan'])).toList();
   }
 }

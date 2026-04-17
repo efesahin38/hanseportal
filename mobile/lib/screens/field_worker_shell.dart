@@ -14,6 +14,8 @@ import 'field_dashboard_screen.dart';
 import 'work_session_approval_screen.dart';
 import 'order_calendar_screen.dart';
 import 'gws_operative_view_screen.dart';
+import 'gws_tagesplan_screen.dart';
+import '../services/supabase_service.dart';
 
 
 /// Mitarbeiter ve Vorarbeiter için sade mobil saha ekranı.
@@ -26,6 +28,21 @@ class FieldWorkerShell extends StatefulWidget {
 
 class _FieldWorkerShellState extends State<FieldWorkerShell> {
   int _selectedIndex = 0;
+  List<Map<String, dynamic>> _leaderPlans = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLeaderStatus();
+  }
+
+  Future<void> _checkLeaderStatus() async {
+    final appState = context.read<AppState>();
+    try {
+      final plans = await SupabaseService.getGwsPlansForLeader(appState.userId);
+      if (mounted) setState(() { _leaderPlans = plans; });
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +83,14 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
           'iconOut': Icons.bed_outlined,
           'screen': const GwsOperativeViewScreen(),
         },
+      if (_leaderPlans.isNotEmpty) ...[
+        ..._leaderPlans.map((p) => {
+          'title': '${p['object']?['name'] ?? 'GWS'} (Lider)',
+          'icon': Icons.stars,
+          'iconOut': Icons.stars_outlined,
+          'screen': GwsTagesplanScreen(departmentId: 'GWS', objects: [Map<String, dynamic>.from(p['object'] ?? {})]),
+        }),
+      ],
       {
         'title': tr('Kalender'),
         'icon': Icons.calendar_month,
