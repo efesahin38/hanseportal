@@ -55,6 +55,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<Map<String, dynamic>> _sachbearbeiterContacts = []; // Sachbearbeiter type
   List<Map<String, dynamic>> _internalUsers = [];
 
+  static List<Map<String, dynamic>>? _cachedAllServiceAreas;
+  static List<Map<String, dynamic>>? _cachedAllInternalUsers;
+
   @override
   void initState() {
     super.initState();
@@ -64,11 +67,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   Future<void> _loadInitialData() async {
     try {
-      final depts = await SupabaseService.getDepartments();
-      final areas = await SupabaseService.getServiceAreas(activeOnly: false);
+      if (mounted) setState(() => _loading = true);
+
+      final List<Map<String, dynamic>> areas = _cachedAllServiceAreas ?? await SupabaseService.getServiceAreas(activeOnly: false);
+      _cachedAllServiceAreas = areas;
+
       final List<Map<String, dynamic>> consolidatedAreas = [];
       
-      // v19.2.1: 6 ANA KATEGORİ (Gastwirtschaftsservice kaldırıldı)
+      // v19.2.4: 7 ANA KATEGORİ (GWS eklendi/düzeltildi)
       final categories = [
         {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
         {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
@@ -76,6 +82,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         {'key': 'BauLogistik', 'label': 'Bau-Logistik', 'kw': ['bau-logistik', 'baulogistik', 'bau logistik', 'logistik']},
         {'key': 'Hausmeister', 'label': 'Hausmeisterservice', 'kw': ['hausmeister']},
         {'key': 'Garten', 'label': 'Gartenpflege', 'kw': ['garten', 'grün']},
+        {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality', 'gws']},
       ];
 
       for (var cat in categories) {
@@ -89,14 +96,25 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
         if (sa.isNotEmpty) {
           consolidatedAreas.add({...sa, 'display_name': label});
+        } else {
+          // Eğer tam eşleşme yoksa ama departman ismi uyuyorsa jenerik bir ekle
+          consolidatedAreas.add({
+            'id': 'dept_${cat['key']}',
+            'name': label,
+            'display_name': label,
+            'department_id': cat['key'], // Fallback
+          });
         }
       }
 
       var filteredServiceAreas = consolidatedAreas;
       
-      // 🛡️ NAILED ISOLATION: Eğer departman belliyse sadece o departmanın SA'larını göster
       if (widget.initialDepartmentId != null) {
-        filteredServiceAreas = filteredServiceAreas.where((sa) => sa['department_id'] == widget.initialDepartmentId).toList();
+        final deptIdStr = widget.initialDepartmentId!.toString();
+        filteredServiceAreas = filteredServiceAreas.where((sa) => 
+          sa['department_id']?.toString() == deptIdStr || 
+          sa['id']?.toString().contains(deptIdStr) == true
+        ).toList();
       }
       
       String? defaultSAId;
@@ -106,7 +124,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           defaultSAId = matching.first['id'].toString();
         }
       } else if (widget.initialDepartmentId != null && filteredServiceAreas.isNotEmpty) {
-        // Eğer SP belirtilmemişse ama departman varsa, departmanın ilk SA'sını seç
         defaultSAId = filteredServiceAreas.first['id'].toString();
       }
 
@@ -117,9 +134,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       );
 
       // Internal Users fetch (Sachbearbeiterlar için)
-      final internalUsers = await SupabaseService.getUsers(status: 'active');
+      final internalUsers = _cachedAllInternalUsers ?? await SupabaseService.getUsers(status: 'active');
+      _cachedAllInternalUsers = internalUsers;
+      
       final filteredInternal = internalUsers.where((u) => 
-        ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'backoffice', 'buchhaltung'].contains(u['role'])
+        ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'backoffice', 'buchhaltung'].contains(u['role']?.toString().toLowerCase())
       ).toList();
 
       if (mounted) {
@@ -689,13 +708,30 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                     if (addr.isNotEmpty) _siteAddress.text = addr;
                                     if (plz.isNotEmpty) _plzCtrl.text = plz;
                                     if (city.isNotEmpty) _cityCtrl.text = city;
-                                    // Hizmet alanı otomatik doldur
+                                    // Hizmet alanı otomatik doldur (Gelişmiş eşleştirme)
                                     if (c['customer_service_areas'] != null) {
                                       final csa = c['customer_service_areas'] as List;
                                       final availableSIds = csa.map((e) => e['service_area_id']?.toString()).toSet();
-                                      final matchedSA = _serviceAreas.where((sa) => availableSIds.contains(sa['id']?.toString())).toList();
+                                      
+                                      // 1. Adım: Mevcut departman kısıtı içindeki service area'lar arasından bak
+                                      var matchedSA = _serviceAreas.where((sa) => availableSIds.contains(sa['id']?.toString())).toList();
+                                      
+                                      // 2. Adım: Eğer departman içinde eşleşme yoksa ama müşteri genel bir SA'ya bağlıysa, 
+                                      // dropdown'da görünmesi için o SA'yı geçici olarak _serviceAreas'a ekle veya kısıtı boşalt.
+                                      if (matchedSA.isEmpty && availableSIds.isNotEmpty) {
+                                        // Eğer bu bir 'Hotelservice' veya 'GWS' karışıklığı ise, isme göre fuzzy match dene
+                                        final customerSaNames = csa.map((e) => (e['service_area']?['name'] ?? '').toString().toLowerCase()).toSet();
+                                        matchedSA = _serviceAreas.where((sa) {
+                                          final name = (sa['name'] ?? '').toString().toLowerCase();
+                                          return customerSaNames.any((cn) => cn.contains(name) || name.contains(cn));
+                                        }).toList();
+                                      }
+
                                       if (matchedSA.isNotEmpty) {
                                         _selectedServiceAreaId = matchedSA.first['id']?.toString();
+                                      } else if (availableSIds.isNotEmpty) {
+                                        // Hiç eşleşmediyse bile ilkini seçmeye çalış (dropdown'da yoksa bile state'de kalsın, dropdown null gösterir)
+                                        _selectedServiceAreaId = availableSIds.first;
                                       } else {
                                         _selectedServiceAreaId = null;
                                       }

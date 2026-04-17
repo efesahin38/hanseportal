@@ -479,6 +479,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                     OrderFormulareTab(
                       orderId: widget.orderId,
                       orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
+                      orderDepartmentId: o['department_id']?.toString(),
                       supervisorIds: plans
                           .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
                           .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')

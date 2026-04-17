@@ -55,12 +55,14 @@ const List<Map<String, dynamic>> _kForms = [
 class OrderFormulareTab extends StatefulWidget {
   final String orderId;
   final String? orderCompanyId;
+  final String? orderDepartmentId;
   final List<String> supervisorIds;
 
   const OrderFormulareTab({
     super.key,
     required this.orderId,
     required this.orderCompanyId,
+    this.orderDepartmentId,
     required this.supervisorIds,
   });
 
@@ -97,20 +99,24 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
     return cid == kGebaeudeCompanyId;
   }
 
-  // Teamleiter (assigned in plan) OR Bereichsleiter (Sandra) can edit
-  bool _canEdit(AppState a) =>
-      a.isBereichsleiter ||
-      a.isVorarbeiter ||
-      widget.supervisorIds.contains(a.userId);
+  bool _canEdit(AppState a) {
+    if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isBackoffice || a.isBuchhaltung || a.isSystemAdmin) return true;
+    if (a.isVorarbeiter || widget.supervisorIds.contains(a.userId)) return true;
+    if (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId) return true;
+    return false;
+  }
 
-  // Only Bereichsleiter (Sandra) can approve
-  bool _canApprove(AppState a) => a.isBereichsleiter;
+  bool _canApprove(AppState a) {
+    if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isBackoffice || a.isBuchhaltung || a.isSystemAdmin) return true;
+    if (a.isBereichsleiter && widget.orderDepartmentId != null && a.departmentId == widget.orderDepartmentId) return true;
+    return false;
+  }
 
-  // Only the assigned Teamleiter (★) can delete (not Bereichsleiter, not admin)
-  bool _canDelete(AppState a) =>
-      widget.supervisorIds.contains(a.userId) || a.isVorarbeiter;
+  bool _canDelete(AppState a) {
+    if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin) return true;
+    return widget.supervisorIds.contains(a.userId) || a.isVorarbeiter;
+  }
 
-  // View: anyone logged in can see forms (edit is restricted separately)
   bool _canView(AppState a) => a.userId.isNotEmpty;
 
   @override
