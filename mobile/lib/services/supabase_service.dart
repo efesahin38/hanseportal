@@ -2669,8 +2669,8 @@ class SupabaseService {
         query = query.eq('department_id', departmentId) as dynamic;
       }
     }
-    // Filter: active, draft veya in_progress siparişler
-    final data = await query.inFilter('status', ['active', 'draft', 'in_progress', 'freigegeben']);
+    // Filter: completed, invoiced, passive, archived hariç hepsi
+    final data = await query.not('status', 'in', '("completed","invoiced","passive","archived")');
     return List<Map<String, dynamic>>.from(data);
   }
 

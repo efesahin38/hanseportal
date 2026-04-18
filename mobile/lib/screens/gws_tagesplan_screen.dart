@@ -117,6 +117,12 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
       if (mounted) {
         setState(() {
           _gwsOrders = orders;
+          
+          if (_selectedOrderId != null) {
+            final valid = _gwsOrders.any((o) => o['id'].toString() == _selectedOrderId);
+            if (!valid) _selectedOrderId = null; // Dropdown'un crash etmesini engellemek için
+          }
+
           _loading = false;
         });
       }
