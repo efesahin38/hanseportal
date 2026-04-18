@@ -2645,32 +2645,33 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getGwsOrders({String? departmentId}) async {
     // GWS için aktif/draft/in_progress siparişleri getir (customer_contact bilgisi dahil)
     var query = _client.from('orders').select(
-      'id, title, customer_id, status, customer:customers(name, customer_contacts(id, name, role, email, phone, user_id))'
+      'id, title, customer_id, status, department_id, service_area_id, customer:customers(name, customer_contacts(id, name, role, email, phone, user_id))'
     );
+    final data = await query;
+    var list = List<Map<String, dynamic>>.from(data);
+    
     if (departmentId != null) {
+      List<String> saIds = [];
       try {
-        final deptSAs = await _client.from('service_areas').select('id').eq('department_id', departmentId);
-        List<String> saIds = (deptSAs as List).map((sa) => sa['id'] as String).toList();
-        if (saIds.isEmpty) {
-          final allSas = await _client.from('service_areas').select('id, name');
-          for (var sa in (allSas as List)) {
+        final allSas = await _client.from('service_areas').select('id, name, department_id');
+        for (var sa in (allSas as List)) {
+          if (sa['department_id']?.toString() == departmentId) {
+             saIds.add(sa['id'].toString());
+          } else {
             final saName = (sa['name'] as String).toLowerCase();
             if (saName.contains('gast') || saName.contains('hotel') || saName.contains('hospit')) {
               saIds.add(sa['id'].toString());
             }
           }
         }
-        if (saIds.isNotEmpty) {
-          query = query.or('department_id.eq.$departmentId,service_area_id.in.(${saIds.join(',')})') as dynamic;
-        } else {
-          query = query.eq('department_id', departmentId) as dynamic;
-        }
-      } catch (_) {
-        query = query.eq('department_id', departmentId) as dynamic;
-      }
+      } catch (_) {}
+      
+      // Memory filtering: eger orders tablosu db baglantisi bozulmadan geldi ise
+      list = list.where((o) {
+        return o['department_id']?.toString() == departmentId || 
+               saIds.contains(o['service_area_id']?.toString());
+      }).toList();
     }
-    final data = await query;
-    final list = List<Map<String, dynamic>>.from(data);
     
     // Filter: completed, invoiced, passive, archived hariç hepsi
     return list.where((item) => 
