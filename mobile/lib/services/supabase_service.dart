@@ -278,7 +278,30 @@ class SupabaseService {
     } else if (departmentId != null) {
       // 🛡️ NAILED ISOLATION: Sadece bu departmanın service area'larına atanmış müşterileri getir
       final deptSAs = await _client.from('service_areas').select('id').eq('department_id', departmentId);
-      final saIds = (deptSAs as List).map((sa) => sa['id'] as String).toList();
+      List<String> saIds = (deptSAs as List).map((sa) => sa['id'] as String).toList();
+      
+      // FALLBACK: Eğer backend de department_id henüz service_areas tablosunda tam setlenmediyse isimden bulalım.
+      if (saIds.isEmpty) {
+        try {
+          final deptRow = await _client.from('departments').select('name').eq('id', departmentId).maybeSingle();
+          if (deptRow != null) {
+            final deptName = (deptRow['name'] as String).toLowerCase();
+            List<String> keywords = [];
+            if (deptName.contains('gast') || deptName.contains('hotel')) keywords = ['gast', 'hotel', 'hospit'];
+            else if (deptName.contains('gebäud') || deptName.contains('reinigung')) keywords = ['gebäud', 'reinigung', 'bau'];
+            
+            if (keywords.isNotEmpty) {
+              final allSas = await _client.from('service_areas').select('id, name');
+              for (var sa in (allSas as List)) {
+                if (keywords.any((kw) => (sa['name'] as String).toLowerCase().contains(kw))) {
+                  saIds.add(sa['id'].toString());
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       if (saIds.isEmpty) return [];
       query = query.inFilter('customer_service_areas.service_area_id', saIds) as dynamic;
     }
@@ -2625,7 +2648,26 @@ class SupabaseService {
       'id, title, customer_id, status, customer:customers(name, customer_contacts(id, name, role, email, phone, user_id))'
     );
     if (departmentId != null) {
-      try { query = query.eq('department_id', departmentId) as dynamic; } catch (_) {}
+      try {
+        final deptSAs = await _client.from('service_areas').select('id').eq('department_id', departmentId);
+        List<String> saIds = (deptSAs as List).map((sa) => sa['id'] as String).toList();
+        if (saIds.isEmpty) {
+          final allSas = await _client.from('service_areas').select('id, name');
+          for (var sa in (allSas as List)) {
+            final saName = (sa['name'] as String).toLowerCase();
+            if (saName.contains('gast') || saName.contains('hotel') || saName.contains('hospit')) {
+              saIds.add(sa['id'].toString());
+            }
+          }
+        }
+        if (saIds.isNotEmpty) {
+          query = query.or('department_id.eq.$departmentId,service_area_id.in.(${saIds.join(',')})') as dynamic;
+        } else {
+          query = query.eq('department_id', departmentId) as dynamic;
+        }
+      } catch (_) {
+        query = query.eq('department_id', departmentId) as dynamic;
+      }
     }
     // Filter: active, draft veya in_progress siparişler
     final data = await query.inFilter('status', ['active', 'draft', 'in_progress', 'freigegeben']);
