@@ -2384,6 +2384,7 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> getGwsDailyPlans({
     String? objectId,
+    String? orderId,
     DateTime? date,
     String? status,
   }) async {
@@ -2396,6 +2397,7 @@ class SupabaseService {
       areas:gws_plan_areas(*)
     ''');
     if (objectId != null) query = query.eq('object_id', objectId) as dynamic;
+    if (orderId != null) query = query.eq('order_id', orderId) as dynamic;
     if (date != null) query = query.eq('plan_date', date.toIso8601String().split('T')[0]) as dynamic;
     if (status != null) query = query.eq('status', status) as dynamic;
     final data = await query.order('plan_date', ascending: false);

@@ -6,6 +6,7 @@ import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 import 'gws_progress_detail_screen.dart';
+import 'order_detail_screen.dart';
 
 /// Externer Manager'ın sahip olduğu Aufträge listesi.
 /// Sadece muhattabı olduğu işleri görebilir.
@@ -225,34 +226,50 @@ class _OrderCard extends StatelessWidget {
           // Actions
           Container(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: color,
-                      side: BorderSide(color: color),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: () => _showCommentDialog(context, order, isInstruction: false),
-                    icon: const Icon(Icons.comment_outlined, size: 16),
-                    label: const Text('Kommentar', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                // ── Details / Formulare ──
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: const BorderSide(color: AppTheme.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order['id'])),
+                  ).then((_) => onRefresh()),
+                  icon: const Icon(Icons.assignment_outlined, size: 16),
+                  label: const Text('Details & Formulare', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                      side: const BorderSide(color: Colors.orange),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: () => _showCommentDialog(context, order, isInstruction: true),
-                    icon: const Icon(Icons.assignment_turned_in_outlined, size: 16),
-                    label: const Text('Talimat', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                // ── Kommentar ──
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: color,
+                    side: BorderSide(color: color),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
+                  onPressed: () => _showCommentDialog(context, order, isInstruction: false),
+                  icon: const Icon(Icons.comment_outlined, size: 16),
+                  label: const Text('Kommentar', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
                 ),
-                const SizedBox(width: 8),
+                // ── Talimat ──
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: const BorderSide(color: Colors.orange),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onPressed: () => _showCommentDialog(context, order, isInstruction: true),
+                  icon: const Icon(Icons.assignment_turned_in_outlined, size: 16),
+                  label: const Text('Talimat', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                ),
+                // ── Genehmigen ──
                 if (status == 'in_progress' || status == 'completed')
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
@@ -264,7 +281,7 @@ class _OrderCard extends StatelessWidget {
                     icon: const Icon(Icons.check_circle_outline, size: 16),
                     label: const Text('Genehmigen', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
                   ),
-                const SizedBox(width: 8),
+                // ── GWS Fortschritt ──
                 if (order['department'] != null && order['department']['name'].toString().toLowerCase().contains('gast'))
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
@@ -273,7 +290,6 @@ class _OrderCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     onPressed: () async {
-                      // Find latest plan for this object
                       final plans = await SupabaseService.getGwsDailyPlans(objectId: order['customer_id']);
                       if (plans.isNotEmpty && context.mounted) {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => GwsProgressDetailScreen(planId: plans.first['id'], objectName: order['customer']['name'])));

@@ -9,6 +9,7 @@ import 'operation_plan_form_screen.dart';
 import 'extra_work_form_screen.dart';
 import 'work_report_screen.dart';
 import 'order_formulare_tab.dart';
+import 'gws_tagesplan_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -21,6 +22,7 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _order;
   List<Map<String, dynamic>> _siteUpdates = [];
+  List<Map<String, dynamic>> _gwsTagesplaene = [];
   bool _loading = true;
   late TabController _tabs;
 
@@ -41,12 +43,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
     try {
       final order = await SupabaseService.getOrder(widget.orderId);
       final updates = await SupabaseService.getSiteUpdates(widget.orderId);
+      
+      // GWS siparişi ise o müşteriye ait Tagespläne'yi de yükle
+      List<Map<String, dynamic>> gwsPlans = [];
+      final saName = order?['service_area']?['name']?.toString().toLowerCase() ?? '';
+      final customerId = order?['customer_id']?.toString();
+      if (saName.contains('gastwirtschaft') && customerId != null) {
+        try {
+          gwsPlans = await SupabaseService.getGwsDailyPlans(objectId: customerId, orderId: widget.orderId);
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _order = order;
           _siteUpdates = updates;
+          _gwsTagesplaene = gwsPlans;
           
-          final saName = order?['service_area']?['name']?.toString().toLowerCase() ?? '';
           final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
           final targetLen = isFormEnabled ? 6 : 5;
           if (_tabs.length != targetLen) {
@@ -220,6 +233,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           if (o['detailed_description'] != null)
                             Text(o['detailed_description'], style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppTheme.textSub)),
                         ]),
+                      // ── GWS Tagesplanung Bölümü ──
+                      if (isFormEnabled && saName.contains('gastwirtschaft')) ...[
+                        const SizedBox(height: 12),
+                        _GwsTagesplanSection(
+                          orderId: widget.orderId,
+                          customerId: customer?['id']?.toString(),
+                          customerName: customer?['name'] ?? '',
+                          plans: _gwsTagesplaene,
+                          objects: customer != null ? [customer] : [],
+                          departmentId: o['department_id']?.toString(),
+                          onRefresh: _load,
+                        ),
+                      ],
                     ]),
                   ),
                   // Tab 2: Planlama
@@ -491,6 +517,147 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── GWS Tagesplanung Bölümü ──────────────────────────────────────────────────
+
+class _GwsTagesplanSection extends StatelessWidget {
+  final String orderId;
+  final String? customerId;
+  final String customerName;
+  final List<Map<String, dynamic>> plans;
+  final List<Map<String, dynamic>> objects;
+  final String? departmentId;
+  final VoidCallback onRefresh;
+
+  const _GwsTagesplanSection({
+    required this.orderId,
+    required this.customerId,
+    required this.customerName,
+    required this.plans,
+    required this.objects,
+    required this.onRefresh,
+    this.departmentId,
+  });
+
+  static const Color _color = AppTheme.gwsColor;
+
+  String _planStatusLabel(String? s) {
+    switch (s) {
+      case 'draft': return 'Entwurf';
+      case 'released': return 'Freigegeben';
+      case 'in_progress': return 'In Bearbeitung';
+      case 'completed': return 'Abgeschlossen';
+      case 'in_bearbeitung': return 'In Bearbeitung';
+      case 'vom_kunden_gemeldet': return 'Vom Kunden gemeldet';
+      default: return s ?? 'Entwurf';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _color.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: _color.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(color: _color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(Icons.hotel, color: _color, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('GWS Tagesplanung', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _color, fontFamily: 'Inter')),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+                    departmentId: departmentId,
+                    initialOrderId: orderId,
+                    objects: objects,
+                  )),
+                ).then((_) => onRefresh()),
+                icon: Icon(Icons.add_circle_outline, color: _color, size: 16),
+                label: Text('Neu', style: TextStyle(color: _color, fontFamily: 'Inter', fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (plans.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              alignment: Alignment.center,
+              child: Column(
+                children: [
+                  Icon(Icons.event_note_outlined, size: 32, color: _color.withOpacity(0.3)),
+                  const SizedBox(height: 6),
+                  Text('Noch kein Tagesplan für diesen Auftrag', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 12)),
+                ],
+              ),
+            )
+          else
+            ...plans.take(5).map((plan) => InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+                  planId: plan['id'],
+                  objects: objects,
+                )),
+              ).then((_) => onRefresh()),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _color.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _color.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 13, color: _color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        plan['plan_date'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'Inter'),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: _color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      child: Text(
+                        _planStatusLabel(plan['status']),
+                        style: TextStyle(fontSize: 10, color: _color, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right, color: _color.withOpacity(0.5), size: 16),
+                  ],
+                ),
+              ),
+            )),
+          if (plans.length > 5)
+            Center(
+              child: TextButton(
+                onPressed: () {},
+                child: Text('+ ${plans.length - 5} weitere Tagespläne', style: TextStyle(color: _color, fontFamily: 'Inter', fontSize: 12)),
+              ),
+            ),
+        ],
       ),
     );
   }

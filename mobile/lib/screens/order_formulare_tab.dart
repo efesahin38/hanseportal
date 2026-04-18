@@ -94,7 +94,6 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
   }
 
   bool _isGebaeudeOrder() {
-    // Accept both direct company_id and joined company object
     final cid = widget.orderCompanyId ?? '';
     return cid == kGebaeudeCompanyId;
   }
@@ -119,6 +118,12 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
 
   bool _canView(AppState a) => a.userId.isNotEmpty;
 
+  /// Ext. Manager'a iletme yetkisi: sadece Bereichsleiter / Betriebsleiter / GF
+  bool _canSendToExtManager(AppState a) {
+    return a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin ||
+        (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId);
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.read<AppState>();
@@ -132,13 +137,14 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
     final editable = _canEdit(appState);
     final canApprove = _canApprove(appState);
     final canDelete = _canDelete(appState);
+    final canSendToExt = _canSendToExtManager(appState);
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Info banner
+          // ── Info banner ──
           Container(
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 16),
@@ -166,7 +172,8 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
               editable: editable,
               canApprove: canApprove,
               canDelete: canDelete,
-              onOpen: () => _openForm(context, key, row, editable, canApprove, canDelete, appState),
+              canSendToExt: canSendToExt,
+              onOpen: () => _openForm(context, key, row, editable, canApprove, canDelete, canSendToExt, appState),
             );
           }),
         ],
@@ -181,6 +188,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
     bool editable,
     bool canApprove,
     bool canDelete,
+    bool canSendToExt,
     AppState appState,
   ) {
     final args = _FormArgs(
@@ -189,6 +197,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
       editable: editable,
       canApprove: canApprove,
       canDelete: canDelete,
+      canSendToExt: canSendToExt,
       appState: appState,
       onRefresh: _load,
     );
@@ -216,12 +225,14 @@ class _FormArgs {
   final bool editable;
   final bool canApprove;
   final bool canDelete;
+  final bool canSendToExt;
   final AppState appState;
   final VoidCallback onRefresh;
 
   const _FormArgs({
     required this.orderId, required this.row, required this.editable,
     required this.canApprove, required this.canDelete,
+    this.canSendToExt = false,
     required this.appState, required this.onRefresh,
   });
 
@@ -229,6 +240,9 @@ class _FormArgs {
   String get status => row?['status'] as String? ?? 'nicht_begonnen';
   String? get formId => row?['id'] as String?;
   bool get isApproved => row?['is_approved'] == true;
+  
+  /// Workflow aşaması: team_editing | pending_ext_review | pending_bl_approval | completed
+  String get workflowStage => (row?['data'] as Map?)?['_workflow_stage'] as String? ?? 'team_editing';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,11 +255,14 @@ class _FormCard extends StatelessWidget {
   final bool editable;
   final bool canApprove;
   final bool canDelete;
+  final bool canSendToExt;
   final VoidCallback onOpen;
 
   const _FormCard({
     required this.meta, required this.row, required this.editable,
-    required this.canApprove, required this.canDelete, required this.onOpen,
+    required this.canApprove, required this.canDelete,
+    this.canSendToExt = false,
+    required this.onOpen,
   });
 
   Color get _color => Color(meta['color'] as int);
@@ -269,6 +286,36 @@ class _FormCard extends StatelessWidget {
   }
 
   bool get _isApproved => row?['is_approved'] == true;
+
+  /// Workflow stage from data JSON
+  String get _workflowStage => (row?['data'] as Map?)?['_workflow_stage'] as String? ?? 'team_editing';
+
+  String get _workflowStageLabel {
+    switch (_workflowStage) {
+      case 'pending_ext_review': return '⏳ Wartet auf Ext. Manager';
+      case 'pending_bl_approval': return '🔁 Zurück beim BL';
+      case 'completed':           return '✅ Abgeschlossen';
+      default:                    return 'In Bearbeitung';
+    }
+  }
+
+  Color get _workflowStageColor {
+    switch (_workflowStage) {
+      case 'pending_ext_review': return Colors.orange;
+      case 'pending_bl_approval': return const Color(0xFF6366F1);
+      case 'completed':           return const Color(0xFF10B981);
+      default:                    return AppTheme.primary;
+    }
+  }
+
+  IconData get _workflowStageIcon {
+    switch (_workflowStage) {
+      case 'pending_ext_review': return Icons.send_outlined;
+      case 'pending_bl_approval': return Icons.reply;
+      case 'completed':           return Icons.check_circle_outline;
+      default:                    return Icons.edit_outlined;
+    }
+  }
 
   String _updaterName() {
     final u = row?['updated_by_user'] as Map?;
@@ -331,39 +378,61 @@ class _FormCard extends StatelessWidget {
         // Body
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: _statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                  child: Text(_statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor, fontFamily: 'Inter')),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: _statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                      child: Text(_statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor, fontFamily: 'Inter')),
+                    ),
+                    // Workflow aşaması göstergesi
+                    if (_workflowStage != 'team_editing') ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _workflowStageColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: _workflowStageColor.withOpacity(0.4)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(_workflowStageIcon, size: 11, color: _workflowStageColor),
+                          const SizedBox(width: 4),
+                          Text(_workflowStageLabel, style: TextStyle(fontSize: 10, color: _workflowStageColor, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                        ]),
+                      ),
+                    ],
+                  ]),
+                  if (_updaterName() != '—') ...[
+                    const SizedBox(height: 6),
+                    Text('Bearbeitet: ${_updaterName()}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    if (_updatedAt().isNotEmpty)
+                      Text(_updatedAt(), style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                  ],
+                ])),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: onOpen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_workflowStage == 'pending_ext_review' ? 'Öffnen' : 'Öffnen', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward, size: 14),
+                  ]),
                 ),
               ]),
-              if (_updaterName() != '—') ...[
-                const SizedBox(height: 6),
-                Text('Bearbeitet: ${_updaterName()}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
-                if (_updatedAt().isNotEmpty)
-                  Text(_updatedAt(), style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
-              ],
-            ])),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: onOpen,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _color,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('Öffnen', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_forward, size: 14),
-              ]),
-            ),
-          ]),
+            ],
+          ),
         ),
       ]),
     );
@@ -446,6 +515,130 @@ class _FormScaffoldState extends State<_FormScaffold> {
           backgroundColor: AppTheme.error,
         ));
       }
+    }
+  }
+
+  Future<void> _sendToExtManager(BuildContext ctx) async {
+    final confirm = await showDialog<bool>(context: ctx, builder: (c) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(children: [
+        Icon(Icons.send_outlined, color: Colors.orange),
+        SizedBox(width: 8),
+        Text('An Ext. Manager senden?', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 16)),
+      ]),
+      content: const Text(
+        'Das Formular wird für den Externen Manager freigegeben. Er kann es lesen, einen Kommentar hinzufügen und zurück an Sie senden.',
+        style: TextStyle(fontFamily: 'Inter'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abbrechen')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+          onPressed: () => Navigator.pop(c, true),
+          child: const Text('Senden', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ));
+    if (confirm != true) return;
+    try {
+      final submitData = widget.buildData();
+      submitData['photos'] = _photos;
+      submitData['_workflow_stage'] = 'pending_ext_review';
+      submitData['_sent_to_ext_at'] = DateTime.now().toIso8601String();
+      await SupabaseService.upsertOrderForm(
+        id: widget.args.formId,
+        orderId: widget.args.orderId,
+        formType: widget.formType,
+        status: widget.status,
+        data: submitData,
+        userId: widget.args.appState.userId,
+      );
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+          content: Text('✅ An Ext. Manager gesendet!', style: TextStyle(fontFamily: 'Inter')),
+          backgroundColor: Colors.orange,
+        ));
+        Navigator.pop(ctx);
+      }
+    } catch (e) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
+    }
+  }
+
+  Future<void> _sendBackToBl(BuildContext ctx, String extComment) async {
+    try {
+      final submitData = widget.args.data;
+      submitData['_workflow_stage'] = 'pending_bl_approval';
+      submitData['_ext_manager_comment'] = extComment;
+      submitData['_ext_returned_at'] = DateTime.now().toIso8601String();
+      await SupabaseService.upsertOrderForm(
+        id: widget.args.formId,
+        orderId: widget.args.orderId,
+        formType: widget.formType,
+        status: widget.status,
+        data: submitData,
+        userId: widget.args.appState.userId,
+      );
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+          content: Text('✅ Rückmeldung an Bereichsleiter gesendet!', style: TextStyle(fontFamily: 'Inter')),
+          backgroundColor: Color(0xFF6366F1),
+        ));
+        Navigator.pop(ctx);
+      }
+    } catch (e) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
+    }
+  }
+
+  Future<void> _completeWorkflow(BuildContext ctx) async {
+    final confirm = await showDialog<bool>(context: ctx, builder: (c) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(children: [
+        Icon(Icons.check_circle, color: Color(0xFF10B981)),
+        SizedBox(width: 8),
+        Text('Workflow abschließen?', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 16)),
+      ]),
+      content: const Text(
+        'Das Formular wird final abgeschlossen und kann nicht mehr bearbeitet werden. PDF wird erstellt.',
+        style: TextStyle(fontFamily: 'Inter'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Zurück')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+          onPressed: () => Navigator.pop(c, true),
+          child: const Text('Abschließen & PDF', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ));
+    if (confirm != true) return;
+    try {
+      final submitData = widget.buildData();
+      submitData['photos'] = _photos;
+      submitData['_workflow_stage'] = 'completed';
+      submitData['_completed_at'] = DateTime.now().toIso8601String();
+      await SupabaseService.upsertOrderForm(
+        id: widget.args.formId,
+        orderId: widget.args.orderId,
+        formType: widget.formType,
+        status: 'fertig',
+        data: submitData,
+        userId: widget.args.appState.userId,
+      );
+      if (widget.args.formId != null) {
+        await SupabaseService.approveOrderForm(widget.args.formId!, widget.args.appState.userId);
+      }
+      if (ctx.mounted) {
+        _downloadPdf();
+        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+          content: Text('✅ Workflow abgeschlossen! PDF wird erzeugt.', style: TextStyle(fontFamily: 'Inter')),
+          backgroundColor: Color(0xFF10B981),
+        ));
+        Navigator.pop(ctx);
+      }
+    } catch (e) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
     }
   }
 
@@ -655,6 +848,142 @@ class _FormScaffoldState extends State<_FormScaffold> {
               );
             }),
           ],
+          // ── Workflow Stage Banner / Aktionen ──
+          Builder(builder: (ctx) {
+            final stage = args.workflowStage;
+            final appState = args.appState;
+            final isExtMgr = appState.isExternalManager;
+            final extComment = (args.data['_ext_manager_comment'] as String?) ?? '';
+            final sentAt = (args.data['_sent_to_ext_at'] as String?);
+            final returnedAt = (args.data['_ext_returned_at'] as String?);
+
+            // Zaten tamamlanmış
+            if (stage == 'completed') {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.check_circle, color: Color(0xFF10B981), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Workflow abgeschlossen. Formular archiviert.', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF10B981)))),
+                ]),
+              );
+            }
+
+            // Ext. Manager bekleniyor
+            if (stage == 'pending_ext_review') {
+              return Column(children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.schedule_send, color: Colors.orange, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Text('Wartet auf Externen Manager', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
+                    ]),
+                    if (sentAt != null) ...[
+                      const SizedBox(height: 4),
+                      Text('Gesendet: ${_formatDate(sentAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ],
+                  ]),
+                ),
+                // Ext. Manager ise yorum + geri gönder butonu
+                if (isExtMgr) ...[
+                  _ExtManagerCommentPanel(
+                    onSend: (comment) => _sendBackToBl(context, comment),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ]);
+            }
+
+            // BL onayı bekleniyor (Ext. Manager geri gönderdi)
+            if (stage == 'pending_bl_approval') {
+              return Column(children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [
+                      Icon(Icons.reply_all, color: Color(0xFF6366F1), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(child: Text('Rückmeldung vom Ext. Manager', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)))),
+                    ]),
+                    if (extComment.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('„$extComment“', style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontStyle: FontStyle.italic)),
+                      ),
+                    ],
+                    if (returnedAt != null) ...[
+                      const SizedBox(height: 4),
+                      Text('Zurückgesendet: ${_formatDate(returnedAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ],
+                  ]),
+                ),
+                // BL ise "Abschließen" butonu
+                if (args.canSendToExt) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _completeWorkflow(context),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Workflow abschließen & PDF', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ]);
+            }
+
+            // Normal team_editing aşaması: Form fertig ise BL-gonderme butonu göster
+            if (stage == 'team_editing' && args.canSendToExt && widget.status == 'fertig') {
+              return Column(children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () => _sendToExtManager(context),
+                    icon: const Icon(Icons.send_outlined),
+                    label: const Text('An Ext. Manager senden', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ]);
+            }
+
+            return const SizedBox.shrink();
+          }),
           // Status chooser
           if (!args.isApproved) ...[
             Container(
@@ -763,11 +1092,100 @@ class _FormScaffoldState extends State<_FormScaffold> {
       side: BorderSide(color: selected ? color : color.withOpacity(0.3)),
     );
   }
+
+  String _formatDate(String isoString) {
+    final dt = DateTime.tryParse(isoString)?.toLocal();
+    if (dt == null) return isoString;
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+// ── Ext. Manager Yorum Paneli ─────────────────────────────────────────────────
+
+class _ExtManagerCommentPanel extends StatefulWidget {
+  final Future<void> Function(String comment) onSend;
+  const _ExtManagerCommentPanel({required this.onSend});
+
+  @override
+  State<_ExtManagerCommentPanel> createState() => _ExtManagerCommentPanelState();
+}
+
+class _ExtManagerCommentPanelState extends State<_ExtManagerCommentPanel> {
+  final _ctrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+        boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.comment_outlined, color: Color(0xFF6366F1), size: 18),
+          SizedBox(width: 8),
+          Text('Meine Stellungnahme', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF6366F1))),
+        ]),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _ctrl,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Kommentar, Anmerkungen oder Anweisungen eingeben...',
+            hintStyle: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF6366F1)),
+            ),
+          ),
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: _sending ? null : () async {
+              if (_ctrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Bitte einen Kommentar eingeben.'), backgroundColor: AppTheme.error),
+                );
+                return;
+              }
+              setState(() => _sending = true);
+              await widget.onSend(_ctrl.text.trim());
+              if (mounted) setState(() => _sending = false);
+            },
+            icon: _sending
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.reply_all),
+            label: const Text('Stellungnahme senden & zurückleiten', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED FIELD HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 Widget _section(String label) => Padding(
   padding: const EdgeInsets.only(top: 16, bottom: 8),

@@ -13,8 +13,9 @@ import 'gws_item_form_screen.dart';
 class GwsTagesplanScreen extends StatefulWidget {
   final String? departmentId;
   final String? planId; // Mevcut planı yüklemek için
+  final String? initialOrderId; // Yeni planda işi doğrudan eşlemek için
   final List<Map<String, dynamic>> objects;
-  const GwsTagesplanScreen({super.key, this.departmentId, this.planId, required this.objects});
+  const GwsTagesplanScreen({super.key, this.departmentId, this.planId, this.initialOrderId, required this.objects});
   @override
   State<GwsTagesplanScreen> createState() => _GwsTagesplanScreenState();
 }
@@ -104,6 +105,12 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           _rooms.clear(); _rooms.addAll(rooms);
           _areas.clear(); _areas.addAll(areas);
           _isTeamLeader = isLeader;
+        }
+      } else if (widget.initialOrderId != null) {
+        _selectedOrderId = widget.initialOrderId;
+        final o = orders.where((x) => x['id'].toString() == widget.initialOrderId).firstOrNull;
+        if (o != null) {
+          _selectedObjectId = o['customer_id']?.toString();
         }
       }
       

@@ -366,6 +366,11 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final emailCtrl = TextEditingController();
     String contactType = 'Sachbearbeiter';
 
+    // ExtManager sadece Gastwirtschaft (Otel) servis alanında gösterilir
+    final selectedSa = _serviceAreas.where((sa) => sa['id'].toString() == _selectedServiceAreaId).firstOrNull;
+    final saNameLower = (selectedSa?['display_name'] ?? selectedSa?['name'] ?? '').toString().toLowerCase();
+    final isGwsArea = saNameLower.contains('gast') || saNameLower.contains('hospit') || saNameLower.contains('hotel');
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -378,9 +383,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               DropdownButtonFormField<String>(
                 value: contactType,
                 decoration: InputDecoration(labelText: tr('Typ'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                items: const [
-                  DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Sachbearbeiter')),
-                  DropdownMenuItem(value: 'ExtManager', child: Text('🏨 Externer Manager (Kundenportal)')),
+                items: [
+                  const DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Sachbearbeiter')),
+                  if (isGwsArea)
+                    const DropdownMenuItem(value: 'ExtManager', child: Text('🏨 Externer Manager (Kundenportal)')),
                 ],
                 onChanged: (v) => setLocal(() => contactType = v!),
               ),
