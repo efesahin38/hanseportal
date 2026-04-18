@@ -2669,9 +2669,16 @@ class SupabaseService {
         query = query.eq('department_id', departmentId) as dynamic;
       }
     }
+    final data = await query;
+    final list = List<Map<String, dynamic>>.from(data);
+    
     // Filter: completed, invoiced, passive, archived hariç hepsi
-    final data = await query.not('status', 'in', '("completed","invoiced","passive","archived")');
-    return List<Map<String, dynamic>>.from(data);
+    return list.where((item) => 
+      item['status'] != 'completed' && 
+      item['status'] != 'invoiced' && 
+      item['status'] != 'passive' && 
+      item['status'] != 'archived'
+    ).toList();
   }
 
   /// GWS oda/alan item'ini External Manager ile paylaş veya geri al
