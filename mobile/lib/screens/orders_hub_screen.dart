@@ -126,13 +126,17 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
 
     if (appState.isBereichsleiter) {
       final firstName = (appState.currentUser?['first_name'] as String? ?? '').toLowerCase();
-      if (firstName == 'sandra') {
+      final lastName = (appState.currentUser?['last_name'] as String? ?? '').toLowerCase();
+      final email = (appState.currentUser?['email'] as String? ?? '').toLowerCase();
+      final fullNameAndEmail = '$firstName $lastName $email';
+
+      if (fullNameAndEmail.contains('sandra')) {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Sandra').toList();
-      } else if (firstName == 'peter') {
+      } else if (fullNameAndEmail.contains('peter')) {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Peter').toList();
-      } else if (firstName == 'markus') {
+      } else if (fullNameAndEmail.contains('markus')) {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Markus').toList();
-      } else if (firstName == 'fatma') {
+      } else if (fullNameAndEmail.contains('fatma')) {
         visibleDefs = kGmbhDefs.where((d) => d.responsible == 'Fatma').toList();
       } else if (bereichDept != null) {
         final bDept = bereichDept.toLowerCase();
@@ -252,7 +256,7 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                 ),
                 const Text(
-                  'HansePortal v19.2.4',
+                  'HansePortal v19.2.5',
                   style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
                 ),
                 Text(
