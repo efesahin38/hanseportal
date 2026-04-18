@@ -158,6 +158,13 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // DIAGNOSTIC BANNER
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                  child: const Center(child: Text('DIAGNOSTIC MODE: v19.2.6 (If you see this, code is updated)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                ),
+                const SizedBox(height: 12),
                 _buildBlockA(appState),
                 const SizedBox(height: 16),
                 if (appState.role == 'GF' || appState.fullName == 'Fatma') ...[
@@ -204,10 +211,12 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           DropdownButtonFormField<String>(
             value: _selectedOrderId,
             decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
-            items: _gwsOrders.map((ord) => DropdownMenuItem<String>(
-              value: ord['id'].toString(),
-              child: Text('${ord['customer']?['name']}: ${ord['title']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis),
-            )).toList(),
+            items: _gwsOrders.isEmpty 
+              ? [const DropdownMenuItem<String>(value: null, child: Text('⚠️ Aktif iş bulunamadı', style: TextStyle(color: Colors.red)))]
+              : _gwsOrders.map((ord) => DropdownMenuItem<String>(
+                  value: ord['id'].toString(),
+                  child: Text('${ord['customer']?['name'] ?? 'Müşteri Yok'}: ${ord['title']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis),
+                )).toList(),
             onChanged: (v) {
               final ord = _gwsOrders.firstWhere((element) => element['id'] == v);
               setState(() {

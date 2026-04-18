@@ -2643,43 +2643,44 @@ class SupabaseService {
   }
 
   static Future<List<Map<String, dynamic>>> getGwsOrders({String? departmentId}) async {
-    // GWS için aktif/draft/in_progress siparişleri getir (customer_contact bilgisi dahil)
-    var query = _client.from('orders').select(
-      'id, title, customer_id, status, department_id, service_area_id, customer:customers(name, customer_contacts(id, name, role, email, phone, user_id))'
-    );
-    final data = await query;
-    var list = List<Map<String, dynamic>>.from(data);
-    
-    if (departmentId != null) {
-      List<String> saIds = [];
-      try {
-        final allSas = await _client.from('service_areas').select('id, name, department_id');
-        for (var sa in (allSas as List)) {
-          if (sa['department_id']?.toString() == departmentId) {
-             saIds.add(sa['id'].toString());
-          } else {
-            final saName = (sa['name'] as String).toLowerCase();
-            if (saName.contains('gast') || saName.contains('hotel') || saName.contains('hospit')) {
-              saIds.add(sa['id'].toString());
+    try {
+      // En yalın sorgu: Join'leri basitleştiriyoruz ki patlamasın.
+      final response = await _client.from('orders').select('*, customer:customers(name)');
+      var list = List<Map<String, dynamic>>.from(response as List);
+      
+      if (departmentId != null) {
+        List<String> saIds = [];
+        try {
+          final allSas = await _client.from('service_areas').select('id, name, department_id');
+          for (var sa in (allSas as List)) {
+            if (sa['department_id']?.toString() == departmentId) {
+               saIds.add(sa['id'].toString());
+            } else {
+              final saName = (sa['name'] as String).toLowerCase();
+              if (saName.contains('gast') || saName.contains('hotel') || saName.contains('hospit')) {
+                saIds.add(sa['id'].toString());
+              }
             }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+        
+        list = list.where((o) {
+          return o['department_id']?.toString() == departmentId || 
+                 saIds.contains(o['service_area_id']?.toString());
+        }).toList();
+      }
       
-      // Memory filtering: eger orders tablosu db baglantisi bozulmadan geldi ise
-      list = list.where((o) {
-        return o['department_id']?.toString() == departmentId || 
-               saIds.contains(o['service_area_id']?.toString());
-      }).toList();
+      // Filter: Sadece aktif ve taslak olanlar (completed/invoiced/passive/archived hariç)
+      return list.where((item) => 
+        item['status'] != 'completed' && 
+        item['status'] != 'invoiced' && 
+        item['status'] != 'passive' && 
+        item['status'] != 'archived'
+      ).toList();
+    } catch (e) {
+      debugPrint('getGwsOrders Error: $e');
+      return [];
     }
-    
-    // Filter: completed, invoiced, passive, archived hariç hepsi
-    return list.where((item) => 
-      item['status'] != 'completed' && 
-      item['status'] != 'invoiced' && 
-      item['status'] != 'passive' && 
-      item['status'] != 'archived'
-    ).toList();
   }
 
   /// GWS oda/alan item'ini External Manager ile paylaş veya geri al
