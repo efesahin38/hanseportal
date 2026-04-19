@@ -46,9 +46,8 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // Bereichsleiter: departmentId bazlı filtre kullan (serviceAreaIds değil!)
-      // Bu GWS gibi departmanların personelini doğru gösterir
-      final String? deptFilter = appState.isBereichsleiter ? appState.departmentId : null;
+      // Bereichsleiter'lar için de departman kısıtlaması kaldırıldı, herkesi (Alle) görebilsinler 
+      final String? deptFilter = null;
       final data = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         departmentId: deptFilter,

@@ -691,7 +691,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 onChanged: (v) => setLocal(() { selectedCat = v!; price = _roomPrices[v]!; }),
               ),
               const SizedBox(height: 8),
-              Text('Preis: € ${price.toStringAsFixed(2)}', style: TextStyle(color: _color, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              if (context.read<AppState>().canSeeFinancialDetails)
+                Text('Preis: € ${price.toStringAsFixed(2)}', style: TextStyle(color: _color, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
             ],
           ),
           actions: [
@@ -737,7 +738,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 onChanged: (v) => setLocal(() => selectedArea = v!),
               ),
               const SizedBox(height: 8),
-              Text('Preis: € ${_areaPrices[selectedArea]?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(color: _color, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              if (context.read<AppState>().canSeeFinancialDetails)
+                Text('Preis: € ${_areaPrices[selectedArea]?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(color: _color, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
             ],
           ),
           actions: [
@@ -781,7 +783,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 onChanged: (v) => setLocal(() => selected = v!),
               ),
               const SizedBox(height: 8),
-              Text('Preis: € ${_extraPrices[selected]?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              if (context.read<AppState>().canSeeFinancialDetails)
+                Text('Preis: € ${_extraPrices[selected]?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
             ],
           ),
           actions: [

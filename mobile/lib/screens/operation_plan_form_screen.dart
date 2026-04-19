@@ -71,10 +71,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         query = query.eq('company_id', appState.companyId);
       }
       
-      // 🛑 STRICT DEPARTMENT DATA ISOLATION (Bölüm Sorumlusu İzolasyonu)
-      if (appState.isBereichsleiter && appState.departmentId.isNotEmpty) {
-        query = query.eq('department_id', appState.departmentId);
-      }
+      // 🛑 Departman bazlı katı kısıtlama (Bölüm Sorumlusu İzolasyonu) BURADAN KALDIRILDI.
+      // Kullanıcı tüm personeli görsün, sadece UI'daki çiplerle (Alle, DB, vs.) filtrelesin istendi.
 
       final users = await query;
       
@@ -298,8 +296,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Row(
-                  children: ['Tümü', 'Temizlik', 'Hotel Servisi', 'Ray Servisi', 'İnşaat Servisi'].map((filter) {
-                    final isSelected = _selectedFilter == filter;
+                  children: ['Alle', 'DB-Gleisbausicherung', 'Gebäudedienstleistungen', 'Personalüberlassung', 'Gastwirtschaftsservice'].map((filter) {
+                    final isSelected = _selectedFilter == filter || (_selectedFilter == 'Tümü' && filter == 'Alle');
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
@@ -311,12 +309,12 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                         selected: isSelected,
                         selectedColor: AppTheme.primary,
                         backgroundColor: Colors.white,
-                        side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.border),
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _selectedFilter = filter);
-                          }
-                        },
+                      side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.border),
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _selectedFilter = filter == 'Alle' ? 'Tümü' : filter);
+                        }
+                      },
                       ),
                     );
                   }).toList(),
@@ -347,11 +345,10 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                 Builder(
                   builder: (context) {
                     final filteredPersonnel = _personnel.where((user) {
-                      if (_selectedFilter == 'Tümü') return true;
-                      final posTitle = (user['position_title'] ?? '').toString().toLowerCase();
+                      if (_selectedFilter == 'Tümü' || _selectedFilter == 'Alle') return true;
                       final depName = (user['department']?['name'] ?? '').toString().toLowerCase();
-                      final filterLower = _selectedFilter.toLowerCase().replaceAll(' servisi', '').replaceAll(' servis', '');
-                      return posTitle.contains(filterLower) || depName.contains(filterLower);
+                      final filterLower = _selectedFilter.toLowerCase();
+                      return depName.contains(filterLower) || depName == filterLower;
                     }).toList();
   
                     if (filteredPersonnel.isEmpty) {

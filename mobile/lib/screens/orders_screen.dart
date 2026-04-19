@@ -241,7 +241,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ),
           ),
-          const Text('HansePortal v19.3.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
+          const Text('HansePortal v19.3.1', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
         ],
       ),
     ),
