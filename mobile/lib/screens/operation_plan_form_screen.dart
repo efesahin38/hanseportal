@@ -70,6 +70,10 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       if (!appState.isGeschaeftsfuehrer && !appState.isSystemAdmin) {
         query = query.eq('company_id', appState.companyId);
       }
+      
+      if (appState.isBereichsleiter && appState.departmentId != null) {
+        query = query.eq('department_id', appState.departmentId);
+      }
 
       final users = await query;
       

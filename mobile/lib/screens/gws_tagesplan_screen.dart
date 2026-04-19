@@ -144,7 +144,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
         actions: [
           if (_saving)
             const Center(child: Padding(padding: EdgeInsets.only(right: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))))
-          else
+          else if (!appState.isExternalManager)
             TextButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save, color: Colors.white),
@@ -162,12 +162,12 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                  child: const Center(child: Text('DIAGNOSTIC MODE: v19.2.6 (If you see this, code is updated)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                  child: const Center(child: Text('DIAGNOSTIC MODE: v19.2.9 (If you see this, code is updated)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
                 ),
                 const SizedBox(height: 12),
                 _buildBlockA(appState),
                 const SizedBox(height: 16),
-                if (appState.role == 'GF' || appState.fullName == 'Fatma') ...[
+                if (!appState.isExternalManager) ...[
                   _buildPersonnelAssignment(),
                   const SizedBox(height: 16),
                 ],
@@ -177,9 +177,33 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 const SizedBox(height: 16),
                 _buildBlockD(appState),
                 const SizedBox(height: 16),
-                if (appState.role == 'GF' || appState.fullName == 'Fatma') ...[
+                if (appState.canSeeFinancialDetails) ...[
                   _buildBlockE(),
                   const SizedBox(height: 16),
+                ],
+                // Gönderim Butonları
+                if (widget.planId != null) ...[
+                  const Divider(),
+                  if (appState.isExternalManager)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(vertical: 16)),
+                        onPressed: () => _updateWorkflowStatus('in_bearbeitung', 'Bereichsleiter\'a Gönderildi'),
+                        icon: const Icon(Icons.send_rounded),
+                        label: const Text('An Bereichsleiter Senden', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    )
+                  else if (appState.isBereichsleiter || appState.canSeeFinancialDetails)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.info, padding: const EdgeInsets.symmetric(vertical: 16)),
+                        onPressed: () => _updateWorkflowStatus('vom_kunden_gemeldet', 'External Manager\'a Gönderildi'),
+                        icon: const Icon(Icons.send_outlined),
+                        label: const Text('An External Manager Senden', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                 ],
                 const SizedBox(height: 80),
               ],
@@ -227,18 +251,23 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           ),
           const SizedBox(height: 12),
           // Status
-          DropdownButtonFormField<String>(
-            value: _status,
-            decoration: const InputDecoration(labelText: 'Status'),
-            items: const [
-              DropdownMenuItem(value: 'draft', child: Text('📝 Entwurf')),
-              DropdownMenuItem(value: 'vom_kunden_gemeldet', child: Text('📩 Vom Kunden gemeldet')),
-              DropdownMenuItem(value: 'in_bearbeitung', child: Text('🔄 Intern in Bearbeitung')),
-              DropdownMenuItem(value: 'released', child: Text('✅ Freigegeben')),
-            ],
-            onChanged: (v) => setState(() => _status = v!),
-          ),
-          if (widget.planId != null && (appState.role == 'GF' || appState.fullName == 'Fatma')) ...[
+          appState.isExternalManager 
+            ? InputDecorator(
+                decoration: const InputDecoration(labelText: 'Status'),
+                child: Text(_statusText(_status), style: const TextStyle(fontSize: 15, fontFamily: 'Inter')),
+              )
+            : DropdownButtonFormField<String>(
+                value: _status,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: 'draft', child: Text('📝 Entwurf')),
+                  DropdownMenuItem(value: 'vom_kunden_gemeldet', child: Text('📩 Vom Kunden gemeldet')),
+                  DropdownMenuItem(value: 'in_bearbeitung', child: Text('🔄 Intern in Bearbeitung')),
+                  DropdownMenuItem(value: 'released', child: Text('✅ Freigegeben')),
+                ],
+                onChanged: (v) => setState(() => _status = v!),
+              ),
+          if (widget.planId != null && appState.canSeeFinancialDetails) ...[
             const SizedBox(height: 16),
             const Divider(),
             Row(
@@ -261,12 +290,34 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     );
   }
 
+  String _statusText(String s) {
+    if (s == 'draft') return '📝 Entwurf';
+    if (s == 'vom_kunden_gemeldet') return '📩 Vom Kunden gemeldet';
+    if (s == 'in_bearbeitung') return '🔄 Intern in Bearbeitung';
+    if (s == 'released') return '✅ Freigegeben';
+    return s;
+  }
+
+  Future<void> _updateWorkflowStatus(String newStatus, String msg) async {
+    setState(() => _saving = true);
+    try {
+      await SupabaseService.updateGwsDailyPlan(widget.planId!, {'status': newStatus});
+      setState(() { _status = newStatus; _saving = false; });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppTheme.success));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
+        setState(() => _saving = false);
+      }
+    }
+  }
+
   // ── Block B: Zimmerliste ───────────────────────────────────
   Widget _buildBlockB(AppState appState) {
     return _buildSection(
       title: 'Block B – Zimmerliste',
       icon: Icons.bed,
-      action: IconButton(
+      action: appState.isExternalManager ? null : IconButton(
         icon: Icon(Icons.add_circle, color: _color),
         onPressed: _addRoomDialog,
       ),
@@ -320,12 +371,13 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     ),
                     _statusMiniBadge(r['status']),
                     const SizedBox(width: 8),
-                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                    if (appState.canSeeFinancialDetails)
                       Text('€ ${(r['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
                     if (r['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
+                    if (!appState.isExternalManager)
+                      IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
                   ],
                 ),
               );
@@ -345,7 +397,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('${_rooms.length} Zimmer', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                if (appState.canSeeFinancialDetails)
                   Text('€ ${_roomTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
               ],
             ),
@@ -407,7 +459,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block C – Bereichsliste',
       icon: Icons.location_city,
-      action: IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addAreaDialog),
+      action: appState.isExternalManager ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addAreaDialog),
       child: Column(
         children: [
           if (_areas.isEmpty)
@@ -452,12 +504,13 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                         ],
                       ),
                     ),
-                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                    if (appState.canSeeFinancialDetails)
                       Text('€ ${(a['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter', fontSize: 13)),
                     const SizedBox(width: 8),
                     if (a['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
+                    if (!appState.isExternalManager)
+                      IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
                   ],
                 ),
               );
@@ -477,7 +530,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('${_areas.length} Bereiche', style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                if (appState.canSeeFinancialDetails)
                   Text('€ ${_areaTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontFamily: 'Inter')),
               ],
             ),
@@ -492,7 +545,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block D – Zusatzleistungen',
       icon: Icons.add_task,
-      action: IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addExtraDialog),
+      action: appState.isExternalManager ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addExtraDialog),
       child: Column(
         children: [
           if (_extras.isEmpty)
@@ -512,9 +565,10 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (appState.role == 'GF' || appState.fullName == 'Fatma')
+                    if (appState.canSeeFinancialDetails)
                       Text('€ ${(e['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
-                    IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _extras.removeAt(i))),
+                    if (!appState.isExternalManager)
+                      IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _extras.removeAt(i))),
                   ],
                 ),
               );

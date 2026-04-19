@@ -100,20 +100,24 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
 
   bool _canEdit(AppState a) {
     if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isBackoffice || a.isBuchhaltung || a.isSystemAdmin) return true;
-    if (a.isVorarbeiter || widget.supervisorIds.contains(a.userId)) return true;
+    // Sadece bu işe atanmış takım lideri (is_supervisor yıldızlı kişi) formu düzenleyebilir
+    if (widget.supervisorIds.contains(a.userId)) return true;
     if (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId) return true;
     return false;
   }
 
   bool _canApprove(AppState a) {
+    // Takım lideri ONAYLAYAMAZ – sadece GF, BL, BRL ve üst roller onaylar
     if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isBackoffice || a.isBuchhaltung || a.isSystemAdmin) return true;
     if (a.isBereichsleiter && widget.orderDepartmentId != null && a.departmentId == widget.orderDepartmentId) return true;
     return false;
   }
 
   bool _canDelete(AppState a) {
+    // Takım lideri silme yapamaz
     if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin) return true;
-    return widget.supervisorIds.contains(a.userId) || a.isVorarbeiter;
+    if (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId) return true;
+    return false;
   }
 
   bool _canView(AppState a) => a.userId.isNotEmpty;
@@ -815,7 +819,8 @@ class _FormScaffoldState extends State<_FormScaffold> {
               icon: const Icon(Icons.verified_outlined, color: Colors.white, size: 18),
               label: const Text('Genehmigen', style: TextStyle(color: Colors.white, fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 12)),
             ),
-          if (args.editable && !args.isApproved)
+          // Ext. Manager sadece yorum + geri gönder yapabilir, formu kaydedemez
+          if (args.editable && !args.isApproved && !args.appState.isExternalManager)
             TextButton.icon(
               onPressed: () => _save(context),
               icon: const Icon(Icons.save_outlined, color: Colors.white, size: 18),

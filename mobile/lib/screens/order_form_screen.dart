@@ -412,24 +412,31 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   _textField(tr('Malzeme/Ekipman Gereksinimi'), _materialNotes, maxLines: 3),
                   const SizedBox(height: 16),
 
-                  _section(tr('Auftragsart & Verhandlung')),
+                  // ── Finansal alanlar: sadece GF, BL, Muhasebe, Backoffice görebilir ──
+                  if (context.read<AppState>().canSeeFinancialDetails) ...[
+                    _section(tr('Auftragsart & Verhandlung')),
+                    Wrap(spacing: 16, runSpacing: 12, children: [
+                      SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
+                        value: _orderType,
+                        decoration: InputDecoration(labelText: tr('Auftragsart')),
+                        items: ['Standardauftrag', 'Rahmenvertrag', 'Einzelauftrag', 'Notfall', 'Sonderauftrag']
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setState(() => _orderType = v!),
+                      )),
+                      SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
+                        value: _negotiationType,
+                        decoration: InputDecoration(labelText: tr('Verhandlungsart')),
+                        items: ['Pauschal', 'Stundenverrechnungssatz', 'Summe netto']
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        onChanged: (v) => setState(() => _negotiationType = v!),
+                      )),
+                      if (_negotiationType == 'Summe netto')
+                        SizedBox(width: fieldWidth, child: _textField(tr('Summe netto (€)'), _netAmountCtrl)),
+                    ]),
+                    const SizedBox(height: 16),
+                  ],
+                  // Personalbedarf ve Materialbedarf herkes görebilir
                   Wrap(spacing: 16, runSpacing: 12, children: [
-                    SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
-                      value: _orderType,
-                      decoration: InputDecoration(labelText: tr('Auftragsart')),
-                      items: ['Standardauftrag', 'Rahmenvertrag', 'Einzelauftrag', 'Notfall', 'Sonderauftrag']
-                          .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                      onChanged: (v) => setState(() => _orderType = v!),
-                    )),
-                    SizedBox(width: fieldWidth, child: DropdownButtonFormField<String>(
-                      value: _negotiationType,
-                      decoration: InputDecoration(labelText: tr('Verhandlungsart')),
-                      items: ['Pauschal', 'Stundenverrechnungssatz', 'Summe netto']
-                          .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                      onChanged: (v) => setState(() => _negotiationType = v!),
-                    )),
-                    if (_negotiationType == 'Summe netto')
-                      SizedBox(width: fieldWidth, child: _textField(tr('Summe netto (€)'), _netAmountCtrl)),
                     SizedBox(width: fieldWidth, child: _textField(tr('Personalbedarf (Anzahl)'), _personnelNeedCtrl)),
                     SizedBox(width: fieldWidth, child: _textField(tr('Materialbedarf'), _materialNeedCtrl, maxLines: 2)),
                   ]),
@@ -454,15 +461,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                           onChanged: (v) => setState(() => _priority = v!),
                         ),
                       ),
-                      SizedBox(
-                        width: fieldWidth,
-                        child: TextFormField(
-                          initialValue: _minBillableHours.toString(),
-                          decoration: InputDecoration(labelText: tr('Min. Faturalanacak Saat'), hintText: '${tr('Varsayılan')}: 4.0'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (v) => _minBillableHours = double.tryParse(v) ?? 4.0,
+                      // Min. billable hours sadece finansal yetkiye sahip roller
+                      if (context.read<AppState>().canSeeFinancialDetails)
+                        SizedBox(
+                          width: fieldWidth,
+                          child: TextFormField(
+                            initialValue: _minBillableHours.toString(),
+                            decoration: InputDecoration(labelText: tr('Min. Faturalanacak Saat'), hintText: '${tr('Varsayılan')}: 4.0'),
+                            keyboardType: TextInputType.number,
+                            onChanged: (v) => _minBillableHours = double.tryParse(v) ?? 4.0,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 12),

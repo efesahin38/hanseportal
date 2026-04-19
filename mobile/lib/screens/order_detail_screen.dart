@@ -218,6 +218,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                         _InfoRow(tr('Saha Adresi'), o['site_address']),
                         _InfoRow(tr('Min. Faturalanacak Saat'), o['minimum_billable_hours']?.toString()),
                         _InfoRow(tr('Malzeme/Ekipman'), o['material_notes']),
+                        // Fiyat bilgisi sadece yetkili roller
+                        if (appState.canSeeFinancialDetails) ...[
+                          _InfoRow('Verhandlungsart', o['negotiation_type']),
+                          if ((o['net_amount'] as num?) != null)
+                            _InfoRow('Summe netto', '${(o['net_amount'] as num).toStringAsFixed(2)} €'),
+                        ],
                       ]),
                       const SizedBox(height: 12),
                       _InfoCard(tr('Müşteri'), [
@@ -225,6 +231,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                         _InfoRow(tr('Telefon'), customer?['phone'], isMasked: !appState.canSeeFullCustomerDetails),
                         _InfoRow(tr('E-posta'), customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
                       ]),
+                      // ── Muhattap & Sachbearbeiter ──
+                      Builder(builder: (ctx) {
+                        final contact = o['customer_contact'] as Map<String, dynamic>?;
+                        final sachb = o['sachbearbeiter_contact'] as Map<String, dynamic>?;
+                        if (contact == null && sachb == null) return const SizedBox.shrink();
+                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const SizedBox(height: 12),
+                          _InfoCard('Kunden – Externe Kontakte', [
+                            if (contact != null) ...[ 
+                              _InfoRow('Muhattap (Ext. Mgr.)', contact['name']),
+                              _InfoRow('Telefon', contact['phone'], isMasked: !appState.canSeeFullCustomerDetails),
+                              _InfoRow('E-Mail', contact['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                            ],
+                            if (sachb != null) ...[ 
+                              if (contact != null) const SizedBox(height: 6),
+                              _InfoRow('Sachbearbeiter', sachb['name']),
+                              _InfoRow('Telefon', sachb['phone'], isMasked: !appState.canSeeFullCustomerDetails),
+                              _InfoRow('E-Mail', sachb['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                            ],
+                          ]),
+                        ]);
+                      }),
                       const SizedBox(height: 12),
                       if (o['short_description'] != null || o['detailed_description'] != null)
                         _InfoCard(tr('Açıklama'), [
@@ -508,6 +536,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                       orderDepartmentId: o['department_id']?.toString(),
                       supervisorIds: plans
                           .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
+                          // Sadece is_supervisor == true olan takım liderini dahil et
+                          .where((pp) => pp['is_supervisor'] == true)
                           .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
                           .where((id) => id.isNotEmpty)
                           .toList(),
