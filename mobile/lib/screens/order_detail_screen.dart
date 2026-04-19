@@ -241,14 +241,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           _InfoCard('Kunden – Externe Kontakte', [
                             if (contact != null) ...[ 
                               _InfoRow('Muhattap (Ext. Mgr.)', contact['name']),
-                              _InfoRow('Telefon', contact['phone'], isMasked: !appState.canSeeFullCustomerDetails),
-                              _InfoRow('E-Mail', contact['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                              _InfoRow('Telefon', contact['phone']),
+                              _InfoRow('E-Mail', contact['email']),
                             ],
                             if (sachb != null) ...[ 
                               if (contact != null) const SizedBox(height: 6),
                               _InfoRow('Sachbearbeiter', sachb['name']),
-                              _InfoRow('Telefon', sachb['phone'], isMasked: !appState.canSeeFullCustomerDetails),
-                              _InfoRow('E-Mail', sachb['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                              _InfoRow('Telefon', sachb['phone']),
+                              _InfoRow('E-Mail', sachb['email']),
                             ],
                           ]),
                         ]);
@@ -589,6 +589,7 @@ class _GwsTagesplanSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -611,13 +612,14 @@ class _GwsTagesplanSection extends StatelessWidget {
               Expanded(
                 child: Text('GWS Tagesplanung', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _color, fontFamily: 'Inter')),
               ),
-              TextButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
-                    departmentId: departmentId,
-                    initialOrderId: orderId,
-                    objects: objects,
+              if (!appState.isExternalManager)
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => GwsTagesplanScreen(
+                      departmentId: departmentId,
+                      initialOrderId: orderId,
+                      objects: objects,
                   )),
                 ).then((_) => onRefresh()),
                 icon: Icon(Icons.add_circle_outline, color: _color, size: 16),

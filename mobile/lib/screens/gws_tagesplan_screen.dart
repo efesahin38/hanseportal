@@ -333,12 +333,13 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Zimmer hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
-                      onPressed: _addRoomDialog,
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Zimmer hinzufügen', style: TextStyle(fontFamily: 'Inter')),
-                    ),
+                    if (!appState.isExternalManager)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
+                        onPressed: _addRoomDialog,
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Zimmer hinzufügen', style: TextStyle(fontFamily: 'Inter')),
+                      ),
                   ],
                 ),
               ),
@@ -472,12 +473,13 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Bereiche hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
-                      onPressed: _addAreaDialog,
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Bereich hinzufügen', style: TextStyle(fontFamily: 'Inter')),
-                    ),
+                    if (!appState.isExternalManager)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
+                        onPressed: _addAreaDialog,
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Bereich hinzufügen', style: TextStyle(fontFamily: 'Inter')),
+                      ),
                   ],
                 ),
               ),

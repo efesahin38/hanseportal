@@ -71,7 +71,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         query = query.eq('company_id', appState.companyId);
       }
       
-      if (appState.isBereichsleiter && appState.departmentId != null) {
+      // 🛑 STRICT DEPARTMENT DATA ISOLATION (Bölüm Sorumlusu İzolasyonu)
+      if (appState.isBereichsleiter && appState.departmentId.isNotEmpty) {
         query = query.eq('department_id', appState.departmentId);
       }
 

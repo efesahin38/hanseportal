@@ -248,8 +248,8 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
                 children: _checklist.keys.map((key) => CheckboxListTile(
                   title: Text(key, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
                   value: _checklist[key],
-                  // Only Mitarbeiter can edit checklist
-                  onChanged: (_isMitarbeiter && !widget.isExternalManager)
+                  // Mitarbeiter, Teamleiter OR Full Edit roles can edit checklist
+                  onChanged: ((_isMitarbeiter || _isTeamLeader || _canFullEdit) && !widget.isExternalManager)
                       ? (v) => setState(() => _checklist[key] = v!)
                       : null,
                   activeColor: _color,
@@ -266,12 +266,12 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
               child: TextField(
                 controller: _workerNotes,
                 maxLines: 3,
-                readOnly: !_isMitarbeiter || widget.isExternalManager,
+                readOnly: !(_isMitarbeiter || _isTeamLeader || _canFullEdit) || widget.isExternalManager,
                 decoration: InputDecoration(
-                  hintText: _isMitarbeiter ? 'Hinweise zur Durchführung...' : '—',
+                  hintText: (_isMitarbeiter || _isTeamLeader || _canFullEdit) ? 'Hinweise zur Durchführung...' : '—',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   filled: true,
-                  fillColor: _isMitarbeiter ? Colors.white : AppTheme.bg,
+                  fillColor: (_isMitarbeiter || _isTeamLeader || _canFullEdit) ? Colors.white : AppTheme.bg,
                 ),
               ),
             ),
@@ -296,7 +296,7 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
                         ),
                         child: const Icon(Icons.image, color: Colors.grey, size: 36),
                       )),
-                      if (_isMitarbeiter && !widget.isExternalManager)
+                      if ((_isMitarbeiter || _isTeamLeader || _canFullEdit) && !widget.isExternalManager)
                         InkWell(
                           onTap: _pickImage,
                           child: Container(
