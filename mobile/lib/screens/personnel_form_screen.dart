@@ -130,7 +130,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       _workPermit = d['work_permit'] == true; _maritalStatus = d['marital_status'] == true;
       _hasChildren = d['has_children'] == true; _hasDrivingLicense = d['has_driving_license'] == true;
       _hasQualifications = d['has_qualifications'] == true;
-      // v19.3.6: Brutto ücret yükle
+      // v19.3.7: Brutto ücret yükle
       if (_compensationType == 'Stundenlohn') {
         _grossWage.text = d['hourly_gross_wage']?.toString() ?? '';
       } else {
@@ -184,7 +184,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'driving_license_since': _drivingLicenseSince?.toIso8601String().split('T')[0],
         'has_qualifications': _hasQualifications, 'qualifications': _qualifications.text.trim(),
         'company_id': _companyId, 'status': 'active',
-        // v19.3.6: Brutto ücret kaydet
+        // v19.3.7: Brutto ücret kaydet
         if (_compensationType == 'Stundenlohn' && _grossWage.text.isNotEmpty)
           'hourly_gross_wage': double.tryParse(_grossWage.text),
         if (_compensationType == 'Festlohn' && _grossWage.text.isNotEmpty)
@@ -365,7 +365,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
             : Text(widget.userId == null ? tr('Personal erstellen') : tr('Speichern'))),
           const SizedBox(height: 24),
-          const Center(child: Text('HansePortal v19.3.6', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+          const Center(child: Text('HansePortal v19.3.7', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
         ]);
       }))),
     );

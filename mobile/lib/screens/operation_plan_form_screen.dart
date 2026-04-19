@@ -67,7 +67,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       );
       
       final assignableUsers = users.where((u) {
-        final r = u['role'] ?? '';
+        final r = (u['role'] ?? '').toString().toLowerCase();
         return r == 'mitarbeiter' || r == 'vorarbeiter';
       }).toList();
 
