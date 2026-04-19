@@ -61,14 +61,19 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   Future<void> _loadData() async {
     final appState = context.read<AppState>();
     try {
-      final users = await SupabaseService.getUsers(
+      var users = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         status: 'active',
       );
       
+      // FALLBACK: Eğer manager ise ve liste boş geldiyse tüm şirketi (filtresiz) dene
+      if (users.isEmpty && !appState.isGeschaeftsfuehrer && !appState.isSystemAdmin) {
+        users = await SupabaseService.getUsers(status: 'active');
+      }
+      
       final assignableUsers = users.where((u) {
         final r = (u['role'] ?? '').toString().toLowerCase();
-        return r == 'mitarbeiter' || r == 'vorarbeiter';
+        return r == 'mitarbeiter' || r == 'vorarbeiter' || r == 'employee' || r == 'worker';
       }).toList();
 
       if (mounted) setState(() {
