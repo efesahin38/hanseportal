@@ -33,7 +33,7 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   List<_NavItem> _buildNavItems(AppState appState) {
-    // v19.3.5: Aufträge her zaman İLK (index 0) ve ana sayfa
+    // v19.3.6: Aufträge her zaman İLK (index 0) ve ana sayfa
     // Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung görebilir
     final canSeeStammdaten = appState.isGeschaeftsfuehrer ||
         appState.isSystemAdmin ||
@@ -162,7 +162,7 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(width: 12),
                     const Expanded(
                         child: Text(
-                          'HansePortal v19.3.5',
+                          'HansePortal v19.3.6',
                           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                         ),
                     ),
@@ -317,8 +317,8 @@ class _WebSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HansePortal v19.3.5', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          const Text('v19.3.5', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          const Text('HansePortal v19.3.6', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          const Text('v19.3.6', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                         ],
                       ),
                     ),

@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     tr('Dijital Yönetim Sistemi'),
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
                   ),
-                  const Text('v19.3.5', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                  const Text('v19.3.6', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                   const SizedBox(height: 48),
   
                   // ── Form Kartı ─────────────────────────────────
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'HansePortal v19.3.5',
+                            'HansePortal v19.3.6',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,

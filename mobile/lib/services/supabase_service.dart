@@ -125,7 +125,15 @@ class SupabaseService {
       *,
       company:companies(id, name, short_name),
       department:departments(id, name),
-      user_service_areas(service_area_id, service_areas(id, name, department_id, department:departments(name)))
+      user_service_areas(
+        service_area_id, 
+        service_areas(
+          id, 
+          name, 
+          department_id, 
+          department:departments(id, name)
+        )
+      )
     ''');
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;
@@ -135,7 +143,7 @@ class SupabaseService {
     }
     
     final data = await query.order('last_name');
-    var list = List<Map<String, dynamic>>.from(data);
+    var list = List<Map<String, dynamic>>.from(data as List);
     
     // Checkbox departman filtreleme
     if (effectiveSaIds.isNotEmpty) {

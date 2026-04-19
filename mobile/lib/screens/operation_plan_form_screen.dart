@@ -340,15 +340,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                       final filterLower = _selectedFilter.toLowerCase();
                       
                       // 1. Birincil departman kontrolü
-                      final depName = (user['department']?['name'] ?? '').toString().toLowerCase();
-                      if (depName.contains(filterLower) || depName == filterLower) return true;
+                      final primaryDep = (user['department']?['name'] ?? '').toString().toLowerCase();
+                      if (primaryDep.contains(filterLower) || primaryDep == filterLower) return true;
                       
-                      // 2. Hizmet alanları üzerinden departman kontrolü
+                      // 2. Hizmet alanları ve onların departmanları üzerinden kontrol
                       final usa = user['user_service_areas'] as List?;
                       if (usa != null) {
                         for (var item in usa) {
-                          final saDeptName = (item['service_areas']?['department']?['name'] ?? '').toString().toLowerCase();
-                          if (saDeptName.contains(filterLower) || saDeptName == filterLower) return true;
+                          final sa = item['service_areas'];
+                          if (sa == null) continue;
+                          
+                          // Hizmet alanı ismi (Örn: "Gastwirtschaftsservice")
+                          final saName = (sa['name'] ?? '').toString().toLowerCase();
+                          if (saName.contains(filterLower) || saName == filterLower) return true;
+                          
+                          // Hizmet alanının bağlı olduğu departman ismi (Örn: "GWS")
+                          final saDepName = (sa['department']?['name'] ?? '').toString().toLowerCase();
+                          if (saDepName.contains(filterLower) || saDepName == filterLower) return true;
                         }
                       }
                       
