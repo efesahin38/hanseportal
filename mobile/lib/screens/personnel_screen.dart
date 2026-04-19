@@ -46,8 +46,8 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // Bereichsleiter'lar için de departman kısıtlaması kaldırıldı, herkesi (Alle) görebilsinler 
-      final String? deptFilter = null;
+      // Bereichsleiter'lar sadece kendi bölümlerini görsün (İş isteği üzerine geri getirildi)
+      final String? deptFilter = appState.isBereichsleiter ? appState.departmentId : null;
       final data = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         departmentId: deptFilter,
@@ -61,11 +61,22 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   }
 
   void _applyFilter() {
+    final appState = context.read<AppState>();
+    
+    // Temel liste: Bereichsleiter ise sadece kendisini ve Mitarbeiter'ları görsün
+    List<Map<String, dynamic>> baseList = _all;
+    if (appState.isBereichsleiter) {
+      baseList = _all.where((u) => 
+        u['role'] == 'mitarbeiter' || 
+        u['id'] == appState.userId
+      ).toList();
+    }
+
     if (_search.isEmpty) {
-      _filtered = _all;
+      _filtered = baseList;
     } else {
       final q = _search.toLowerCase();
-      _filtered = _all.where((u) =>
+      _filtered = baseList.where((u) =>
         ('${u['first_name']} ${u['last_name']}').toLowerCase().contains(q) ||
         (u['email'] ?? '').toLowerCase().contains(q) ||
         (u['position_title'] ?? '').toLowerCase().contains(q)

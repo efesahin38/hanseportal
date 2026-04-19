@@ -61,7 +61,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   Future<void> _loadData() async {
     final appState = context.read<AppState>();
     try {
-    try {
       final users = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         status: 'active',
