@@ -25,10 +25,19 @@ class SupabaseService {
     }
   }
 
-  // ── Auth (LOKAL SQL KONTROLÜ) ─────────────────────────────
+  // ── Auth (GÜVENLİ RPC KONTROLÜ - RLS Bypass) ──────────────────────────
   static Future<Map<String, dynamic>?> signIn(String email, String password) async {
-    final data = await _client.from('users').select().eq('email', email.toLowerCase()).eq('password', password).maybeSingle();
-    return data;
+    try {
+      final res = await _client.rpc('check_user_login', params: {
+        'p_email': email.toLowerCase().trim(),
+        'p_password': password.trim()
+      });
+      if (res == null) return null;
+      return Map<String, dynamic>.from(res);
+    } catch (e) {
+      debugPrint('[Auth] Login RPC error: $e');
+      return null;
+    }
   }
 
   static Future<void> signOut() async {
