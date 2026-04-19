@@ -116,7 +116,7 @@ class SupabaseService {
       *,
       company:companies(id, name, short_name),
       department:departments(id, name),
-      user_service_areas(service_area_id, service_areas(code, name, color))
+      user_service_areas(service_area_id, service_areas(id, name, department_id, department:departments(name)))
     ''');
     if (companyId != null) query = query.eq('company_id', companyId) as dynamic;
     if (departmentId != null) query = query.eq('department_id', departmentId) as dynamic;

@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'HansePortal v19.3.1',
+                            'HansePortal v19.3.2',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,

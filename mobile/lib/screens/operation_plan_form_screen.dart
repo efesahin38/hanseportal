@@ -61,25 +61,16 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   Future<void> _loadData() async {
     final appState = context.read<AppState>();
     try {
-      // Tüm departmanları çekiyoruz
-      var query = SupabaseService.client
-          .from('users')
-          .select('*, department:departments(name)')
-          .eq('status', 'active');
-          
-      if (!appState.isGeschaeftsfuehrer && !appState.isSystemAdmin) {
-        query = query.eq('company_id', appState.companyId);
-      }
+    try {
+      final users = await SupabaseService.getUsers(
+        companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
+        status: 'active',
+      );
       
-      // 🛑 Departman bazlı katı kısıtlama (Bölüm Sorumlusu İzolasyonu) BURADAN KALDIRILDI.
-      // Kullanıcı tüm personeli görsün, sadece UI'daki çiplerle (Alle, DB, vs.) filtrelesin istendi.
-
-      final users = await query;
-      
-      final assignableUsers = (users as List).where((u) {
+      final assignableUsers = users.where((u) {
         final r = u['role'] ?? '';
         return r == 'mitarbeiter' || r == 'vorarbeiter';
-      }).cast<Map<String, dynamic>>().toList();
+      }).toList();
 
       if (mounted) setState(() {
         _personnel = assignableUsers;
@@ -346,9 +337,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                   builder: (context) {
                     final filteredPersonnel = _personnel.where((user) {
                       if (_selectedFilter == 'Tümü' || _selectedFilter == 'Alle') return true;
-                      final depName = (user['department']?['name'] ?? '').toString().toLowerCase();
+                      
                       final filterLower = _selectedFilter.toLowerCase();
-                      return depName.contains(filterLower) || depName == filterLower;
+                      
+                      // 1. Birincil departman kontrolü
+                      final depName = (user['department']?['name'] ?? '').toString().toLowerCase();
+                      if (depName.contains(filterLower) || depName == filterLower) return true;
+                      
+                      // 2. Hizmet alanları üzerinden departman kontrolü
+                      final usa = user['user_service_areas'] as List?;
+                      if (usa != null) {
+                        for (var item in usa) {
+                          final saDeptName = (item['service_areas']?['department']?['name'] ?? '').toString().toLowerCase();
+                          if (saDeptName.contains(filterLower) || saDeptName == filterLower) return true;
+                        }
+                      }
+                      
+                      return false;
                     }).toList();
   
                     if (filteredPersonnel.isEmpty) {
