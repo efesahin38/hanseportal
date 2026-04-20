@@ -435,7 +435,7 @@ class SupabaseService {
     var query = _client.from('orders').select('''
       *,
       company:companies(id, name, short_name),
-      customer:customers(id, name),
+      customer:customers!orders_customer_id_fkey(id, name),
       service_area:service_areas(id, code, name, color),
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
       department:departments(id, name)
@@ -465,7 +465,7 @@ class SupabaseService {
     return await _client.from('orders').select('''
       *,
       company:companies(id, name, short_name),
-      customer:customers(id, name, phone, email, vat_number, bank_name, iban, bic),
+      customer:customers!orders_customer_id_fkey(id, name, phone, email, vat_number, bank_name, iban, bic),
       customer_contact:customer_contacts!orders_customer_contact_id_fkey(id, name, phone, email),
       sachbearbeiter_contact:customer_contacts!orders_sachbearbeiter_contact_id_fkey(id, name, phone, email),
       service_area:service_areas(id, code, name, color),
@@ -501,7 +501,7 @@ class SupabaseService {
 
   static Future<void> updateOrderStatus(String orderId, String newStatus, String? note, String changedById) async {
     final order = await _client.from('orders')
-        .select('status, title, company_id, customer_id, site_address, planned_start_date, planned_end_date, customer:customers(name, address)')
+        .select('status, title, company_id, customer_id, site_address, planned_start_date, planned_end_date, customer:customers!orders_customer_id_fkey(name, address)')
         .eq('id', orderId).single();
     
     final oldStatus = order['status'];
@@ -610,7 +610,7 @@ class SupabaseService {
     final deptInner = departmentId != null ? '!inner' : '';
     var query = _client.from('operation_plans').select('''
       *,
-      order:orders$deptInner(id, title, order_number, site_address, department_id, status, customer:customers(id, name), department:departments(name)),
+      order:orders$deptInner(id, title, order_number, site_address, department_id, status, customer:customers!orders_customer_id_fkey(id, name), department:departments(name)),
       site_supervisor:users!operation_plans_site_supervisor_id_fkey(id, first_name, last_name),
       operation_plan_personnel$inner(user_id, is_supervisor, users!operation_plan_personnel_user_id_fkey(id, first_name, last_name, role))
     ''');
@@ -762,7 +762,7 @@ class SupabaseService {
       order:orders(
         id, title, order_number, department_id,
         department:departments(name),
-        customer:customers(name),
+        customer:customers!orders_customer_id_fkey(name),
         extra_works:extra_works!extra_works_order_id_fkey(
           *,
           recorded_by_user:users!extra_works_recorded_by_fkey(first_name, last_name)
@@ -934,7 +934,7 @@ class SupabaseService {
       *,
       order:orders!inner(
         id, title, order_number, service_area_id, department_id, status,
-        customer:customers(name),
+        customer:customers!orders_customer_id_fkey(name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
@@ -1457,7 +1457,7 @@ class SupabaseService {
       operation_plan_id, is_supervisor,
       operation_plans(
         id, plan_date, start_time, end_time, status, site_instructions, equipment_notes,
-        order:orders(id, title, order_number, site_address, status, customer:customers(id, name))
+        order:orders(id, title, order_number, site_address, status, customer:customers!orders_customer_id_fkey(id, name))
       )
     ''').eq('user_id', userId).order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
@@ -1563,7 +1563,7 @@ class SupabaseService {
       user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
       order:orders(
         id, title, order_number, service_area_id, department_id,
-        customer:customers(name),
+        customer:customers!orders_customer_id_fkey(name),
         service_area:service_areas(id, name, color),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost),
@@ -1627,7 +1627,7 @@ class SupabaseService {
     final data = await _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name, role),
-      order:orders(id, title, order_number, customer:customers(name))
+      order:orders(id, title, order_number, customer:customers!orders_customer_id_fkey(name))
     ''')
         .gte('actual_start', '${dateStr}T00:00:00')
         .lte('actual_start', '${dateStr}T23:59:59')
@@ -2651,7 +2651,7 @@ class SupabaseService {
     // Sadece bu kişiye tanımlı muhatapları (customer_contact VEYA sachbearbeiter_contact) bul
     final data = await _client.from('orders').select('''
       *,
-      customer:customers(id, name),
+      customer:customers!orders_customer_id_fkey(id, name),
       service_area:service_areas(id, code, name, color),
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
       department:departments(id, name)
@@ -2905,7 +2905,7 @@ class SupabaseService {
   static Future<List<Map<String, dynamic>>> getGwsOrders({String? departmentId}) async {
     try {
       // En yalın sorgu: Join'leri basitleştiriyoruz ki patlamasın.
-      final response = await _client.from('orders').select('*, customer:customers(name)');
+      final response = await _client.from('orders').select('*, customer:customers!orders_customer_id_fkey(name)');
       var list = List<Map<String, dynamic>>.from(response as List);
       
       if (departmentId != null) {
