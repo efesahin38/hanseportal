@@ -180,6 +180,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
               canApprove: canApprove,
               canDelete: canDelete,
               canSendToExt: canSendToExt,
+              isVorarbeiter: appState.isVorarbeiter,
               onOpen: () => _openForm(context, key, row, editable, canApprove, canDelete, canSendToExt, appState),
             );
           }),
@@ -263,12 +264,14 @@ class _FormCard extends StatelessWidget {
   final bool canApprove;
   final bool canDelete;
   final bool canSendToExt;
+  final bool isVorarbeiter;
   final VoidCallback onOpen;
 
   const _FormCard({
     required this.meta, required this.row, required this.editable,
     required this.canApprove, required this.canDelete,
     this.canSendToExt = false,
+    required this.isVorarbeiter,
     required this.onOpen,
   });
 
@@ -422,21 +425,28 @@ class _FormCard extends StatelessWidget {
                   ],
                 ])),
                 const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: onOpen,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _color,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
+                if (row == null && isVorarbeiter)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: const Text('Kein Formular', style: TextStyle(color: AppTheme.textSub, fontSize: 11, fontFamily: 'Inter')),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: onOpen,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _color,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(_workflowStage == 'pending_ext_review' ? 'Öffnen' : 'Öffnen', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward, size: 14),
+                    ]),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(_workflowStage == 'pending_ext_review' ? 'Öffnen' : 'Öffnen', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_forward, size: 14),
-                  ]),
-                ),
               ]),
             ],
           ),

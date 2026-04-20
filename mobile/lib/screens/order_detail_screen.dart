@@ -639,7 +639,7 @@ class _GwsTagesplanSection extends StatelessWidget {
               Expanded(
                 child: Text('GWS Tagesplanung', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _color, fontFamily: 'Inter')),
               ),
-              if (!appState.isExternalManager && !isAssignedForeman)
+              if (!appState.isExternalManager && !appState.isVorarbeiter)
                 TextButton.icon(
                   onPressed: () => Navigator.push(
                     context,
