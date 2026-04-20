@@ -2022,6 +2022,27 @@ class SupabaseService {
 
   // ── Formulare (Gebäudedienstleistungen) ───────────────────────────────────
 
+  static String getPublicUrl(String path, {String bucket = 'gws-photos'}) {
+    return _client.storage.from(bucket).getPublicUrl(path);
+  }
+
+  static Future<Map<String, dynamic>?> getOrderForm(String id) async {
+    try {
+      final data = await _client
+          .from('order_forms')
+          .select('''
+            *,
+            updated_by_user:users!order_forms_updated_by_fkey(first_name, last_name),
+            approved_by_user:users!order_forms_approved_by_fkey(first_name, last_name)
+          ''')
+          .eq('id', id)
+          .maybeSingle();
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getOrderForms(String orderId) async {
     final data = await _client
         .from('order_forms')

@@ -1170,28 +1170,31 @@ class PdfService {
                 }),
 
                 // Add External Manager Section if exists
-                if (data['_ext_manager_comment'] != null || data['_ext_manager_signature'] != null) ...[
+                if (data['_ext_manager_comment'] != null || data['_ext_manager_signature'] != null ||
+                    data['external_comment'] != null || data['external_signature'] != null) ...[
                   pw.SizedBox(height: 24),
                   pw.Divider(color: PdfColors.blueGrey700, thickness: 2),
                   pw.SizedBox(height: 8),
                   pw.Text('RÜCKMELDUNG EXTERNEN MANAGER', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey800)),
                   pw.SizedBox(height: 12),
-                  if (data['_ext_manager_comment'] != null && data['_ext_manager_comment'].toString().isNotEmpty) ...[
-                    pw.Text('Kommentar / Açıklama:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                  if ((data['_ext_manager_comment'] ?? data['external_comment']) != null && 
+                      (data['_ext_manager_comment'] ?? data['external_comment']).toString().isNotEmpty) ...[
+                    pw.Text('Kommentar:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                      child: pw.Text(data['_ext_manager_comment'].toString(), style: pw.TextStyle(font: font, fontSize: 11)),
+                      child: pw.Text((data['_ext_manager_comment'] ?? data['external_comment']).toString(), style: pw.TextStyle(font: font, fontSize: 11)),
                     ),
                     pw.SizedBox(height: 12),
                   ],
-                  if (data['_ext_manager_signature'] != null && data['_ext_manager_signature'].toString().length > 50) ...[
-                    pw.Text('Digitale Unterschrift:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                  if ((data['_ext_manager_signature'] ?? data['external_signature']) != null && 
+                      (data['_ext_manager_signature'] ?? data['external_signature']).toString().length > 50) ...[
+                    pw.Text('Unterschrift Ext. Manager:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
                     pw.SizedBox(height: 4),
                     pw.Container(
                       height: 80,
                       width: 200,
                       alignment: pw.Alignment.centerLeft,
-                      child: pw.Image(pw.MemoryImage(base64Decode(data['_ext_manager_signature'].toString())), fit: pw.BoxFit.contain),
+                      child: pw.Image(pw.MemoryImage(base64Decode((data['_ext_manager_signature'] ?? data['external_signature']).toString())), fit: pw.BoxFit.contain),
                     ),
                   ],
                 ],
@@ -1354,7 +1357,7 @@ class PdfService {
                     pw.SizedBox(height: 12),
                   ],
                   if (plan['ext_manager_signature'] != null && plan['ext_manager_signature'].toString().length > 50) ...[
-                    pw.Text('Digitale Unterschrift:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text('Unterschrift Ext. Manager:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
                     pw.SizedBox(height: 4),
                     pw.Container(
                       height: 80,

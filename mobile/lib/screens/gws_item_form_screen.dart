@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/pdf_service.dart';
 import '../services/localization_service.dart';
 import '../widgets/signature_pad_widget.dart';
 import 'package:image_picker/image_picker.dart';
@@ -95,14 +96,15 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
     // Sharing state
     _isSharedWithExternal = itm['is_shared_with_external'] == true;
     _extHasReturned       = itm['external_returned_at'] != null;
+    _extSignatureBase64   = itm['external_signature'];
 
     // Roles
     final appState = context.read<AppState>();
-    final role = appState.role?.toLowerCase() ?? '';
-    _canFullEdit  = ['geschaeftsfuehrer', 'betriebsleiter', 'backoffice', 'buchhaltung'].contains(role) || appState.isSystemAdmin;
-    _isTeamLeader = role == 'vorarbeiter' || role == 'bereichsleiter' || _canFullEdit;
-    _isMitarbeiter = role == 'mitarbeiter' && !widget.isExternalManager;
-    _canShare     = role == 'bereichsleiter' || _canFullEdit;
+    _canFullEdit = appState.canPlanOperations || appState.canSeeFinancialDetails;
+    // Team Leader fallback
+    _isTeamLeader = appState.isVorarbeiter || appState.isBereichsleiter;
+    _isMitarbeiter = (appState.role == 'mitarbeiter' || appState.isMitarbeiter) && !widget.isExternalManager;
+    _canShare = appState.isBereichsleiter || _canFullEdit;
   }
 
   @override
@@ -199,12 +201,44 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
     }
   }
 
+  Future<void> _downloadPdf() async {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF wird generiert...')));
+    try {
+      final bytes = await PdfService.generateGenericFormPdf(
+        title: widget.type == 'room' ? 'Zimmer ${widget.item['room_number']}' : (widget.item['area_name'] ?? 'Bereich'),
+        subtitle: 'GWS Bericht',
+        orderId: widget.planId, // Bu GWS plan ID'si ama PDF title'da gözükecek
+        data: {
+          'Checkliste': _checklist,
+          'Mitarbeiter-Notizen': _workerNotes.text,
+          'Kontrolle (Notizen)': _checkerNotes.text,
+          'Status': _checkerStatus,
+          'external_comment': _extComment.text,
+          'external_signature': _extSignatureBase64,
+          'photos': _photos,
+        },
+      );
+      await PdfService.downloadPdf(bytes, 'GWS_Bericht_${widget.item['id']}.pdf');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Fehler: $e')));
+    }
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 60);
     if (image != null) {
-      // In production: upload to Supabase Storage and get URL
-      setState(() => _photos.add(image.path));
+      setState(() => _saving = true);
+      try {
+        final bytes = await image.readAsBytes();
+        final fileName = 'gws_${widget.type}_${widget.item['id']}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final url = await SupabaseService.uploadDocument(fileName, bytes); // 'document' bucket'ına atıyor default
+        setState(() => _photos.add(url));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Fehler: $e')));
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
     }
   }
 
@@ -221,6 +255,12 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
         foregroundColor: Colors.white,
         title: Text(title, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
         actions: [
+          if (widget.item['id'] != null)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+              onPressed: _downloadPdf,
+              tooltip: 'PDF herunterladen',
+            ),
           if (!widget.isExternalManager && !_saving)
             TextButton.icon(
               onPressed: _isMitarbeiter || _isTeamLeader || _canFullEdit ? _save : null,
@@ -297,16 +337,16 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
                             border: Border.all(color: _color.withOpacity(0.3)),
                           ),
                           child: (p.startsWith('http')) 
-                            ? Image.network(
-                                p, 
+                            ? Image.network(p, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.red))
+                            : Image.network(
+                                SupabaseService.getPublicUrl(p),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.red),
                                 loadingBuilder: (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)));
                                 },
-                              )
-                            : const Icon(Icons.image, color: Colors.grey, size: 36),
+                              ),
                         ),
                       )),
                       if ((_isMitarbeiter || _isTeamLeader || _canFullEdit) && !widget.isExternalManager)

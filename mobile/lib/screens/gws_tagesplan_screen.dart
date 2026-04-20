@@ -106,19 +106,22 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           
           final rooms = await SupabaseService.getGwsPlanRooms(widget.planId!);
           final areas = await SupabaseService.getGwsPlanAreas(widget.planId!);
-          final isLeader = await SupabaseService.isUserGwsTeamLeader(widget.planId!, appState.userId);
+          final isAssignmentLeader = await SupabaseService.isUserGwsTeamLeader(widget.planId!, appState.userId);
           
           _rooms.clear(); _rooms.addAll(rooms);
           _areas.clear(); _areas.addAll(areas);
-          _isTeamLeader = isLeader;
+          
+          _isTeamLeader = isAssignmentLeader || appState.isVorarbeiter;
         }
-      } else if (widget.initialOrderId != null) {
+      } else {
+        // New plan or no planId yet
+        _isTeamLeader = appState.isVorarbeiter;
+      }
         _selectedOrderId = widget.initialOrderId;
         final o = orders.where((x) => x['id'].toString() == widget.initialOrderId).firstOrNull;
         if (o != null) {
           _selectedObjectId = o['customer_id']?.toString();
         }
-      }
       
       if (mounted) {
         setState(() {
@@ -410,7 +413,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block B – Zimmerliste',
       icon: Icons.bed,
-      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(
+      action: (appState.isExternalManager || _isTeamLeader || appState.isVorarbeiter) ? null : IconButton(
         icon: Icon(Icons.add_circle, color: _color),
         onPressed: _addRoomDialog,
       ),
@@ -426,7 +429,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Zimmer hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    if (!appState.isExternalManager && !_isTeamLeader)
+                    if (!appState.isExternalManager && !_isTeamLeader && !appState.isVorarbeiter)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
                         onPressed: _addRoomDialog,
@@ -470,7 +473,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(width: 8),
                     if (r['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    if (!appState.isExternalManager && !_isTeamLeader)
+                    if (!appState.isExternalManager && !_isTeamLeader && !appState.isVorarbeiter)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
                   ],
                 ),
@@ -518,7 +521,10 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block C – Bereichsliste',
       icon: Icons.location_city,
-      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addAreaDialog),
+      action: (appState.isExternalManager || _isTeamLeader || appState.isVorarbeiter) ? null : IconButton(
+        icon: Icon(Icons.add_circle, color: _color),
+        onPressed: _addAreaDialog,
+      ),
       child: Column(
         children: [
           if (_areas.isEmpty)
@@ -531,7 +537,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Bereiche hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    if (!appState.isExternalManager && !_isTeamLeader)
+                    if (!appState.isExternalManager && !_isTeamLeader && !appState.isVorarbeiter)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
                         onPressed: _addAreaDialog,
@@ -569,7 +575,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(width: 8),
                     if (a['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    if (!appState.isExternalManager && !_isTeamLeader)
+                    if (!appState.isExternalManager && !_isTeamLeader && !appState.isVorarbeiter)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
                   ],
                 ),
@@ -605,7 +611,10 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block D – Zusatzleistungen',
       icon: Icons.add_task,
-      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addExtraDialog),
+      action: (appState.isExternalManager || _isTeamLeader || appState.isVorarbeiter) ? null : IconButton(
+        icon: Icon(Icons.add_circle, color: _color),
+        onPressed: _addExtraDialog,
+      ),
       child: Column(
         children: [
           if (_extras.isEmpty)
@@ -627,7 +636,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                   children: [
                     if (appState.canSeeFinancialDetails)
                       Text('€ ${(e['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
-                    if (!appState.isExternalManager && !_isTeamLeader)
+                    if (!appState.isExternalManager && !_isTeamLeader && !appState.isVorarbeiter)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _extras.removeAt(i))),
                   ],
                 ),

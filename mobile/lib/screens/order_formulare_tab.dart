@@ -492,9 +492,19 @@ class _FormScaffoldState extends State<_FormScaffold> {
 
   Future<void> _save(BuildContext ctx) async {
     try {
-      final submitData = widget.args.data; // Start with old data to keep signatures/comments
+      // Latest data'yı çek ki External Manager'ın girdiği _ext_manager_ signature vs. kaybolmasın
+      Map<String, dynamic> submitData = {};
+      if (widget.args.formId != null) {
+        final existing = await SupabaseService.getOrderForm(widget.args.formId!);
+        if (existing != null && existing['data'] != null) {
+          submitData = Map<String, dynamic>.from(existing['data']);
+        }
+      } else {
+        submitData = Map<String, dynamic>.from(widget.args.data);
+      }
+      
       final newData = widget.buildData();
-      submitData.addAll(newData); // Overwrite fields with new values
+      submitData.addAll(newData);
       submitData['photos'] = _photos;
 
       await SupabaseService.upsertOrderForm(
@@ -557,7 +567,16 @@ class _FormScaffoldState extends State<_FormScaffold> {
 
   Future<void> _sendBackToBl(BuildContext ctx, String extComment, String extSignature) async {
     try {
-      final submitData = widget.args.data;
+      Map<String, dynamic> submitData = {};
+      if (widget.args.formId != null) {
+        final existing = await SupabaseService.getOrderForm(widget.args.formId!);
+        if (existing != null && existing['data'] != null) {
+          submitData = Map<String, dynamic>.from(existing['data']);
+        }
+      } else {
+        submitData = Map<String, dynamic>.from(widget.args.data);
+      }
+      
       submitData['_workflow_stage'] = 'pending_bl_approval';
       submitData['_ext_manager_comment'] = extComment;
       submitData['_ext_manager_signature'] = extSignature;
@@ -605,7 +624,17 @@ class _FormScaffoldState extends State<_FormScaffold> {
     ));
     if (confirm != true) return;
     try {
-      final submitData = widget.args.data;
+      // Latest data'yı çek ki External Manager'ın girdiği _ext_manager_ signature vs. kaybolmasın
+      Map<String, dynamic> submitData = {};
+      if (widget.args.formId != null) {
+        final existing = await SupabaseService.getOrderForm(widget.args.formId!);
+        if (existing != null && existing['data'] != null) {
+          submitData = Map<String, dynamic>.from(existing['data']);
+        }
+      } else {
+        submitData = Map<String, dynamic>.from(widget.args.data);
+      }
+      
       final newData = widget.buildData();
       submitData.addAll(newData);
       submitData['photos'] = _photos;
@@ -651,8 +680,19 @@ class _FormScaffoldState extends State<_FormScaffold> {
     if (confirm != true) return;
     try {
       // Önce formu kaydet (photos, signatures dahil)
-      final submitData = widget.buildData();
+      // Latest data'yı çek ki External Manager'ın girdiği _ext_manager_ signature vs. kaybolmasın
+      Map<String, dynamic> submitData = {};
+      if (widget.args.formId != null) {
+        final existing = await SupabaseService.getOrderForm(widget.args.formId!);
+        if (existing != null && existing['data'] != null) {
+          submitData = Map<String, dynamic>.from(existing['data']);
+        }
+      }
+      
+      final newData = widget.buildData();
+      submitData.addAll(newData);
       submitData['photos'] = _photos;
+      
       await SupabaseService.upsertOrderForm(
         id: widget.args.formId,
         orderId: widget.args.orderId,
@@ -776,11 +816,25 @@ class _FormScaffoldState extends State<_FormScaffold> {
   Future<void> _downloadPdf() async {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF wird generiert...')));
     try {
+      Map<String, dynamic> combinedData = {};
+      if (widget.args.formId != null) {
+        final existing = await SupabaseService.getOrderForm(widget.args.formId!);
+        if (existing != null && existing['data'] != null) {
+          combinedData = Map<String, dynamic>.from(existing['data']);
+        }
+      } else {
+        combinedData = Map<String, dynamic>.from(widget.args.data);
+      }
+      
+      final newData = widget.buildData();
+      combinedData.addAll(newData);
+      combinedData['photos'] = _photos;
+
       final bytes = await PdfService.generateGenericFormPdf(
         title: widget.title,
         subtitle: widget.subtitle,
         orderId: widget.args.orderId,
-        data: widget.buildData(),
+        data: combinedData,
       );
       await PdfService.downloadPdf(bytes, 'Formular_${widget.formType}.pdf');
     } catch (e) {
