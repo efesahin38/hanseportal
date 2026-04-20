@@ -70,17 +70,26 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
     if (widget.userId != null) _loadUser();
   }
 
+  /// Hizmet alanı adından standart bölüm etiketini döndürür (GWS değişikenleri için kritik)
+  static String resolveBolumLabel(String saName) {
+    final n = saName.toLowerCase();
+    if (n.contains('gast') || n.contains('hotel') || n.contains('hospit')) return 'Gastwirtschaftsservice';
+    if (n.contains('rail') || n.contains('gleis') || n.contains('db')) return 'DB-Gleisbausicherung';
+    if (n.contains('gebäud') || n.contains('reinigung') || n.contains('bau')) return 'Gebäudedienstleistungen';
+    if (n.contains('personal') || n.contains('über') || n.contains('verwal')) return 'Personalüberlassung';
+    return saName;
+  }
+
   Future<void> _loadServiceAreas() async {
-    final depts = await SupabaseService.getDepartments();
     final areas = await SupabaseService.getServiceAreas(activeOnly: false);
     final List<Map<String, dynamic>> consolidatedAreas = [];
     
-    // v19.5.0: 4 ANA KATEGORİ (Gastwirtschaftsservice eklendi)
+    // 4 ANA KATEGORİ — keyword matching ile bulunur
     final categories = [
-      {'key': 'Rail', 'label': 'DB-Gleisbausicherung', 'kw': ['rail', 'gleis']},
-      {'key': 'Gebäude', 'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
-      {'key': 'Personal', 'label': 'Personalüberlassung', 'kw': ['personal', 'über', 'verwal']},
-      {'key': 'Gastwirtschaft', 'label': 'Gastwirtschaftsservice', 'kw': ['gast', 'hotel', 'hospitality']},
+      {'label': 'DB-Gleisbausicherung',    'kw': ['rail', 'gleis', 'db']},
+      {'label': 'Gebäudedienstleistungen', 'kw': ['gebäud', 'reinigung']},
+      {'label': 'Personalüberlassung',     'kw': ['personal', 'über', 'verwal']},
+      {'label': 'Gastwirtschaftsservice',  'kw': ['gast', 'hotel', 'hospit']},
     ];
 
     for (var cat in categories) {
@@ -94,6 +103,9 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
       if (sa.isNotEmpty) {
         consolidatedAreas.add({...sa, 'display_name': label});
+      } else {
+        // Veritabanında bulunamazsa placeholder olarak ekle (UI'da görünsün)
+        consolidatedAreas.add({'id': 'missing_${label.toLowerCase()}', 'display_name': label, 'name': label});
       }
     }
     
@@ -282,24 +294,69 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             SizedBox(width: fw * 2 + 16, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(tr('Zuständige Bereiche (Hizmet Alanları)'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSub)),
               const SizedBox(height: 8),
-              if (_serviceAreas.isEmpty) const Text('Ladevorgang...') else Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _serviceAreas.map((sa) {
-                  final id = sa['id'].toString();
-                  final name = sa['display_name'] ?? sa['name'] ?? '';
-                  final isSel = _selectedServiceAreaIds.contains(id);
-                  return FilterChip(
-                    label: Text(name),
-                    selected: isSel,
-                    onSelected: restrictSensitive ? null : (v) {
-                      setState(() {
-                         if (v) _selectedServiceAreaIds.add(id);
-                         else _selectedServiceAreaIds.remove(id);
-                      });
-                    },
-                  );
-                }).toList(),
-              )
+              if (_serviceAreas.isEmpty)
+                const Text('Ladevorgang...')
+              else
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: _serviceAreas.map((sa) {
+                    final id = sa['id'].toString();
+                    final name = (sa['display_name'] ?? sa['name'] ?? '').toString();
+                    final isSel = _selectedServiceAreaIds.contains(id);
+                    return FilterChip(
+                      label: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
+                      selected: isSel,
+                      selectedColor: AppTheme.primary.withOpacity(0.15),
+                      checkmarkColor: AppTheme.primary,
+                      onSelected: (restrictSensitive || id.startsWith('missing_')) ? null : (v) {
+                        setState(() {
+                          if (v) _selectedServiceAreaIds.add(id);
+                          else _selectedServiceAreaIds.remove(id);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              // Seçilen bölümlerin özeti – sağ tarafta bölüm adları listelenir
+              if (_selectedServiceAreaIds.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tr('Atanan Bölümler:'),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _selectedServiceAreaIds.map((selId) {
+                          final sa = _serviceAreas.firstWhere(
+                            (s) => s['id'].toString() == selId,
+                            orElse: () => {},
+                          );
+                          if (sa.isEmpty) return const SizedBox.shrink();
+                          final label = (sa['display_name'] ?? sa['name'] ?? '').toString();
+                          return Chip(
+                            label: Text(label, style: const TextStyle(fontSize: 11, fontFamily: 'Inter', color: Colors.white)),
+                            backgroundColor: AppTheme.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ])),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: tr('Rolle *')),
               items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _role = v!))),

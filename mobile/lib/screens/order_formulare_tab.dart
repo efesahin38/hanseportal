@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
@@ -8,6 +9,7 @@ import '../services/pdf_service.dart';
 import 'package:printing/printing.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import '../widgets/signature_pad_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -57,6 +59,7 @@ class OrderFormulareTab extends StatefulWidget {
   final String? orderCompanyId;
   final String? orderDepartmentId;
   final List<String> supervisorIds;
+  final bool isForeman;
 
   const OrderFormulareTab({
     super.key,
@@ -64,6 +67,7 @@ class OrderFormulareTab extends StatefulWidget {
     required this.orderCompanyId,
     this.orderDepartmentId,
     required this.supervisorIds,
+    this.isForeman = false,
   });
 
   @override
@@ -101,7 +105,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
   bool _canEdit(AppState a) {
     if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isBackoffice || a.isBuchhaltung || a.isSystemAdmin) return true;
     // Sadece bu işe atanmış takım lideri (is_supervisor yıldızlı kişi) formu düzenleyebilir
-    if (widget.supervisorIds.contains(a.userId)) return true;
+    if (widget.isForeman || widget.supervisorIds.contains(a.userId)) return true;
     if (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId) return true;
     return false;
   }
@@ -122,7 +126,6 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
 
   bool _canView(AppState a) => a.userId.isNotEmpty;
 
-  /// Ext. Manager'a iletme yetkisi: sadece Bereichsleiter / Betriebsleiter / GF
   bool _canSendToExtManager(AppState a) {
     return a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin ||
         (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId);
@@ -489,7 +492,9 @@ class _FormScaffoldState extends State<_FormScaffold> {
 
   Future<void> _save(BuildContext ctx) async {
     try {
-      final submitData = widget.buildData();
+      final submitData = widget.args.data; // Start with old data to keep signatures/comments
+      final newData = widget.buildData();
+      submitData.addAll(newData); // Overwrite fields with new values
       submitData['photos'] = _photos;
 
       await SupabaseService.upsertOrderForm(
@@ -523,29 +528,10 @@ class _FormScaffoldState extends State<_FormScaffold> {
   }
 
   Future<void> _sendToExtManager(BuildContext ctx) async {
-    final confirm = await showDialog<bool>(context: ctx, builder: (c) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(children: [
-        Icon(Icons.send_outlined, color: Colors.orange),
-        SizedBox(width: 8),
-        Text('An Ext. Manager senden?', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 16)),
-      ]),
-      content: const Text(
-        'Das Formular wird für den Externen Manager freigegeben. Er kann es lesen, einen Kommentar hinzufügen und zurück an Sie senden.',
-        style: TextStyle(fontFamily: 'Inter'),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Abbrechen')),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-          onPressed: () => Navigator.pop(c, true),
-          child: const Text('Senden', style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ));
-    if (confirm != true) return;
     try {
-      final submitData = widget.buildData();
+      final submitData = widget.args.data;
+      final newData = widget.buildData();
+      submitData.addAll(newData);
       submitData['photos'] = _photos;
       submitData['_workflow_stage'] = 'pending_ext_review';
       submitData['_sent_to_ext_at'] = DateTime.now().toIso8601String();
@@ -558,22 +544,23 @@ class _FormScaffoldState extends State<_FormScaffold> {
         userId: widget.args.appState.userId,
       );
       if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-          content: Text('✅ An Ext. Manager gesendet!', style: TextStyle(fontFamily: 'Inter')),
-          backgroundColor: Colors.orange,
-        ));
-        Navigator.pop(ctx);
+        if (widget.args.row != null) {
+          widget.args.row!['data'] = submitData;
+        }
+        // Just reload layout to reflect the new state, the panel will appear immediately below.
+        setState(() {});
       }
     } catch (e) {
       if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: AppTheme.error));
     }
   }
 
-  Future<void> _sendBackToBl(BuildContext ctx, String extComment) async {
+  Future<void> _sendBackToBl(BuildContext ctx, String extComment, String extSignature) async {
     try {
       final submitData = widget.args.data;
       submitData['_workflow_stage'] = 'pending_bl_approval';
       submitData['_ext_manager_comment'] = extComment;
+      submitData['_ext_manager_signature'] = extSignature;
       submitData['_ext_returned_at'] = DateTime.now().toIso8601String();
       await SupabaseService.upsertOrderForm(
         id: widget.args.formId,
@@ -618,7 +605,9 @@ class _FormScaffoldState extends State<_FormScaffold> {
     ));
     if (confirm != true) return;
     try {
-      final submitData = widget.buildData();
+      final submitData = widget.args.data;
+      final newData = widget.buildData();
+      submitData.addAll(newData);
       submitData['photos'] = _photos;
       submitData['_workflow_stage'] = 'completed';
       submitData['_completed_at'] = DateTime.now().toIso8601String();
@@ -661,6 +650,18 @@ class _FormScaffoldState extends State<_FormScaffold> {
     ));
     if (confirm != true) return;
     try {
+      // Önce formu kaydet (photos, signatures dahil)
+      final submitData = widget.buildData();
+      submitData['photos'] = _photos;
+      await SupabaseService.upsertOrderForm(
+        id: widget.args.formId,
+        orderId: widget.args.orderId,
+        formType: widget.formType,
+        status: widget.status,
+        data: submitData,
+        userId: widget.args.appState.userId,
+      );
+      // Sonra onayla
       if (widget.args.formId != null) {
         await SupabaseService.approveOrderForm(widget.args.formId!, widget.args.appState.userId);
       }
@@ -781,7 +782,7 @@ class _FormScaffoldState extends State<_FormScaffold> {
         orderId: widget.args.orderId,
         data: widget.buildData(),
       );
-      await Printing.layoutPdf(onLayout: (_) => bytes, name: 'Formular_${widget.formType}.pdf');
+      await PdfService.downloadPdf(bytes, 'Formular_${widget.formType}.pdf');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Fehler: $e')));
@@ -853,142 +854,7 @@ class _FormScaffoldState extends State<_FormScaffold> {
               );
             }),
           ],
-          // ── Workflow Stage Banner / Aktionen ──
-          Builder(builder: (ctx) {
-            final stage = args.workflowStage;
-            final appState = args.appState;
-            final isExtMgr = appState.isExternalManager;
-            final extComment = (args.data['_ext_manager_comment'] as String?) ?? '';
-            final sentAt = (args.data['_sent_to_ext_at'] as String?);
-            final returnedAt = (args.data['_ext_returned_at'] as String?);
 
-            // Zaten tamamlanmış
-            if (stage == 'completed') {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
-                ),
-                child: const Row(children: [
-                  Icon(Icons.check_circle, color: Color(0xFF10B981), size: 18),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Workflow abgeschlossen. Formular archiviert.', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF10B981)))),
-                ]),
-              );
-            }
-
-            // Ext. Manager bekleniyor
-            if (stage == 'pending_ext_review') {
-              return Column(children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      const Icon(Icons.schedule_send, color: Colors.orange, size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('Wartet auf Externen Manager', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange))),
-                    ]),
-                    if (sentAt != null) ...[
-                      const SizedBox(height: 4),
-                      Text('Gesendet: ${_formatDate(sentAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
-                    ],
-                  ]),
-                ),
-                // Ext. Manager ise yorum + geri gönder butonu
-                if (isExtMgr) ...[
-                  _ExtManagerCommentPanel(
-                    onSend: (comment) => _sendBackToBl(context, comment),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ]);
-            }
-
-            // BL onayı bekleniyor (Ext. Manager geri gönderdi)
-            if (stage == 'pending_bl_approval') {
-              return Column(children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Row(children: [
-                      Icon(Icons.reply_all, color: Color(0xFF6366F1), size: 18),
-                      SizedBox(width: 8),
-                      Expanded(child: Text('Rückmeldung vom Ext. Manager', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)))),
-                    ]),
-                    if (extComment.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text('„$extComment“', style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontStyle: FontStyle.italic)),
-                      ),
-                    ],
-                    if (returnedAt != null) ...[
-                      const SizedBox(height: 4),
-                      Text('Zurückgesendet: ${_formatDate(returnedAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
-                    ],
-                  ]),
-                ),
-                // BL ise "Abschließen" butonu
-                if (args.canSendToExt) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: () => _completeWorkflow(context),
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Workflow abschließen & PDF', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ]);
-            }
-
-            // Normal team_editing aşaması: Form fertig ise BL-gonderme butonu göster
-            if (stage == 'team_editing' && args.canSendToExt && widget.status == 'fertig') {
-              return Column(children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () => _sendToExtManager(context),
-                    icon: const Icon(Icons.send_outlined),
-                    label: const Text('An Ext. Manager senden', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ]);
-            }
-
-            return const SizedBox.shrink();
-          }),
           // Status chooser
           if (!args.isApproved) ...[
             Container(
@@ -998,14 +864,16 @@ class _FormScaffoldState extends State<_FormScaffold> {
                 const Text('Status', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub, fontFamily: 'Inter', letterSpacing: 0.5)),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, children: [
-                  _statusChip('nicht_begonnen', 'Nicht begonnen', const Color(0xFF94A3B8), widget.status, args.editable, widget.onStatusChanged),
-                  _statusChip('in_bearbeitung', 'In Bearbeitung', const Color(0xFFF59E0B), widget.status, args.editable, widget.onStatusChanged),
-                  _statusChip('fertig', 'Fertig', const Color(0xFF10B981), widget.status, args.editable, widget.onStatusChanged),
+                  _statusChip('nicht_begonnen', 'Nicht begonnen', const Color(0xFF94A3B8), widget.status, args.editable && !args.appState.isExternalManager, widget.onStatusChanged),
+                  _statusChip('in_bearbeitung', 'In Bearbeitung', const Color(0xFFF59E0B), widget.status, args.editable && !args.appState.isExternalManager, widget.onStatusChanged),
+                  _statusChip('fertig', 'Fertig', const Color(0xFF10B981), widget.status, args.editable && !args.appState.isExternalManager, widget.onStatusChanged),
                 ]),
               ]),
             ),
             const SizedBox(height: 16),
           ],
+
+          // ── Form Fields ──
           // Form fields
           Container(
             padding: const EdgeInsets.all(16),
@@ -1068,6 +936,227 @@ class _FormScaffoldState extends State<_FormScaffold> {
             ),
           ),
 
+          // ── Workflow Stage Banner / Aktionen AT BOTTOM ──
+          const SizedBox(height: 24),
+          const Divider(thickness: 2),
+          const SizedBox(height: 16),
+          Builder(builder: (ctx) {
+            final stage = args.workflowStage;
+            final appState = args.appState;
+            final isExtMgr = appState.isExternalManager;
+            final extComment = (args.data['_ext_manager_comment'] as String?) ?? '';
+            final extSignature = (args.data['_ext_manager_signature'] as String?) ?? '';
+            final sentAt = (args.data['_sent_to_ext_at'] as String?);
+            final returnedAt = (args.data['_ext_returned_at'] as String?);
+
+            // Zaten tamamlanmış
+            if (stage == 'completed') {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.check_circle, color: Color(0xFF10B981), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Workflow abgeschlossen. Formular archiviert.', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF10B981)))),
+                ]),
+              );
+            }
+
+            // Ext. Manager bekleniyor VEYA Açılmış
+            if (stage == 'pending_ext_review') {
+              return Column(children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.schedule_send, color: Colors.orange, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(
+                        isExtMgr ? 'Bitte hier als Externer Manager Feedback geben & unterschreiben:' : 'Wartet auf Externen Manager', 
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange)
+                      )),
+                    ]),
+                    if (sentAt != null && !isExtMgr) ...[
+                      const SizedBox(height: 4),
+                      Text('Gesendet: ${_formatDate(sentAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ],
+                  ]),
+                ),
+                // SADECE EXTERNAL MANAGER İÇİN YORUM + GERİ GÖNDER BUTONU
+                if (isExtMgr) ...[
+                  _ExtManagerCommentPanel(
+                    onSend: (comment, sign) => _sendBackToBl(context, comment, sign),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ]);
+            }
+
+            // BL onayı bekleniyor VEYA tamamlanmış formda imza var
+            if (stage == 'pending_bl_approval' || (['team_editing', 'completed', 'approved'].contains(stage) && extSignature.isNotEmpty)) {
+              return Column(children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [
+                      Icon(Icons.check_circle, color: AppTheme.success, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(child: Text('Externer Manager hat geantwortet', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.success))),
+                    ]),
+                    if (extComment.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.success.withOpacity(0.2)),
+                        ),
+                        child: Text(extComment, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black87)),
+                      ),
+                    ],
+                    if (extSignature.isNotEmpty && extSignature.length > 50) ...[
+                      const SizedBox(height: 12),
+                      const Text('Unterschrift Ext. Manager:', style: TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 200,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+                        child: Image.memory(base64Decode(extSignature), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Ungültige Signatur')),
+                      ),
+                    ],
+                    if (returnedAt != null) ...[
+                      const SizedBox(height: 8),
+                      Text('Rückmeldung am: ${_formatDate(returnedAt)}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ],
+                  ]),
+                ),
+                // BL ise "Abschließen" butonu
+                if (args.canSendToExt && stage == 'pending_bl_approval') ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _completeWorkflow(context),
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Workflow abschließen & PDF', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ]);
+            }
+
+            // Normal team_editing aşaması: BL-gonderme butonu göster (TOGGLE GIBI)
+            if (stage == 'team_editing' && args.canSendToExt) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(14, 12, 14, 8),
+                      child: Row(children: [
+                        Icon(Icons.share_outlined, size: 18, color: Color(0xFF6366F1)),
+                        SizedBox(width: 8),
+                        Text('EXTERNEN MANAGER EINBEZIEHEN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub, letterSpacing: 0.5, fontFamily: 'Inter')),
+                      ]),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text('📋 Noch nicht geteilt', style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppTheme.textSub)),
+                              ),
+                              Switch(
+                                value: false,
+                                activeColor: const Color(0xFF6366F1),
+                                onChanged: (val) {
+                                  if (val) {
+                                      // Set it as pending_ext_review and save, so the UI updates to show the signature panel
+                                      _sendToExtManager(context);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Text('Aktivieren → Externer Manager kann dieses Formular sehen, kommentieren und unterschreiben.', style: TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                          ),
+                        ])
+                    )
+                  ],
+                ),
+              );
+            }
+
+            // NOT SHARED INFO FOR EXT MANAGER
+            if (isExtMgr && (stage == 'team_editing' || stage == 'draft')) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(14, 12, 14, 8),
+                      child: Row(children: [
+                        Icon(Icons.lock_outline, size: 18, color: Colors.grey),
+                        SizedBox(width: 8),
+                        Text('ZUGANG', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSub, letterSpacing: 0.5, fontFamily: 'Inter')),
+                      ]),
+                    ),
+                    const Divider(height: 1),
+                    const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        'Dieses Formular wurde noch nicht für Sie freigegeben. Bitte warten Sie, bis der zuständige Bereichsleiter es mit Ihnen teilt.',
+                        style: TextStyle(fontFamily: 'Inter', color: AppTheme.textSub, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return const SizedBox();
+          }),
+
           // Read-only notice
           if (!args.editable && !args.canApprove)
             Container(
@@ -1108,7 +1197,7 @@ class _FormScaffoldState extends State<_FormScaffold> {
 // ── Ext. Manager Yorum Paneli ─────────────────────────────────────────────────
 
 class _ExtManagerCommentPanel extends StatefulWidget {
-  final Future<void> Function(String comment) onSend;
+  final Future<void> Function(String comment, String signature) onSend;
   const _ExtManagerCommentPanel({required this.onSend});
 
   @override
@@ -1117,6 +1206,7 @@ class _ExtManagerCommentPanel extends StatefulWidget {
 
 class _ExtManagerCommentPanelState extends State<_ExtManagerCommentPanel> {
   final _ctrl = TextEditingController();
+  String? _sig;
   bool _sending = false;
 
   @override
@@ -1139,24 +1229,25 @@ class _ExtManagerCommentPanelState extends State<_ExtManagerCommentPanel> {
         const Row(children: [
           Icon(Icons.comment_outlined, color: Color(0xFF6366F1), size: 18),
           SizedBox(width: 8),
-          Text('Meine Stellungnahme', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF6366F1))),
+          Text('Meine Stellungnahme \u0026 Unterschrift', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF6366F1))),
         ]),
         const SizedBox(height: 10),
         TextField(
           controller: _ctrl,
-          maxLines: 4,
+          maxLines: 3,
           decoration: InputDecoration(
             hintText: 'Kommentar, Anmerkungen oder Anweisungen eingeben...',
             hintStyle: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 12),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF6366F1)),
-            ),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366F1))),
           ),
           style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        const Text('Digitale Unterschrift', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        SignaturePadWidget(onSigned: (b64) => _sig = b64),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -1166,20 +1257,16 @@ class _ExtManagerCommentPanelState extends State<_ExtManagerCommentPanel> {
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             onPressed: _sending ? null : () async {
-              if (_ctrl.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Bitte einen Kommentar eingeben.'), backgroundColor: AppTheme.error),
-                );
+              if (_ctrl.text.trim().isEmpty && (_sig == null || _sig!.isEmpty)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte Kommentar oder Unterschrift angeben.'), backgroundColor: AppTheme.error));
                 return;
               }
               setState(() => _sending = true);
-              await widget.onSend(_ctrl.text.trim());
+              await widget.onSend(_ctrl.text.trim(), _sig ?? '');
               if (mounted) setState(() => _sending = false);
             },
-            icon: _sending
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.reply_all),
-            label: const Text('Stellungnahme senden & zurückleiten', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+            icon: _sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.reply_all),
+            label: const Text('Stellungnahme senden \u0026 zurückleiten', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
           ),
         ),
       ]),
@@ -1222,31 +1309,29 @@ Widget _drop(String label, String? value, List<String> opts, bool enabled, Value
     ),
   );
 
-Widget _signatureBox(String label, TextEditingController c, bool ro) =>
-  Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+Widget _signatureBox(String label, TextEditingController c, bool ro) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
-      const SizedBox(height: 4),
-      Container(
-        height: 64,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.border),
-          borderRadius: BorderRadius.circular(8),
-          color: ro ? const Color(0xFFF8FAFC) : Colors.white,
+      Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+      const SizedBox(height: 6),
+      if (ro || (c.text.isNotEmpty && c.text.length > 50)) // Fall back logic or already filled
+        Container(
+          height: 100, width: double.infinity,
+          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.border)),
+          alignment: Alignment.center,
+          child: c.text.isEmpty
+              ? const Text('Keine Unterschrift', style: TextStyle(color: AppTheme.textSub, fontStyle: FontStyle.italic, fontSize: 13))
+              : (c.text.length > 50 ? Image.memory(base64Decode(c.text), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Keine Unterschrift', style: TextStyle(color: AppTheme.warning, fontStyle: FontStyle.italic))) : Text(c.text, style: const TextStyle(fontStyle: FontStyle.italic))),
+        )
+      else
+        Container(
+          decoration: BoxDecoration(border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(8), color: Colors.white),
+          child: SignaturePadWidget(onSigned: (b64) => c.text = b64),
         ),
-        child: TextField(
-          controller: c, readOnly: ro, maxLines: 2,
-          decoration: InputDecoration(
-            hintText: 'Hier unterschreiben',
-            hintStyle: const TextStyle(color: AppTheme.textSub, fontSize: 12, fontStyle: FontStyle.italic, fontFamily: 'Inter'),
-            border: InputBorder.none, contentPadding: const EdgeInsets.all(10),
-          ),
-          style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
-        ),
-      ),
     ]),
   );
+}
 
 Widget _netto(double hours) =>
   Container(

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
@@ -287,14 +288,26 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ..._photos.map((p) => Container(
-                        width: 80, height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _color.withOpacity(0.3)),
+                      ..._photos.map((p) => ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          width: 80, height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            border: Border.all(color: _color.withOpacity(0.3)),
+                          ),
+                          child: (p.startsWith('http')) 
+                            ? Image.network(
+                                p, 
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)));
+                                },
+                              )
+                            : const Icon(Icons.image, color: Colors.grey, size: 36),
                         ),
-                        child: const Icon(Icons.image, color: Colors.grey, size: 36),
                       )),
                       if ((_isMitarbeiter || _isTeamLeader || _canFullEdit) && !widget.isExternalManager)
                         InkWell(
@@ -389,8 +402,16 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
                               Text('Kommentar: ${widget.item['external_comment']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
                             ],
                             if (widget.item['external_signature'] != null) ...[
-                              const SizedBox(height: 8),
-                              const Text('✍️ Unterschrift vorhanden', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppTheme.textSub)),
+                              const SizedBox(height: 12),
+                              const Text('Unterschrift Ext. Manager:', style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppTheme.textSub)),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 100,
+                                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                                child: widget.item['external_signature'] != null && widget.item['external_signature'].toString().length > 50
+                                   ? Image.memory(base64Decode(widget.item['external_signature']), fit: BoxFit.contain)
+                                   : const Center(child: Text('Keine Signatur')),
+                              ),
                             ],
                           ],
                         ),
@@ -427,7 +448,7 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
               ),
 
             // ─── EXTERNAL MANAGER BEREICH ────────────────────────────────
-            if (widget.isExternalManager && _isSharedWithExternal) ...[
+            if (widget.isExternalManager && _isSharedWithExternal && !_extHasReturned) ...[
               const Divider(height: 32, thickness: 2),
               Container(
                 padding: const EdgeInsets.all(14),

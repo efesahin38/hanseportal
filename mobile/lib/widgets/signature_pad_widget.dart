@@ -20,6 +20,8 @@ class SignaturePadWidget extends StatefulWidget {
 
 class _SignaturePadWidgetState extends State<SignaturePadWidget> {
   final List<Offset?> _points = [];
+  double _currentWidth = 300;
+  double _currentHeight = 150;
 
   Future<void> _exportSignature() async {
     if (_points.isEmpty) return;
@@ -37,11 +39,9 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
       }
     }
 
-    // Capture as image
-    // Note: In a real production app, we'd calculate the bounding box to crop.
-    // For now, we capture the full widget area.
+    // Capture as image using dynamic widget size
     final picture = recorder.endRecording();
-    final img = await picture.toImage(300, 150); // Standard signature size
+    final img = await picture.toImage(_currentWidth.toInt(), _currentHeight.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     
     if (byteData != null && widget.onSigned != null) {
@@ -56,10 +56,13 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          height: 150,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _currentWidth = constraints.maxWidth > 0 ? constraints.maxWidth : 300;
+        return Column(
+          children: [
+            Container(
+              height: _currentHeight,
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
@@ -95,7 +98,8 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
         ),
       ],
     );
-  }
+  });
+}
 }
 
 class _SignaturePainter extends CustomPainter {

@@ -8,6 +8,9 @@ import 'dart:convert';
 import 'localization_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/string_utils.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../utils/pdf_download_stub.dart'
+    if (dart.library.html) '../utils/pdf_download_web.dart' as helper;
 
 
 /// Hanse Kollektiv – PDF Üretim Servisi
@@ -1119,47 +1122,284 @@ class PdfService {
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
-    pdf.addPage(pw.Page(
+    final metaKeys = ['photos', '_workflow_stage', '_completed_at', '_sent_to_ext_at', '_ext_returned_at'];
+
+    pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       build: (pw.Context context) {
-        return pw.Padding(
-          padding: const pw.EdgeInsets.all(24),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(title, style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.blueGrey900)),
-              pw.SizedBox(height: 4),
-              pw.Text(subtitle, style: pw.TextStyle(font: font, fontSize: 14, color: PdfColors.blueGrey500)),
-              pw.SizedBox(height: 16),
-              pw.Divider(color: PdfColors.grey300),
-              pw.SizedBox(height: 16),
-              
-              // Print each Key/Value pair from the data map
-              ...data.entries.where((e) => e.key != 'photos' && e.value != null).map((entry) {
-                final keyStr = entry.key.replaceAll('_', ' ').toUpperCase();
-                final valStr = entry.value.toString();
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 12),
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.SizedBox(
-                        width: 150,
-                        child: pw.Text(keyStr, style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.black)),
-                      ),
-                      pw.Expanded(
-                        child: pw.Text(valStr, style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.black)),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        );
+        return [
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(title, style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.blueGrey900)),
+                pw.SizedBox(height: 4),
+                pw.Text(subtitle, style: pw.TextStyle(font: font, fontSize: 14, color: PdfColors.blueGrey500)),
+                pw.SizedBox(height: 16),
+                pw.Divider(color: PdfColors.grey300),
+                pw.SizedBox(height: 16),
+                
+                // Print each Key/Value pair from the data map
+                ...data.entries.where((e) => !metaKeys.contains(e.key) && e.value != null && e.value.toString().isNotEmpty && !e.key.startsWith('_')).map((entry) {
+                  final keyStr = entry.key.replaceAll('_', ' ').toUpperCase();
+                  final valStr = entry.value.toString();
+                  final isSignature = (entry.key.contains('sign_') || entry.key.contains('signature')) && valStr.length > 50;
+
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 12),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.SizedBox(
+                          width: 150,
+                          child: pw.Text(keyStr, style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.black)),
+                        ),
+                        pw.Expanded(
+                          child: isSignature
+                            ? pw.Container(
+                                height: 60,
+                                alignment: pw.Alignment.centerLeft,
+                                child: pw.Image(pw.MemoryImage(base64Decode(valStr)), fit: pw.BoxFit.contain)
+                              )
+                            : pw.Text(valStr, style: pw.TextStyle(font: font, fontSize: 11, color: PdfColors.black)),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+
+                // Add External Manager Section if exists
+                if (data['_ext_manager_comment'] != null || data['_ext_manager_signature'] != null) ...[
+                  pw.SizedBox(height: 24),
+                  pw.Divider(color: PdfColors.blueGrey700, thickness: 2),
+                  pw.SizedBox(height: 8),
+                  pw.Text('RÜCKMELDUNG EXTERNEN MANAGER', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey800)),
+                  pw.SizedBox(height: 12),
+                  if (data['_ext_manager_comment'] != null && data['_ext_manager_comment'].toString().isNotEmpty) ...[
+                    pw.Text('Kommentar / Açıklama:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                      child: pw.Text(data['_ext_manager_comment'].toString(), style: pw.TextStyle(font: font, fontSize: 11)),
+                    ),
+                    pw.SizedBox(height: 12),
+                  ],
+                  if (data['_ext_manager_signature'] != null && data['_ext_manager_signature'].toString().length > 50) ...[
+                    pw.Text('Digitale Unterschrift:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 4),
+                    pw.Container(
+                      height: 80,
+                      width: 200,
+                      alignment: pw.Alignment.centerLeft,
+                      child: pw.Image(pw.MemoryImage(base64Decode(data['_ext_manager_signature'].toString())), fit: pw.BoxFit.contain),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          )
+        ];
       },
     ));
 
     return pdf.save();
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // GWS TAGESPLAN PDF
+  // ─────────────────────────────────────────────────────────
+  static Future<Uint8List> generateTagesplanPdf({
+    required Map<String, dynamic> plan,
+    required List<Map<String, dynamic>> rooms,
+    required List<Map<String, dynamic>> areas,
+    required List<Map<String, dynamic>> extras,
+  }) async {
+    final pdf = pw.Document();
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
+
+    final dateStr = plan['plan_date'] ?? '-';
+    final objectName = plan['object']?['name'] ?? plan['customer']?['name'] ?? 'Unbekanntes Objekt';
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        theme: pw.ThemeData.withFont(base: font, bold: fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
+        footer: (context) => _buildFooter(context, font, fontBold),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('GWS TAGESPLANUNG', style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
+                pw.Text(dateStr, style: pw.TextStyle(font: font, fontSize: 14)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Objekt: $objectName', style: pw.TextStyle(font: fontBold, fontSize: 14)),
+          pw.SizedBox(height: 24),
+
+          // Block B - Zimmer
+          if (rooms.isNotEmpty) ...[
+            _sectionTitle('Block B – Zimmerliste', fontBold),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  children: [
+                    _tableHeader('Nr.', fontBold),
+                    _tableHeader('Kategorie', fontBold),
+                    _tableHeader('Status', fontBold),
+                    _tableHeader('Preis', fontBold),
+                  ],
+                ),
+                ...rooms.map((r) => pw.TableRow(
+                  children: [
+                    _tableCell(r['room_number']?.toString() ?? '-', font),
+                    _tableCell(r['category']?.toString() ?? '-', font),
+                    _tableCell(r['status']?.toString() ?? '-', font),
+                    _tableCell('€ ${((r['price'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}', font),
+                  ],
+                )),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+          ],
+
+          // Block C - Bereiche
+          if (areas.isNotEmpty) ...[
+            _sectionTitle('Block C – Bereichsliste', fontBold),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  children: [
+                    _tableHeader('Bereich', fontBold),
+                    _tableHeader('Leistung', fontBold),
+                    _tableHeader('Status', fontBold),
+                    _tableHeader('Preis', fontBold),
+                  ],
+                ),
+                ...areas.map((a) => pw.TableRow(
+                  children: [
+                    _tableCell(a['area_name']?.toString() ?? '-', font),
+                    _tableCell(a['service_type']?.toString() ?? '-', font),
+                    _tableCell(a['status']?.toString() ?? '-', font),
+                    _tableCell('€ ${((a['price'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}', font),
+                  ],
+                )),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+          ],
+
+          // Block D - Zusatzleistungen
+          if (extras.isNotEmpty) ...[
+            _sectionTitle('Block D – Zusatzleistungen', fontBold),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                  children: [
+                    _tableHeader('Leistung', fontBold),
+                    _tableHeader('Preis', fontBold),
+                  ],
+                ),
+                ...extras.map((e) => pw.TableRow(
+                  children: [
+                    _tableCell(e['product_name']?.toString() ?? '-', font),
+                    _tableCell('€ ${((e['price'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}', font),
+                  ],
+                )),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+          ],
+
+          pw.Divider(),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Text('GESAMTUMSATZ (TAG): ', style: pw.TextStyle(font: fontBold, fontSize: 14)),
+              pw.Text('€ ${_calcTotal(rooms, areas, extras).toStringAsFixed(2)}', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.blue800)),
+            ],
+          ),
+
+          // External Manager Response
+          if (plan['ext_manager_comment'] != null || plan['ext_manager_signature'] != null) ...[
+            pw.SizedBox(height: 32),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('RÜCKMELDUNG EXTERNEN MANAGER', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey800)),
+                  pw.SizedBox(height: 8),
+                  if (plan['ext_manager_comment'] != null && plan['ext_manager_comment'].toString().isNotEmpty) ...[
+                    pw.Text('Kommentar:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text(plan['ext_manager_comment'].toString(), style: pw.TextStyle(font: font, fontSize: 11)),
+                    pw.SizedBox(height: 12),
+                  ],
+                  if (plan['ext_manager_signature'] != null && plan['ext_manager_signature'].toString().length > 50) ...[
+                    pw.Text('Digitale Unterschrift:', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 4),
+                    pw.Container(
+                      height: 80,
+                      width: 200,
+                      child: pw.Image(pw.MemoryImage(base64Decode(plan['ext_manager_signature'].toString())), fit: pw.BoxFit.contain),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static double _calcTotal(List r, List a, List e) {
+    double total = 0;
+    for (var x in r) total += (x['price'] as num?)?.toDouble() ?? 0;
+    for (var x in a) total += (x['price'] as num?)?.toDouble() ?? 0;
+    for (var x in e) total += (x['price'] as num?)?.toDouble() ?? 0;
+    return total;
+  }
+
+  static pw.Widget _tableHeader(String text, pw.Font font) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(text, style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.black)),
+    );
+  }
+
+  static pw.Widget _tableCell(String text, pw.Font font) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(text, style: pw.TextStyle(font: font, fontSize: 10)),
+    );
+  }
+
+  static Future<void> downloadPdf(Uint8List bytes, String filename) async {
+    if (kIsWeb) {
+      helper.downloadPdfFile(bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 }

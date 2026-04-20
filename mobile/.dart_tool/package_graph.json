@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "mobile",
-      "version": "19.3.8+43",
+      "version": "19.3.9+44",
       "dependencies": [
         "csv",
         "cupertino_icons",

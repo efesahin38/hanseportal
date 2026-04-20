@@ -60,11 +60,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
           _siteUpdates = updates;
           _gwsTagesplaene = gwsPlans;
           
+          final saName = (order?['service_area']?['name'] ?? '').toString().toLowerCase();
+          final appState = Provider.of<AppState>(context, listen: false);
+          final bool isAssignedForeman = (order?['operation_plans'] as List? ?? []).any((p) => 
+               (p['operation_plan_personnel'] as List? ?? []).any((pp) => (pp['user_id'] == appState.userId || pp['user']?['id'] == appState.userId) && pp['is_supervisor'] == true));
+          final canSeeFormsAndPlanlama = appState.canPlanOperations || appState.isExternalManager || isAssignedForeman;
+          
           final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
-          final targetLen = isFormEnabled ? 6 : 5;
-          if (_tabs.length != targetLen) {
+          
+          int tLen = 4;
+          if (canSeeFormsAndPlanlama) tLen++;
+          if (canSeeFormsAndPlanlama && isFormEnabled) tLen++;
+
+          if (_tabs.length != tLen) {
             _tabs.dispose();
-            _tabs = TabController(length: targetLen, vsync: this);
+            _tabs = TabController(length: tLen, vsync: this);
           }
           
           _loading = false;
@@ -97,15 +107,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
     final history = o['order_status_history'] as List? ?? [];
 
     final appState = context.watch<AppState>();
-    final isAssignedForeman = plans.any((p) => 
-        (p['operation_plan_personnel'] as List? ?? []).any((pp) => pp['user']?['id'] == appState.userId));
+    final isAssignedForeman = plans.any((p) {
+      final isSiteSupervisor = p['site_supervisor_id']?.toString() == appState.userId?.toString();
+      final isPersonnelSupervisor = (p['operation_plan_personnel'] as List? ?? []).any((pp) => 
+        (pp['user_id']?.toString() == appState.userId?.toString() || pp['user']?['id']?.toString() == appState.userId?.toString()) && 
+        (pp['is_supervisor'] == true || pp['is_supervisor']?.toString() == 'true' || pp['is_supervisor'] == 1));
+      return isSiteSupervisor || isPersonnelSupervisor;
+    });
     
     // İş sonu raporunu (yeşil buton) sadece yönetici, muhasebe ve sistem admin görebilir.
     final canSeeReport = appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isBuchhaltung || appState.isSystemAdmin;
-    // Ek işi saha lideri ve yetkili personeller ekleyebilir.
+    final canApprove = appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.canPlanOperations;
+    final canDelete = canApprove;
+    final canSendToExt = canApprove || isAssignedForeman;
     final canAddExtraWork = isAssignedForeman || appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isSystemAdmin;
     final saName = serviceArea?['name']?.toString().toLowerCase() ?? '';
     final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
+    final canSeeFormsAndPlanlama = appState.canPlanOperations || appState.isExternalManager || isAssignedForeman;
 
     return Scaffold(
       floatingActionButton: (canSeeReport || canAddExtraWork || appState.canPlanOperations) ? Column(
@@ -192,11 +210,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                     unselectedLabelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
                       tabs: [
                         Tab(text: tr('Bilgiler')),
-                        Tab(text: '${tr('Planlama')} (${plans.length})'),
+                        if (canSeeFormsAndPlanlama) Tab(text: '${tr('Planlama')} (${plans.length})'),
                         Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
                         Tab(text: '${tr('Belgeler')} (${docs.length})'),
                         Tab(text: '${tr('Geçmiş')} (${history.length})'),
-                        if (isFormEnabled) const Tab(text: 'Formulare'),
+                        if (canSeeFormsAndPlanlama && isFormEnabled) const Tab(text: 'Formulare'),
                       ],
                   ),
                 ],
@@ -262,7 +280,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                             Text(o['detailed_description'], style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppTheme.textSub)),
                         ]),
                       // ── GWS Tagesplanung Bölümü ──
-                      if (isFormEnabled && saName.contains('gastwirtschaft')) ...[
+                      if (canSeeFormsAndPlanlama && isFormEnabled && saName.contains('gastwirtschaft')) ...[
                         const SizedBox(height: 12),
                         _GwsTagesplanSection(
                           orderId: widget.orderId,
@@ -272,18 +290,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           objects: customer != null ? [customer] : [],
                           departmentId: o['department_id']?.toString(),
                           onRefresh: _load,
+                          isAssignedForeman: isAssignedForeman,
                         ),
                       ],
                     ]),
                   ),
                   // Tab 2: Planlama
-                  plans.isEmpty
-                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          const Icon(Icons.calendar_today_outlined, size: 48, color: AppTheme.textSub),
-                          const SizedBox(height: 12),
-                          Text(tr('Henüz plan yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
-                        ]))
-                      : ListView.builder(
+                  if (canSeeFormsAndPlanlama)
+                    plans.isEmpty
+                          ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            const Icon(Icons.calendar_today_outlined, size: 48, color: AppTheme.textSub),
+                            const SizedBox(height: 12),
+                            Text(tr('Henüz plan yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          ]))
+                        : ListView.builder(
                           padding: const EdgeInsets.all(12),
                           itemCount: plans.length,
                           itemBuilder: (_, i) {
@@ -298,10 +318,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                onTap: () => Navigator.push(
+                                onTap: appState.canPlanOperations ? () => Navigator.push(
                                   context,
                                   MaterialPageRoute(builder: (_) => OperationPlanFormScreen(orderId: widget.orderId, planId: p['id'])),
-                                ).then((_) => _load()),
+                                ).then((_) => _load()) : null,
                                 child: Padding(
                                   padding: const EdgeInsets.all(14),
                                   child: Column(
@@ -529,16 +549,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           },
                         ),
                   // Tab 6: Formulare (Gebäude & GWS)
-                  if (isFormEnabled)
+                  if (canSeeFormsAndPlanlama && isFormEnabled)
                     OrderFormulareTab(
                       orderId: widget.orderId,
                       orderCompanyId: (o['company'] as Map<String, dynamic>?)?['id'] as String?,
                       orderDepartmentId: o['department_id']?.toString(),
+                      isForeman: isAssignedForeman,
                       supervisorIds: plans
-                          .expand((p) => (p['operation_plan_personnel'] as List? ?? []))
-                          // Sadece is_supervisor == true olan takım liderini dahil et
-                          .where((pp) => pp['is_supervisor'] == true)
-                          .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
+                          .expand((p) {
+                            final siteSupervisor = p['site_supervisor_id']?.toString() ?? '';
+                            final personnel = (p['operation_plan_personnel'] as List? ?? [])
+                                .where((pp) => pp['is_supervisor'] == true)
+                                .map((pp) => (pp['user'] as Map?)?['id']?.toString() ?? '')
+                                .where((id) => id.isNotEmpty).toList();
+                            return [...personnel, siteSupervisor];
+                          })
                           .where((id) => id.isNotEmpty)
                           .toList(),
                     ),
@@ -561,6 +586,7 @@ class _GwsTagesplanSection extends StatelessWidget {
   final List<Map<String, dynamic>> plans;
   final List<Map<String, dynamic>> objects;
   final String? departmentId;
+  final bool isAssignedForeman;
   final VoidCallback onRefresh;
 
   const _GwsTagesplanSection({
@@ -570,6 +596,7 @@ class _GwsTagesplanSection extends StatelessWidget {
     required this.plans,
     required this.objects,
     required this.onRefresh,
+    required this.isAssignedForeman,
     this.departmentId,
   });
 
@@ -612,7 +639,7 @@ class _GwsTagesplanSection extends StatelessWidget {
               Expanded(
                 child: Text('GWS Tagesplanung', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _color, fontFamily: 'Inter')),
               ),
-              if (!appState.isExternalManager)
+              if (!appState.isExternalManager && !isAssignedForeman)
                 TextButton.icon(
                   onPressed: () => Navigator.push(
                     context,

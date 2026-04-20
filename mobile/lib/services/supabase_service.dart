@@ -2405,16 +2405,19 @@ class SupabaseService {
     final contactList = List<Map<String, dynamic>>.from(contacts);
     if (contactList.isEmpty) return [];
 
-    final customerIds = contactList.map((c) => c['customer_id'].toString()).toSet().toList();
+    final contactIds = contactList.map((c) => c['id'].toString()).toSet().toList();
+    if (contactIds.isEmpty) return [];
 
-    // Bu müşterilere ait siparişleri getir
+    // Sadece bu kişiye tanımlı muhatapları (customer_contact VEYA sachbearbeiter_contact) bul
     final data = await _client.from('orders').select('''
       *,
       customer:customers(id, name),
       service_area:service_areas(id, code, name, color),
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
       department:departments(id, name)
-    ''').inFilter('customer_id', customerIds).order('created_at', ascending: false);
+    ''')
+    .or('customer_contact_id.in.(${contactIds.join(',')}),sachbearbeiter_contact_id.in.(${contactIds.join(',')})')
+    .order('created_at', ascending: false);
 
     final list = List<Map<String, dynamic>>.from(data);
     return list.where((item) => item['status'] != 'passive').toList();

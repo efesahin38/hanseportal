@@ -59,17 +59,10 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   }
 
   Future<void> _loadData() async {
-    final appState = context.read<AppState>();
     try {
-      var users = await SupabaseService.getUsers(
-        companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
-        status: 'active',
-      );
-      
-      // FALLBACK: Eğer manager ise ve liste boş geldiyse tüm şirketi (filtresiz) dene
-      if (users.isEmpty && !appState.isGeschaeftsfuehrer && !appState.isSystemAdmin) {
-        users = await SupabaseService.getUsers(status: 'active');
-      }
+      // Tüm aktif personeli getir (departman kısıtı olmadan)
+      // Bereichsleiter dahil herkes kendi şirketindeki tüm Mitarbeiter+Vorarbeiter'ı görebilmeli
+      var users = await SupabaseService.getUsers(status: 'active');
       
       final assignableUsers = users.where((u) {
         final r = (u['role'] ?? '').toString().toLowerCase();
@@ -84,6 +77,63 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
     } catch (_) {
       if (mounted) setState(() => _loadingPersonnel = false);
     }
+  }
+
+  /// Hizmet alanı adından hangi ana bölüme ait olduğunu çıkarır
+  String _resolveDepartmentLabel(String saName) {
+    final n = saName.toLowerCase();
+    if (n.contains('gast') || n.contains('hotel') || n.contains('hospit')) return 'Gastwirtschaftsservice';
+    if (n.contains('rail') || n.contains('gleis') || n.contains('db')) return 'DB-Gleisbausicherung';
+    if (n.contains('gebäud') || n.contains('reinigung') || n.contains('bau')) return 'Gebäudedienstleistungen';
+    if (n.contains('personal') || n.contains('über') || n.contains('verwal')) return 'Personalüberlassung';
+    return saName;
+  }
+
+  /// Chip filtresinin verdiği etiketle user'ın hizmet alanları eşleşiyor mu?
+  bool _userMatchesFilter(Map<String, dynamic> user, String filter) {
+    if (filter == 'Tümü' || filter == 'Alle') return true;
+    final filterLower = filter.toLowerCase();
+
+    // 1. user_service_areas üzerinden bak (en güvenilir)
+    final usa = user['user_service_areas'] as List?;
+    if (usa != null && usa.isNotEmpty) {
+      for (var item in usa) {
+        final sa = item['service_areas'];
+        if (sa == null) continue;
+        final saName = (sa['name'] ?? '').toString();
+        final resolved = _resolveDepartmentLabel(saName).toLowerCase();
+        if (resolved.contains(filterLower) || filterLower.contains(resolved)) return true;
+        // Doğrudan isim karşılaştırması
+        if (saName.toLowerCase().contains(filterLower)) return true;
+        // Departman adına bak
+        final saDepName = (sa['department']?['name'] ?? '').toString().toLowerCase();
+        if (saDepName.contains(filterLower)) return true;
+      }
+    }
+
+    // 2. Birincil departman üzerinden bak
+    final primaryDep = (user['department']?['name'] ?? '').toString().toLowerCase();
+    if (primaryDep.contains(filterLower)) return true;
+
+    return false;
+  }
+
+  /// Kullanıcının hizmet alanı etiketlerini döndürür (virgülle ayrılmış)
+  String _getUserDepartmentLabel(Map<String, dynamic> user) {
+    final usa = user['user_service_areas'] as List?;
+    if (usa != null && usa.isNotEmpty) {
+      final labels = usa
+          .map((item) {
+            final saName = (item['service_areas']?['name'] ?? '').toString();
+            return saName.isNotEmpty ? _resolveDepartmentLabel(saName) : null;
+          })
+          .where((l) => l != null)
+          .toSet()
+          .toList();
+      if (labels.isNotEmpty) return labels.join(' · ');
+    }
+    final dep = (user['department']?['name'] ?? '').toString();
+    return dep.isNotEmpty ? dep : '';
   }
 
   Future<void> _loadConflicts() async {
@@ -339,39 +389,24 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               else
                 Builder(
                   builder: (context) {
-                    final filteredPersonnel = _personnel.where((user) {
-                      if (_selectedFilter == 'Tümü' || _selectedFilter == 'Alle') return true;
-                      
-                      final filterLower = _selectedFilter.toLowerCase();
-                      
-                      // 1. Birincil departman kontrolü
-                      final primaryDep = (user['department']?['name'] ?? '').toString().toLowerCase();
-                      if (primaryDep.contains(filterLower) || primaryDep == filterLower) return true;
-                      
-                      // 2. Hizmet alanları ve onların departmanları üzerinden kontrol
-                      final usa = user['user_service_areas'] as List?;
-                      if (usa != null) {
-                        for (var item in usa) {
-                          final sa = item['service_areas'];
-                          if (sa == null) continue;
-                          
-                          // Hizmet alanı ismi (Örn: "Gastwirtschaftsservice")
-                          final saName = (sa['name'] ?? '').toString().toLowerCase();
-                          if (saName.contains(filterLower) || saName == filterLower) return true;
-                          
-                          // Hizmet alanının bağlı olduğu departman ismi (Örn: "GWS")
-                          final saDepName = (sa['department']?['name'] ?? '').toString().toLowerCase();
-                          if (saDepName.contains(filterLower) || saDepName == filterLower) return true;
-                        }
-                      }
-                      
-                      return false;
-                    }).toList();
+                    final filteredPersonnel = _personnel
+                        .where((user) => _userMatchesFilter(user, _selectedFilter))
+                        .toList();
   
                     if (filteredPersonnel.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 16),
-                        child: Text(tr('Bu departmanda personel bulunamadı.'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.error.withOpacity(0.05),
+                          border: Border.all(color: AppTheme.error.withOpacity(0.2)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${tr('Bu bölümde kayıtlı personel bulunamadı.')} ($_selectedFilter)',
+                          style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'),
+                        ),
                       );
                     }
   
@@ -379,7 +414,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                       children: filteredPersonnel.map((user) {
                         final id = user['id'] as String;
                         final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
-                        final role = user['position_title'] ?? AppTheme.roleLabel(user['role'] ?? '');
+                        final roleLabel = AppTheme.roleLabel(user['role'] ?? '');
+                        final deptLabel = _getUserDepartmentLabel(user);
                         final selected = _selectedPersonnelIds.contains(id);
                         final hasConflict = _conflictingUserIds.contains(id);
                         
@@ -399,14 +435,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                               },
                               title: Row(
                                 children: [
-                                  Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                                  Expanded(
+                                    child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                                  ),
                                   if (hasConflict) ...[
                                     const SizedBox(width: 6),
                                     const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 16),
                                   ]
                                 ],
                               ),
-                              subtitle: Text(role, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(roleLabel, style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter')),
+                                  if (deptLabel.isNotEmpty)
+                                    Text(deptLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                ],
+                              ),
                               secondary: selected && _selectedPersonnelIds.isNotEmpty
                                   ? GestureDetector(
                                       onTap: () => setState(() => _supervisorId = _supervisorId == id ? null : id),
@@ -418,6 +463,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                                     )
                                   : null,
                               controlAffinity: ListTileControlAffinity.leading,
+                              isThreeLine: deptLabel.isNotEmpty,
                               dense: true,
                             ),
                             if (selected && hasConflict)

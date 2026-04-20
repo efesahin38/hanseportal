@@ -5,8 +5,11 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import '../services/pdf_service.dart';
 import 'gws_personnel_planning_screen.dart';
 import 'gws_item_form_screen.dart';
+import '../widgets/signature_pad_widget.dart';
+import 'dart:convert';
 
 /// GWS Tagesplanungsmaske
 /// Operative Herzstück: Zimmer, Bereiche, Zusatzleistungen, kaufmännische Vorschau
@@ -42,6 +45,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
 
   bool _saving = false;
   bool _isTeamLeader = false;
+  String? _extManagerComment;
+  String? _extManagerSignature;
 
   // Preise
   static const Map<String, double> _roomPrices = {
@@ -95,8 +100,9 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           _planDate = DateTime.tryParse(plan['plan_date']) ?? DateTime.now();
           _selectedObjectId = plan['object_id']?.toString();
           _selectedOrderId = plan['order_id']?.toString();
-          _status = plan['status'] ?? 'draft';
           _isShared = plan['is_shared_with_customer'] == true;
+          _extManagerComment = plan['ext_manager_comment'];
+          _extManagerSignature = plan['ext_manager_signature'];
           
           final rooms = await SupabaseService.getGwsPlanRooms(widget.planId!);
           final areas = await SupabaseService.getGwsPlanAreas(widget.planId!);
@@ -142,6 +148,12 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
         backgroundColor: _color,
         title: const Text('Tagesplanung', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold)),
         actions: [
+          if (widget.planId != null)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+              onPressed: _downloadPdf,
+              tooltip: 'PDF herunterladen',
+            ),
           if (_saving)
             const Center(child: Padding(padding: EdgeInsets.only(right: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))))
           else if (!appState.isExternalManager)
@@ -158,42 +170,29 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // DIAGNOSTIC BANNER
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                  child: const Center(child: Text('DIAGNOSTIC MODE: v19.2.9 (If you see this, code is updated)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildBlockA(appState),
                 const SizedBox(height: 16),
-                if (!appState.isExternalManager) ...[
-                  _buildPersonnelAssignment(),
-                  const SizedBox(height: 16),
-                ],
                 _buildBlockB(appState),
                 const SizedBox(height: 16),
                 _buildBlockC(appState),
                 const SizedBox(height: 16),
                 _buildBlockD(appState),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 if (appState.canSeeFinancialDetails) ...[
                   _buildBlockE(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 32),
                 ],
+                _buildWorkflowSection(appState),
                 // Gönderim Butonları
                 if (widget.planId != null) ...[
                   const Divider(),
-                  if (appState.isExternalManager)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(vertical: 16)),
-                        onPressed: () => _updateWorkflowStatus('in_bearbeitung', 'Bereichsleiter\'a Gönderildi'),
-                        icon: const Icon(Icons.send_rounded),
-                        label: const Text('An Bereichsleiter Senden', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                    )
+                  if (_status == 'in_bearbeitung' && _extManagerSignature != null) ...[
+                     const SizedBox(height: 16),
+                     _buildExtManagerReadonlyPanel(),
+                  ],
+                  if (appState.isExternalManager && _status == 'vom_kunden_gemeldet')
+                    _buildExtManagerSigningPanel()
                   else if (appState.isBereichsleiter || appState.canSeeFinancialDetails)
                     SizedBox(
                       width: double.infinity,
@@ -212,6 +211,107 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     );
   }
 
+  Widget _buildExtManagerReadonlyPanel() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Feedback des Externen Managers', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontFamily: 'Inter')),
+          ]),
+          const SizedBox(height: 12),
+          if ((_extManagerComment ?? '').isNotEmpty)
+            Text(_extManagerComment!, style: const TextStyle(fontStyle: FontStyle.italic, fontFamily: 'Inter', color: Colors.black87)),
+          const SizedBox(height: 12),
+          const Text('Kundenunterschrift:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Inter')),
+          const SizedBox(height: 8),
+          Container(
+            height: 100,
+            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+            child: _extManagerSignature != null && _extManagerSignature!.length > 50
+               ? Image.memory(base64Decode(_extManagerSignature!), fit: BoxFit.contain)
+               : const Center(child: Text('Keine Signatur')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtManagerSigningPanel() {
+    String comment = '';
+    String signature = '';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.edit_document, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Aktion erforderlich', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
+          ]),
+          const SizedBox(height: 12),
+          TextField(
+            onChanged: (v) => comment = v,
+            decoration: const InputDecoration(labelText: 'Ihr Kommentar (Optional)', border: OutlineInputBorder(), fillColor: Colors.white, filled: true),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          const Text('Ihre Unterschrift:', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+            child: SignaturePadWidget(onSigned: (b64) => signature = b64),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, padding: const EdgeInsets.symmetric(vertical: 16)),
+              onPressed: () async {
+                if (signature.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte unterschreiben Sie zuerst!'), backgroundColor: Colors.red));
+                  return;
+                }
+                final Map<String, dynamic> updateData = {
+                   'ext_manager_comment': comment,
+                   'ext_manager_signature': signature,
+                   'status': 'in_bearbeitung',
+                   'updated_at': DateTime.now().toIso8601String()
+                };
+                setState(() => _saving = true);
+                try {
+                  await SupabaseService.updateGwsDailyPlan(widget.planId!, updateData);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✓ Erfolgreich gesendet!'), backgroundColor: AppTheme.success));
+                  _checkPermissions();
+                } catch(e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red));
+                } finally {
+                  setState(() => _saving = false);
+                }
+              },
+              icon: const Icon(Icons.send_rounded),
+              label: const Text('Freigeben & an Bereichsleiter senden', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
   // ── Block A: Tageskopf ─────────────────────────────────────
   Widget _buildBlockA(AppState appState) {
     return _buildSection(
@@ -221,7 +321,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
         children: [
           // Datum
           InkWell(
-            onTap: () async {
+            onTap: !appState.canPlanOperations ? null : () async {
               final d = await showDatePicker(context: context, initialDate: _planDate, firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 90)));
               if (d != null) setState(() => _planDate = d);
             },
@@ -232,7 +332,17 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           ),
           const SizedBox(height: 12),
           // Auftrag / Sipariş
-          DropdownButtonFormField<String>(
+          !appState.canPlanOperations
+            ? InputDecorator(
+                decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
+                child: Text(
+                  _selectedOrderId != null && _gwsOrders.any((o) => o['id'].toString() == _selectedOrderId)
+                      ? '${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['customer']?['name'] ?? 'Müşteri Yok'}: ${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['title']}'
+                      : 'Aktif iş seçilmemiş',
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis,
+                ),
+              )
+            : DropdownButtonFormField<String>(
             value: _selectedOrderId,
             decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
             items: _gwsOrders.isEmpty 
@@ -251,7 +361,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           ),
           const SizedBox(height: 12),
           // Status
-          appState.isExternalManager 
+          !appState.canPlanOperations 
             ? InputDecorator(
                 decoration: const InputDecoration(labelText: 'Status'),
                 child: Text(_statusText(_status), style: const TextStyle(fontSize: 15, fontFamily: 'Inter')),
@@ -267,24 +377,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                 ],
                 onChanged: (v) => setState(() => _status = v!),
               ),
-          if (widget.planId != null && appState.canSeeFinancialDetails) ...[
-            const SizedBox(height: 16),
-            const Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Müşteriyle Paylaş', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                Switch(
-                  value: _isShared,
-                  activeColor: AppTheme.gwsColor,
-                  onChanged: (v) async {
-                    setState(() => _isShared = v);
-                    await SupabaseService.shareGwsPlanWithCustomer(widget.planId!, v);
-                  },
-                ),
-              ],
-            ),
-          ],
+
         ],
       ),
     );
@@ -317,7 +410,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block B – Zimmerliste',
       icon: Icons.bed,
-      action: appState.isExternalManager ? null : IconButton(
+      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(
         icon: Icon(Icons.add_circle, color: _color),
         onPressed: _addRoomDialog,
       ),
@@ -333,7 +426,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Zimmer hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    if (!appState.isExternalManager)
+                    if (!appState.isExternalManager && !_isTeamLeader)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
                         onPressed: _addRoomDialog,
@@ -377,7 +470,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(width: 8),
                     if (r['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    if (!appState.isExternalManager)
+                    if (!appState.isExternalManager && !_isTeamLeader)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _rooms.removeAt(i))),
                   ],
                 ),
@@ -408,41 +501,6 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     );
   }
 
-  Widget _buildPersonnelAssignment() {
-    return _buildSection(
-      title: 'Personal & Einsatzplanung',
-      icon: Icons.people,
-      action: _status == 'draft' ? null : IconButton(
-        icon: const Icon(Icons.edit_calendar, color: _color),
-        onPressed: () {
-          // Bu kısımsa artık savedId lazım, implementasyonda genelde pop'tan gelen id ile veya listelenerek yapılır.
-          // Şimdilik Snackbar
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Personalplanung erst nach erstem Speichern verfügbar.')));
-        },
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: _color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () {
-                 if (_selectedObjectId != null) {
-                   // Burada kaydettikten sonra ID gelmeli, şimdilik snackbar
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Personalplanung erst nach erstem Speichern verfügbar.')));
-                 } else {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte erst ein Objekt auswählen ve Speichern.')));
-                 }
-              },
-              icon: const Icon(Icons.person_add),
-              label: const Text('Personel Ata & Yıldız Belirle'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _statusMiniBadge(String? s) {
     Color c = Colors.grey;
@@ -460,7 +518,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block C – Bereichsliste',
       icon: Icons.location_city,
-      action: appState.isExternalManager ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addAreaDialog),
+      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addAreaDialog),
       child: Column(
         children: [
           if (_areas.isEmpty)
@@ -473,7 +531,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(height: 8),
                     const Text('Noch keine Bereiche hinzugefügt', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     const SizedBox(height: 8),
-                    if (!appState.isExternalManager)
+                    if (!appState.isExternalManager && !_isTeamLeader)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(foregroundColor: _color, side: BorderSide(color: _color)),
                         onPressed: _addAreaDialog,
@@ -511,7 +569,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                     const SizedBox(width: 8),
                     if (a['id'] != null)
                       Icon(Icons.chevron_right, color: _color.withOpacity(0.4), size: 18),
-                    if (!appState.isExternalManager)
+                    if (!appState.isExternalManager && !_isTeamLeader)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _areas.removeAt(i))),
                   ],
                 ),
@@ -547,7 +605,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
     return _buildSection(
       title: 'Block D – Zusatzleistungen',
       icon: Icons.add_task,
-      action: appState.isExternalManager ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addExtraDialog),
+      action: (appState.isExternalManager || _isTeamLeader) ? null : IconButton(icon: Icon(Icons.add_circle, color: _color), onPressed: _addExtraDialog),
       child: Column(
         children: [
           if (_extras.isEmpty)
@@ -569,7 +627,7 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                   children: [
                     if (appState.canSeeFinancialDetails)
                       Text('€ ${(e['price'] as num?)?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Inter')),
-                    if (!appState.isExternalManager)
+                    if (!appState.isExternalManager && !_isTeamLeader)
                       IconButton(icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18), onPressed: () => setState(() => _extras.removeAt(i))),
                   ],
                 ),
@@ -799,6 +857,75 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _downloadPdf() async {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF wird generiert...')));
+    try {
+      final plan = await SupabaseService.getGwsDailyPlan(widget.planId!);
+      if (plan == null) return;
+      
+      final bytes = await PdfService.generateTagesplanPdf(
+        plan: plan,
+        rooms: _rooms,
+        areas: _areas,
+        extras: _extras,
+      );
+      
+      final dateStr = plan['plan_date'] ?? 'export';
+      await PdfService.downloadPdf(bytes, 'GWS_Tagesplan_$dateStr.pdf');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Fehler: $e'), backgroundColor: AppTheme.error));
+    }
+  }
+
+  Widget _buildWorkflowSection(AppState appState) {
+    if (_extManagerSignature == null || _extManagerSignature!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.success.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.check_circle, color: AppTheme.success, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('Externer Manager hat geantwortet', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.success))),
+            ],
+          ),
+          if (_extManagerComment != null && _extManagerComment!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.success.withOpacity(0.15))),
+              child: Text(_extManagerComment!, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Colors.black87)),
+            ),
+          ],
+          if (_extManagerSignature != null && _extManagerSignature!.length > 50) ...[
+            const SizedBox(height: 12),
+            const Text('Unterschrift Ext. Manager:', style: TextStyle(fontSize: 11, fontFamily: 'Inter', color: AppTheme.textSub)),
+            const SizedBox(height: 6),
+            Container(
+              width: 220,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
+              child: Image.memory(base64Decode(_extManagerSignature!), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Keine Signatur')),
+            ),
+          ],
+        ],
       ),
     );
   }

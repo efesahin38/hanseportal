@@ -43,14 +43,23 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     });
   }
 
+  /// Hizmet alanı adını kısa bölüm etiketine çevirir (kart sağında gösterim için)
+  String _shortBolumLabel(String saName) {
+    final n = saName.toLowerCase();
+    if (n.contains('gast') || n.contains('hotel') || n.contains('hospit')) return 'GWS';
+    if (n.contains('rail') || n.contains('gleis') || n.contains('db')) return 'DB-Gleis';
+    if (n.contains('gebäud') || n.contains('reinigung') || n.contains('bau')) return 'Gebäude';
+    if (n.contains('personal') || n.contains('über') || n.contains('verwal')) return 'Personal';
+    return saName.length > 10 ? '${saName.substring(0, 10)}…' : saName;
+  }
+
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // Bereichsleiter'lar sadece kendi bölümlerini görsün (İş isteği üzerine geri getirildi)
-      final String? deptFilter = appState.isBereichsleiter ? appState.departmentId : null;
+      // Departman filtresi kaldırıldı: Bereichsleiter kendi şirketindeki
+      // TÜM Mitarbeiter+Vorarbeiter'ı görebilmeli (hizmet alanına atanmış olsun/olmasın)
       final data = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
-        departmentId: deptFilter,
         role: _roleFilter,
         status: 'active',
       );
@@ -61,15 +70,17 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   }
 
   void _applyFilter() {
-    final appState = context.read<AppState>();
-    
-    // Temel liste: Bereichsleiter ise sadece kendisini ve Mitarbeiter'ları görsün
     List<Map<String, dynamic>> baseList = _all;
-    if (appState.isBereichsleiter) {
-      baseList = _all.where((u) => 
-        u['role'] == 'mitarbeiter' || 
-        u['id'] == appState.userId
-      ).toList();
+
+    // Bereichsleiter: Mitarbeiter + Vorarbeiter görür (kendisi haricindekileri de)
+    // "canViewAllPersonnel" yoksa filtresiz
+    // Not: Bereichsleiter başka bölüm personelini de görebilmeli –
+    // filtre _load() içinde department_id bazında yapılmıştır.
+    if (context.read<AppState>().isBereichsleiter) {
+      baseList = _all.where((u) {
+        final r = (u['role'] ?? '').toString().toLowerCase();
+        return r == 'mitarbeiter' || r == 'vorarbeiter' || u['id'] == context.read<AppState>().userId;
+      }).toList();
     }
 
     if (_search.isEmpty) {
@@ -218,10 +229,31 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                 ),
                                 trailing: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(u['company']?['short_name'] ?? '', style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
-                                    const SizedBox(height: 4),
-                                    const Icon(Icons.chevron_right, color: AppTheme.border),
+                                    // Şirket kısa adı
+                                    if ((u['company']?['short_name'] ?? '').isNotEmpty)
+                                      Text(u['company']?['short_name'] ?? '', style: const TextStyle(fontSize: 10, color: AppTheme.textSub, fontFamily: 'Inter')),
+                                    const SizedBox(height: 2),
+                                    // Atandığı Bölüm(ler) – sağ tarafta
+                                    if (serviceAreas != null && serviceAreas.isNotEmpty)
+                                      ...serviceAreas.take(2).map((item) {
+                                        final sa = item['service_areas'];
+                                        final rawName = (sa?['name'] ?? '').toString();
+                                        if (rawName.isEmpty) return const SizedBox.shrink();
+                                        final bolum = _shortBolumLabel(rawName);
+                                        return Container(
+                                          margin: const EdgeInsets.only(top: 2),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: saColor.withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(bolum, style: TextStyle(fontSize: 9, color: saColor, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                                        );
+                                      }).toList()
+                                    else
+                                      const Icon(Icons.chevron_right, color: AppTheme.border),
                                   ],
                                 ),
                                 isThreeLine: true,
