@@ -113,7 +113,7 @@ class PersonnelDetailDashboard extends StatelessWidget {
                   foregroundColor: AppTheme.error,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), border: const BorderSide(color: AppTheme.error)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppTheme.error)),
                 ),
               ),
               const SizedBox(height: 20),
