@@ -22,7 +22,7 @@ class AppState extends ChangeNotifier {
   int get unreadNotifications => _unreadNotifications;
   Locale get locale => _locale;
 
-  String get role => _currentUser?['role'] ?? '';
+  String get role => (_currentUser?['role'] ?? '').toString().trim().toLowerCase();
   String get userId => _currentUser?['id'] ?? '';
   String get companyId => _currentUser?['company_id'] ?? '';
   String get departmentId => _currentUser?['department_id'] ?? '';
@@ -33,15 +33,15 @@ class AppState extends ChangeNotifier {
   }
   String get fullName => '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim();
 
-  bool get isGeschaeftsfuehrer => role.toLowerCase() == 'geschaeftsfuehrer';
-  bool get isBetriebsleiter => role.toLowerCase() == 'betriebsleiter';
-  bool get isBereichsleiter => role.toLowerCase() == 'bereichsleiter';
-  bool get isVorarbeiter => role.toLowerCase() == 'vorarbeiter';
-  bool get isMitarbeiter => role.toLowerCase() == 'mitarbeiter';
-  bool get isBuchhaltung => role.toLowerCase() == 'buchhaltung';
-  bool get isBackoffice => role.toLowerCase() == 'backoffice';
-  bool get isSystemAdmin => role.toLowerCase() == 'system_admin';
-  bool get isExternalManager => role.toLowerCase() == 'external_manager';
+  bool get isGeschaeftsfuehrer => role == 'geschaeftsfuehrer';
+  bool get isBetriebsleiter => role == 'betriebsleiter';
+  bool get isBereichsleiter => role == 'bereichsleiter';
+  bool get isVorarbeiter => role == 'vorarbeiter';
+  bool get isMitarbeiter => role == 'mitarbeiter';
+  bool get isBuchhaltung => role == 'buchhaltung';
+  bool get isBackoffice => role == 'backoffice';
+  bool get isSystemAdmin => role == 'system_admin';
+  bool get isExternalManager => role == 'external_manager';
 
   /// Externer Manager'ın muhattap olduğu customer contact ID'leri
   String get externalManagerEmail => _currentUser?['email'] ?? '';

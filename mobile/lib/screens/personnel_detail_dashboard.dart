@@ -98,8 +98,53 @@ class PersonnelDetailDashboard extends StatelessWidget {
                 color: const Color(0xFF06B6D4),
                 onTap: () => _showLeaveManagementSheet(context, user, appState),
               ),
+
+            // ── Danger Zone ──
+            if (appState.isSystemAdmin || appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isBuchhaltung) ...[
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => _confirmDelete(context),
+                icon: const Icon(Icons.person_remove),
+                label: Text(tr('Kullanıcıyı Sil'), style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.error.withOpacity(0.1),
+                  foregroundColor: AppTheme.error,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), border: const BorderSide(color: AppTheme.error)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Kullanıcıyı Sil?')),
+        content: Text(tr('Bu işlem bu personeli sistemden pasif hale getirecektir. Devam etmek istiyor musunuz?')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen'))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await SupabaseService.updateUserStatus(user['id'], 'passive');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Kullanıcı pasif yapıldı'))));
+                Navigator.pop(context); // Detail dashboard'dan çık
+              }
+            },
+            child: Text(tr('Sil (Pasif Yap)'), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

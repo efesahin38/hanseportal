@@ -161,6 +161,10 @@ class SupabaseService {
     return list;
   }
 
+  static Future<void> updateUserStatus(String userId, String status) async {
+    await _client.from('users').update({'status': status}).eq('id', userId);
+  }
+
   static Future<List<Map<String, dynamic>>> getManagementUsers() async {
     const managementRoles = [
       'geschaeftsfuehrer',
