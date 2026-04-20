@@ -119,9 +119,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         _type = data['customer_type'] ?? 'company';
 
         if (data['customer_contacts'] != null) {
-          _sachbearbeiters = List<Map<String, dynamic>>.from(
-            (data['customer_contacts'] as List).where((c) => c['role'] == 'Sachbearbeiter')
-          );
+          // v19.7.5: Sadece Sachbearbeiter değil, tüm kontak rollerini yükle
+          _sachbearbeiters = List<Map<String, dynamic>>.from(data['customer_contacts']);
         }
         _status = data['status'] ?? 'active';
 
@@ -182,7 +181,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           dataToSave.remove('id');
         }
         dataToSave['customer_id'] = newId;
-        dataToSave['role'] = 'Sachbearbeiter';
+        // v19.7.5: Hardcoded 'Sachbearbeiter' rolünü kaldır, kontaktın kendi rolünü kullan
+        // Eğer rol yoksa varsayılan olarak Sachbearbeiter ata
+        dataToSave['role'] = s['role'] ?? 'Sachbearbeiter';
         await SupabaseService.upsertCustomerContact(dataToSave);
       }
 
@@ -312,7 +313,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _section('Sachbearbeiter'),
+                      _section('Ansprechpartner / Kontakte'),
                       IconButton(
                         icon: const Icon(Icons.add_circle, color: AppTheme.primary),
                         onPressed: _showAddSachbearbeiterDialog,
@@ -366,10 +367,13 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final emailCtrl = TextEditingController();
     String contactType = 'Sachbearbeiter';
 
-    // ExtManager sadece Gastwirtschaft (Otel) servis alanında gösterilir
+    // v19.7.5: Portal erişimi (ExtManager) hem Gastwirtschaft hem de Gebäudedienstleistungen (Temizlik) için geçerlidir
     final selectedSa = _serviceAreas.where((sa) => sa['id'].toString() == _selectedServiceAreaId).firstOrNull;
     final saNameLower = (selectedSa?['display_name'] ?? selectedSa?['name'] ?? '').toString().toLowerCase();
-    final isGwsArea = saNameLower.contains('gast') || saNameLower.contains('hospit') || saNameLower.contains('hotel');
+    
+    // GWS veya Temizlik (Gebäude/Reinigung) departmanları portal yetkisine sahip olabilir
+    final isPortalEnabled = saNameLower.contains('gast') || saNameLower.contains('hospit') || saNameLower.contains('hotel') ||
+                           saNameLower.contains('gebäud') || saNameLower.contains('reinigung');
 
     showDialog(
       context: context,
@@ -385,7 +389,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                 decoration: InputDecoration(labelText: tr('Typ'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                 items: [
                   const DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Sachbearbeiter')),
-                  if (isGwsArea)
+                  if (isPortalEnabled)
                     const DropdownMenuItem(value: 'ExtManager', child: Text('🏨 Externer Manager (Kundenportal)')),
                 ],
                 onChanged: (v) => setLocal(() => contactType = v!),
@@ -518,6 +522,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'subunternehmen', child: Text('🔄 ${tr('Taşeron Firma')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')}', style: const TextStyle(fontFamily: 'Inter'))),
       ],
       onChanged: canEditStatus ? (v) => setState(() => _status = v!) : null,

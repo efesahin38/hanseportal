@@ -168,6 +168,7 @@ class AppTheme {
       case 'archived':         return textSub;
       case 'active':           return success;
       case 'inactive':         return error;
+      case 'subunternehmen':   return const Color(0xFF00ACC1); // Cyan/Teal
       default:                 return textSub;
     }
   }
@@ -182,6 +183,8 @@ class AppTheme {
       case 'archived':         return tr('Arşivlendi');
       case 'active':           return tr('Aktif');
       case 'inactive':         return tr('Pasif');
+      case 'potential':        return tr('Potansiyel');
+      case 'subunternehmen':   return tr('Taşeron Firma');
       default:                 return status;
     }
   }

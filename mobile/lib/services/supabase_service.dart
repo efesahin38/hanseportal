@@ -174,7 +174,7 @@ class SupabaseService {
     final data = await _client
         .from('users')
         .select('''
-          id, first_name, last_name, role, department_id,
+          id, first_name, last_name, role, department_id, phone, email, status,
           department:departments(name)
         ''')
         .inFilter('role', managementRoles)
@@ -182,6 +182,40 @@ class SupabaseService {
         
     final list = List<Map<String, dynamic>>.from(data);
     return list.where((u) => u['status'] != 'passive' && u['status'] != 'archived').toList();
+  }
+
+  /// v19.7.6: İş detayında gösterilecek Hanse Kollektiv yöneticilerini getirir (GF, BL ve Bölüm Sorumlusu)
+  static Future<List<Map<String, dynamic>>> getManagementUsersForOrder(String departmentId) async {
+    final roles = ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter'];
+    
+    final data = await _client
+        .from('users')
+        .select('''
+          id, first_name, last_name, role, department_id, phone, email, status,
+          department:departments(name)
+        ''')
+        .inFilter('role', roles)
+        .eq('status', 'active');
+        
+    final users = List<Map<String, dynamic>>.from(data);
+    
+    // GF ve BL herkesi al, Bereichsleiter ise sadece o departmanınkini al
+    final list = users.where((u) {
+      final role = u['role']?.toString().toLowerCase();
+      if (role == 'geschaeftsfuehrer' || role == 'betriebsleiter') return true;
+      if (role == 'bereichsleiter' && u['department_id']?.toString() == departmentId) return true;
+      return false;
+    }).toList();
+
+    // Öncelik Sırası: GF > BL > BRL
+    list.sort((a, b) {
+      final order = {'geschaeftsfuehrer': 0, 'betriebsleiter': 1, 'bereichsleiter': 2};
+      final ra = order[a['role']?.toString().toLowerCase()] ?? 99;
+      final rb = order[b['role']?.toString().toLowerCase()] ?? 99;
+      return ra.compareTo(rb);
+    });
+    
+    return list;
   }
 
   static Future<Map<String, dynamic>?> getUserById(String id) async {
@@ -436,6 +470,7 @@ class SupabaseService {
       sachbearbeiter_contact:customer_contacts!orders_sachbearbeiter_contact_id_fkey(id, name, phone, email),
       service_area:service_areas(id, code, name, color),
       responsible_user:users!orders_responsible_user_id_fkey(id, first_name, last_name),
+      subcontractor:customers!orders_subcontractor_id_fkey(id, name),
       department:departments(id, name),
       order_status_history(*),
       documents(*),
@@ -458,6 +493,8 @@ class SupabaseService {
     _notifyBackend('/orders/notify-new', {
       'order_id': orderId,
       'created_by': data['created_by'],
+      'title': 'Neuer Auftrag erstellt',
+      'body': 'Ein neuer Auftrag wurde im System angelegt.',
     });
     return orderId;
   }
@@ -483,6 +520,8 @@ class SupabaseService {
     _notifyBackend('/orders/$orderId/notify-status', {
       'new_status': newStatus,
       'changed_by': changedById,
+      'title': 'Auftragsstatus aktualisiert',
+      'body': 'Status geändert auf: $newStatus',
     });
 
     // Otomatik Taslak Oluşturma (Eğer arka planda trigger çalışmıyorsa yedek)
@@ -501,7 +540,7 @@ class SupabaseService {
             'service_date_from': order['planned_start_date'],
             'service_date_to': order['planned_end_date'],
             'status': 'auto_generated',
-            'internal_notes': tr('Sistem tarafından otomatik oluşturuldu – lütfen kalemleri düzenleyin.'),
+            'internal_notes': 'Vom System automatisch erstellt – bitte Positionen bearbeiten.',
           };
           
           final result = await _client.from('invoice_drafts').insert(draftData).select().single();
@@ -522,7 +561,7 @@ class SupabaseService {
 
   static Future<void> markOrderAsInvoiced(String orderId, String changedById) async {
     // 1. Order status güncelle ve logla
-    await updateOrderStatus(orderId, 'invoiced', tr('Tahsilat / Fatura süreci başlatıldı'), changedById);
+    await updateOrderStatus(orderId, 'invoiced', 'Abrechnungs- / Fakturierungsprozess gestartet', changedById);
 
     // 2. Draft faturayı invoiced yap
     final existingDraft = await _client.from('invoice_drafts').select('id, status').eq('order_id', orderId).maybeSingle();
@@ -604,6 +643,8 @@ class SupabaseService {
     _notifyBackend('/operation-plans/notify-new', {
       'plan_id': planId,
       'user_ids': userIds,
+      'title': 'Neuer Einsatz zugewiesen',
+      'body': 'Ein neuer Einsatzplan wurde für Sie erstellt.',
     });
 
     try {
@@ -612,7 +653,7 @@ class SupabaseService {
       if (orderId != null) {
         final order = await _client.from('orders').select('status').eq('id', orderId).single();
         if (order['status'] == 'draft') {
-          await updateOrderStatus(orderId, 'planning', tr('Personel atandı, plan oluşturuldu'), assignedBy);
+          await updateOrderStatus(orderId, 'planning', 'Personal zugewiesen, Einsatzplan erstellt', assignedBy);
         }
       }
     } catch (e) {
@@ -794,8 +835,8 @@ class SupabaseService {
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
-      title: tr('Yeni Mesai Onaylandı'),
-      body: tr('Bir çalışma seansı onaylandı ve fatura taslağına eklendi.'),
+      title: 'Arbeitssitzung genehmigt',
+      body: 'Eine Arbeitssitzung wurde genehmigt und zum Rechnungsentwurf hinzugefügt.',
       sentBy: approvedBy,
     );
   }
@@ -947,8 +988,8 @@ class SupabaseService {
 
     // 3. Muhasebeye Bildirim Gönder
     await sendNotificationToAccounting(
-      title: tr('Yeni Ek İş Onaylandı'),
-      body: '${extraWork['title']} ${tr('başlıklı ek iş onaylandı ve faturaya eklendi.')}',
+      title: 'Zusatzarbeit genehmigt',
+      body: '${extraWork['title']} wurde genehmigt und zur Rechnung hinzugefügt.',
       sentBy: approvedBy,
     );
   }
@@ -2079,6 +2120,32 @@ class SupabaseService {
     await _client.from('order_forms').upsert(payload, onConflict: 'order_id,form_type');
   }
 
+  /// v19.7.7: Dış yöneticiyi (External Manager) yeni form onayı için bilgilendirir (Bildirim dili Almanca)
+  static Future<void> notifyExternalManagerAboutForm(String orderId, String formType) async {
+    final order = await _client.from('orders')
+        .select('order_number, site_address, customer_contact_id')
+        .eq('id', orderId)
+        .maybeSingle();
+
+    if (order == null || order['customer_contact_id'] == null) return;
+
+    final formLabels = {
+      'bereichsfreigabe': 'Bereichsfreigabe',
+      'qualitaetskontrolle': 'Qualitätskontrolle',
+      'stundenlohn': 'Stundenlohn & Leistungsnachweis',
+      'maengelliste': 'Mängel- & Restpunkteliste',
+      'tagesrapport': 'Tagesrapport',
+    };
+    final label = formLabels[formType] ?? formType;
+
+    _notifyBackend('/orders/$orderId/notify-ext-manager', {
+      'title': 'Prüfung erforderlich: $label',
+      'body': 'Ein neues Formular für Projekt ${order['order_number']} (${order['site_address']}) wartet auf Ihre Prüfung.',
+      'target_contact_id': order['customer_contact_id'],
+      'form_type': formType,
+    });
+  }
+
   static Future<void> approveOrderForm(String formId, String approverId) async {
     await _client.from('order_forms').update({
       'is_approved':  true,
@@ -2090,6 +2157,158 @@ class SupabaseService {
   static Future<void> deleteOrderForm(String formId) async {
     await _client.from('order_forms').delete().eq('id', formId);
   }
+
+  // ══════════════════════════════════════════════════════════════
+  // ── DB-GLEISBAUSICHERUNG MODUL – v19.8.0 ─────────────────────
+  // ══════════════════════════════════════════════════════════════
+
+  /// Gleisbausicherung Detaildaten für einen Auftrag
+  static Future<Map<String, dynamic>?> getGleisbauDetails(String orderId) async {
+    return await _client.from('gleisbau_order_details').select().eq('order_id', orderId).maybeSingle();
+  }
+
+  static Future<void> upsertGleisbauDetails(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_order_details').upsert(data, onConflict: 'order_id');
+  }
+
+  /// SAKRA Checkliste
+  static Future<Map<String, dynamic>?> getGleisbauCheckliste(String orderId) async {
+    return await _client.from('gleisbau_sakra_checkliste').select().eq('order_id', orderId).maybeSingle();
+  }
+
+  static Future<void> upsertGleisbauCheckliste(Map<String, dynamic> data) async {
+    final orderId = data['order_id'] as String?;
+    if (orderId == null) return;
+    // Safe insert-or-update: check if row exists first
+    final existing = await _client.from('gleisbau_sakra_checkliste').select('id').eq('order_id', orderId).maybeSingle();
+    if (existing != null) {
+      final updateData = Map<String, dynamic>.from(data)..remove('order_id');
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+      await _client.from('gleisbau_sakra_checkliste').update(updateData).eq('order_id', orderId);
+    } else {
+      await _client.from('gleisbau_sakra_checkliste').insert(data);
+    }
+  }
+
+  /// Unterweisung
+  static Future<Map<String, dynamic>?> getGleisbauUnterweisung(String orderId) async {
+    // Fetch unterweisung and bestaetigung separately to avoid FK hint issues
+    final u = await _client.from('gleisbau_unterweisungen').select('*').eq('order_id', orderId).maybeSingle();
+    if (u == null) return null;
+    final best = await _client.from('gleisbau_unterweisung_bestaetigung').select('*').eq('unterweisung_id', u['id']);
+    return {...u, 'gleisbau_unterweisung_bestaetigung': best};
+  }
+
+  static Future<void> upsertGleisbauUnterweisung(Map<String, dynamic> data) async {
+    final orderId = data['order_id'] as String?;
+    if (orderId == null) return;
+    // Safe insert-or-update (avoids needing UNIQUE constraint for upsert)
+    final existing = await _client.from('gleisbau_unterweisungen').select('id').eq('order_id', orderId).maybeSingle();
+    if (existing != null) {
+      final updateData = Map<String, dynamic>.from(data)
+        ..remove('order_id')
+        ..remove('id');
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+      await _client.from('gleisbau_unterweisungen').update(updateData).eq('order_id', orderId);
+    } else {
+      final insertData = Map<String, dynamic>.from(data)..remove('id');
+      await _client.from('gleisbau_unterweisungen').insert(insertData);
+    }
+  }
+
+  static Future<void> bestaetigenGleisbauUnterweisung(String unterweisungId, String userId) async {
+    await _client.from('gleisbau_unterweisung_bestaetigung').upsert({
+      'unterweisung_id': unterweisungId,
+      'user_id': userId,
+      'bestaetigt': true,
+      'bestaetigt_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'unterweisung_id,user_id');
+  }
+
+  /// Personal-Planung
+  static Future<List<Map<String, dynamic>>> getGleisbauPersonal(String orderId) async {
+    // Fetch planung, then join users manually to avoid FK hint issues
+    final data = await _client.from('gleisbau_personal_planung').select('*').eq('order_id', orderId).order('assigned_at');
+    final list = List<Map<String, dynamic>>.from(data);
+    // Enrich with user data
+    for (final p in list) {
+      final uid = p['user_id']?.toString();
+      if (uid != null) {
+        final user = await _client.from('users').select('id, first_name, last_name, db_gleisbau_role').eq('id', uid).maybeSingle();
+        p['user'] = user;
+      }
+    }
+    return list;
+  }
+
+  static Future<Map<String, dynamic>?> getGleisbauMeinePlanung(String orderId, String userId) async {
+    return await _client.from('gleisbau_personal_planung').select('''
+      *,
+      user:users!gleisbau_personal_planung_user_id_fkey(id, first_name, last_name)
+    ''').eq('order_id', orderId).eq('user_id', userId).maybeSingle();
+  }
+
+  static Future<void> upsertGleisbauPersonal(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_personal_planung').upsert(data, onConflict: 'order_id,user_id');
+  }
+
+  static Future<void> updateGleisbauPlanungField(String orderId, String userId, String field, dynamic value) async {
+    await _client.from('gleisbau_personal_planung').update({field: value}).eq('order_id', orderId).eq('user_id', userId);
+  }
+
+  /// Ereignisse
+  static Future<List<Map<String, dynamic>>> getGleisbauEreignisse(String orderId) async {
+    final data = await _client.from('gleisbau_ereignisse').select('''
+      *,
+      meldende_person:users!gleisbau_ereignisse_meldende_person_id_fkey(id, first_name, last_name)
+    ''').eq('order_id', orderId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createGleisbauEreignis(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_ereignisse').insert(data);
+  }
+
+  /// Digitales Ferngesprächsbuch
+  static Future<List<Map<String, dynamic>>> getGleisbauFerngespraeche(String orderId) async {
+    // Select without FK hint to avoid issues with missing FK constraint name
+    final data = await _client.from('gleisbau_ferngespraeche').select('*')
+        .eq('order_id', orderId)
+        .order('datum', ascending: false)
+        .order('uhrzeit', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createGleisbauFerngespraech(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_ferngespraeche').insert(data);
+  }
+
+  static Future<void> updateGleisbauFerngespraech(String id, Map<String, dynamic> data) async {
+    await _client.from('gleisbau_ferngespraeche').update({...data, 'updated_at': DateTime.now().toIso8601String()}).eq('id', id);
+  }
+
+  /// Notizen
+  static Future<List<Map<String, dynamic>>> getGleisbauNotizen(String orderId) async {
+    final data = await _client.from('gleisbau_notizen').select('''
+      *, user:users!gleisbau_notizen_user_id_fkey(id, first_name, last_name)
+    ''').eq('order_id', orderId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> createGleisbauNotiz(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_notizen').insert(data);
+  }
+
+  /// Rollenbedarf
+  static Future<List<Map<String, dynamic>>> getGleisbauRollenbedarf(String orderId) async {
+    final data = await _client.from('gleisbau_rollenbedarf').select().eq('order_id', orderId);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  static Future<void> upsertGleisbauRollenbedarf(Map<String, dynamic> data) async {
+    await _client.from('gleisbau_rollenbedarf').upsert(data, onConflict: 'order_id,rolle');
+  }
+
 
   // ══════════════════════════════════════════════════════════════
   // ── KALENDER MODÜLİ – Yeni Metodlar ─────────────────────────

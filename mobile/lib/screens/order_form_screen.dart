@@ -54,6 +54,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<Map<String, dynamic>> _muhattapContacts = [];     // ExtManager type
   List<Map<String, dynamic>> _sachbearbeiterContacts = []; // Sachbearbeiter type
   List<Map<String, dynamic>> _internalUsers = [];
+  List<Map<String, dynamic>> _subcontractors = [];
+
+  bool _isSubcontractor = false;
+  String? _selectedSubcontractorId;
 
   static List<Map<String, dynamic>>? _cachedAllServiceAreas;
   static List<Map<String, dynamic>>? _cachedAllInternalUsers;
@@ -137,6 +141,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final internalUsers = _cachedAllInternalUsers ?? await SupabaseService.getUsers(status: 'active');
       _cachedAllInternalUsers = internalUsers;
       
+      // Fetch Subcontractors
+      final subcontractors = await SupabaseService.getCustomers(status: 'subunternehmen', departmentId: widget.initialDepartmentId);
+
       final filteredInternal = internalUsers.where((u) => 
         ['geschaeftsfuehrer', 'betriebsleiter', 'bereichsleiter', 'backoffice', 'buchhaltung'].contains(u['role']?.toString().toLowerCase())
       ).toList();
@@ -146,6 +153,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           _customers = customers;
           _serviceAreas = filteredServiceAreas;
           _internalUsers = filteredInternal;
+          _subcontractors = subcontractors;
           
           if (widget.orderId == null && defaultSAId != null) {
             _selectedServiceAreaId = defaultSAId;
@@ -183,9 +191,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _minBillableHours = (order['minimum_billable_hours'] as num?)?.toDouble() ?? 4.0;
         _selectedContactId = order['customer_contact_id'];
         _responsibleUserId = order['responsible_user_id'];
+        _minBillableHours = (order['min_billable_hours'] ?? 4.0).toDouble();
+        _isSubcontractor = order['is_subcontractor'] == true;
+        _selectedSubcontractorId = order['subcontractor_id'];
 
         if (order['planned_start_date'] != null) _startDate = DateTime.parse(order['planned_start_date']);
         if (order['planned_end_date'] != null) _endDate = DateTime.parse(order['planned_end_date']);
+        if (order['start_date'] != null) _startDate = DateTime.parse(order['start_date']);
+        if (order['end_date'] != null) _endDate = DateTime.parse(order['end_date']);
         
         if (_selectedCustomerId != null) _loadCustomerContacts(_selectedCustomerId!);
       });
@@ -283,6 +296,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         'material_need': _materialNeedCtrl.text.trim(),
         'net_amount': double.tryParse(_netAmountCtrl.text),
         'minimum_billable_hours': _minBillableHours,
+        'is_subcontractor': _isSubcontractor,
+        'subcontractor_id': _selectedSubcontractorId,
         'status': 'draft',
         if (_startDate != null) 'planned_start_date': _startDate!.toIso8601String().split('T')[0],
         if (_endDate != null) 'planned_end_date': _endDate!.toIso8601String().split('T')[0],
@@ -397,6 +412,38 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     children: [
                       SizedBox(width: fieldWidth, child: _textField(tr('Müşteri Sipariş No'), _customerRef)),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: AppTheme.glassBox(color: AppTheme.primary.withOpacity(0.05)),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          title: Text(tr('Bu iş bir Taşeron Firmaya mı (Subunternehmen) verilecek?'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 13)),
+                          value: _isSubcontractor,
+                          activeColor: const Color(0xFF00ACC1),
+                          onChanged: (v) => setState(() => _isSubcontractor = v),
+                        ),
+                        if (_isSubcontractor)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSubcontractorId,
+                              decoration: InputDecoration(
+                                labelText: tr('Taşeron Firma Seçin'),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              items: _subcontractors.map((c) => DropdownMenuItem(
+                                value: c['id'].toString(),
+                                child: Text(c['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
+                              )).toList(),
+                              onChanged: (v) => setState(() => _selectedSubcontractorId = v),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 

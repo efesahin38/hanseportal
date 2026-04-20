@@ -97,7 +97,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final entry in {tr('Tümü'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Arşiv'): 'archived'}.entries)
+                        for (final entry in {tr('Tümü'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Arşiv'): 'archived', tr('Taşeron'): 'subunternehmen'}.entries)
                           Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(

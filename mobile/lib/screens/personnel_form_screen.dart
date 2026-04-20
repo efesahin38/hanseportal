@@ -62,6 +62,28 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
 
   final _roles = {'mitarbeiter': 'Mitarbeiter', 'vorarbeiter': 'Vorarbeiter', 'bereichsleiter': 'Bereichsleiter', 'betriebsleiter': 'Betriebsleiter', 'buchhaltung': 'Buchhaltung', 'backoffice': 'Backoffice', 'geschaeftsfuehrer': 'Geschäftsführer', 'system_admin': 'System Admin', 'external_manager': 'Externer Manager'};
 
+  // v19.8.0: DB-Gleisbausicherung spezifische Rolle
+  String? _dbGleisbauRole;
+  static const _dbGleisbauRoles = {
+    'sakra':              'SAKRA – Sicherungsaufsicht',
+    'sipo':               'SiPO – Sicherungsposten',
+    'buep':               'BÜP – Bahnübergangsposten',
+    'sesi':               'SeSi – Selbstsicherer',
+    'sas':                'SAS – Schaltantragsteller',
+    'hib':                'HIB – Helfer im Bahnbetrieb',
+    'bahnerder':          'Bahnerder',
+    'sbahn_kurzschliess': 'S-Bahn-Kurzschließer',
+    'bediener_monteur':   'Bediener / Monteur',
+    'raeumer':            'Räumer',
+    'planer_pruefer':     'Planer / Prüfer',
+  };
+
+  bool get _isGleisbauSelected => _selectedServiceAreaIds.any((id) {
+    final sa = _serviceAreas.firstWhere((s) => s['id'].toString() == id, orElse: () => {});
+    final name = (sa['display_name'] ?? sa['name'] ?? '').toString().toLowerCase();
+    return name.contains('gleis') || name.contains('db') || name.contains('rail');
+  });
+
   @override
   void initState() {
     super.initState();
@@ -138,7 +160,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       if (d['driving_license_since'] != null) _drivingLicenseSince = DateTime.tryParse(d['driving_license_since']);
       _role = d['role'] ?? 'mitarbeiter'; _employmentType = d['employment_type'] ?? 'Vollzeit';
       _contractType = d['contract_type'] ?? 'Vollzeit'; _compensationType = d['compensation_type'] ?? 'Stundenlohn';
-      _idType = d['id_type'] ?? 'Ausweis'; _companyId = d['company_id']; 
+      _idType = d['id_type'] ?? 'Ausweis'; _companyId = d['company_id'];
+      _dbGleisbauRole = d['db_gleisbau_role'];
       _workPermit = d['work_permit'] == true; _maritalStatus = d['marital_status'] == true;
       _hasChildren = d['has_children'] == true; _hasDrivingLicense = d['has_driving_license'] == true;
       _hasQualifications = d['has_qualifications'] == true;
@@ -196,6 +219,8 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
         'driving_license_since': _drivingLicenseSince?.toIso8601String().split('T')[0],
         'has_qualifications': _hasQualifications, 'qualifications': _qualifications.text.trim(),
         'company_id': _companyId, 'status': 'active',
+        // v19.8.0: DB-Gleisbausicherung Rolle
+        'db_gleisbau_role': _isGleisbauSelected ? _dbGleisbauRole : null,
         // v19.3.8: Brutto ücret kaydet
         if (_compensationType == 'Stundenlohn' && _grossWage.text.isNotEmpty)
           'hourly_gross_wage': double.tryParse(_grossWage.text),
@@ -215,6 +240,41 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e'))); setState(() => _saving = false); }
+    }
+  }
+
+  // v19.8.0: Gleisbau-Rolle Hilfsmethoden
+  static IconData _gleisbauRoleIcon(String role) {
+    switch (role) {
+      case 'sakra': return Icons.security;
+      case 'sipo':  return Icons.shield;
+      case 'buep':  return Icons.traffic;
+      case 'sesi':  return Icons.person_pin;
+      case 'sas':   return Icons.electrical_services;
+      case 'hib':   return Icons.support_agent;
+      case 'bahnerder': return Icons.bolt;
+      case 'sbahn_kurzschliess': return Icons.flash_on;
+      case 'bediener_monteur': return Icons.build;
+      case 'raeumer': return Icons.directions_run;
+      case 'planer_pruefer': return Icons.fact_check;
+      default: return Icons.train;
+    }
+  }
+
+  static String _gleisbauRoleDescription(String role) {
+    switch (role) {
+      case 'sakra': return 'Führt die Sicherungsaufsicht. Leitet die Unterweisung, verantwortet den Leitstand, meldet den Abschluss. Vollzugriff auf alle Einsatzfunktionen.';
+      case 'sipo':  return 'Überwacht den Gleisbereich, sichert das Personal. Mobilansicht: eigener Auftrag, Dokumente, Bestätigungen, Meldungen.';
+      case 'buep':  return 'Sichert Bahnübergänge während des Einsatzes. Mobilansicht mit Auftrags- und Ansprechpartnerinfo.';
+      case 'sesi':  return 'Gesichert durch eigene Maßnahmen. Mobilansicht mit Pflichtbestätigungen und Meldungen.';
+      case 'sas':   return 'Schaltantragsteller. Erweiterte Ferngespräch-Erfassungsrechte und Zugang zu Schaltunterlagen.';
+      case 'hib':   return 'Unterstützt operative Tätigkeiten im Bahnbetrieb. Mobilansicht mit Auftrags- und Dokumentenzugang.';
+      case 'bahnerder': return 'Erdungsarbeiten im Gleisbereich. Zugang zu technischen Unterlagen und Bestätigungsfunktionen.';
+      case 'sbahn_kurzschliess': return 'Kurzschlussarbeiten im S-Bahn-Bereich. Spezifische Gerätedokumentation und Bestätigungen.';
+      case 'bediener_monteur': return 'Bedient oder montiert Geräte und Maschinen. Erweiterte Gerätedokumentation.';
+      case 'raeumer': return 'Räumt Materialien und Rüstzeug. Einfache Mobilansicht mit Bestätigungen.';
+      case 'planer_pruefer': return 'Prüft Unterlagen auf Vollständigkeit und Plausibilität. Kommentarrechte, keine Einsatzführung.';
+      default: return '';
     }
   }
 
@@ -360,6 +420,56 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             ])),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: tr('Rolle *')),
               items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _role = v!))),
+
+            // v19.8.0: DB-Gleisbausicherung spezifische Rolle (nur wenn Gleisbau-Bereich gewählt)
+            if (_isGleisbauSelected) ...[
+              SizedBox(width: fw * 2 + 16, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [const Color(0xFF0D47A1).withOpacity(0.08), const Color(0xFF1565C0).withOpacity(0.04)]),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF0D47A1).withOpacity(0.25)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFF0D47A1), borderRadius: BorderRadius.circular(6)), child: const Text('DB-Gleisbausicherung', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter'))),
+                      const SizedBox(width: 8),
+                      const Text('Einsatzrolle im Gleisbereich', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                    ]),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: _dbGleisbauRole,
+                      decoration: const InputDecoration(
+                        labelText: 'Gleisbausicherung-Rolle',
+                        helperText: 'Qualifikationsgebundene Funktion im Gleiseinsatz',
+                        prefixIcon: Icon(Icons.train, color: Color(0xFF0D47A1), size: 18),
+                      ),
+                      onChanged: restrictSensitive ? null : (v) => setState(() => _dbGleisbauRole = v),
+                      items: [
+                        const DropdownMenuItem<String>(value: null, child: Text('– Keine Gleisbau-Funktion –', style: TextStyle(color: AppTheme.textSub))),
+                        ..._dbGleisbauRoles.entries.map((e) => DropdownMenuItem<String>(
+                          value: e.key,
+                          child: Row(children: [
+                            Icon(_gleisbauRoleIcon(e.key), size: 16, color: const Color(0xFF0D47A1)),
+                            const SizedBox(width: 8),
+                            Text(e.value, style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                          ]),
+                        )),
+                      ],
+                    ),
+                    if (_dbGleisbauRole != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFF0D47A1).withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                        child: Text(_gleisbauRoleDescription(_dbGleisbauRole!), style: const TextStyle(fontSize: 11, color: Color(0xFF0D47A1), fontFamily: 'Inter')),
+                      ),
+                    ],
+                  ]),
+                ),
+              ])),
+            ],
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _contractType, decoration: InputDecoration(labelText: tr('Vertragsart')),
               items: ['Vollzeit', 'Teilzeit', 'Aushilfe'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _contractType = v!))),
             SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _compensationType, decoration: InputDecoration(labelText: tr('Vergütungsart')),

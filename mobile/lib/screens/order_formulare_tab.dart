@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state.dart';
@@ -76,6 +77,7 @@ class OrderFormulareTab extends StatefulWidget {
 
 class _OrderFormulareTabState extends State<OrderFormulareTab> {
   Map<String, Map<String, dynamic>> _formData = {};
+  Map<String, dynamic>? _order;
   bool _loading = true;
 
   @override
@@ -87,11 +89,12 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
   Future<void> _load() async {
     try {
       final rows = await SupabaseService.getOrderForms(widget.orderId);
+      final ord = await SupabaseService.getOrder(widget.orderId);
       final map = <String, Map<String, dynamic>>{};
       for (final r in rows) {
         map[r['form_type'] as String] = r;
       }
-      if (mounted) setState(() { _formData = map; _loading = false; });
+      if (mounted) setState(() { _formData = map; _order = ord; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -127,8 +130,11 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
   bool _canView(AppState a) => a.userId.isNotEmpty;
 
   bool _canSendToExtManager(AppState a) {
-    return a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin ||
-        (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId);
+    if (a.isGeschaeftsfuehrer || a.isBetriebsleiter || a.isSystemAdmin) return true;
+    if (a.isBereichsleiter && a.departmentId == widget.orderDepartmentId) return true;
+    // v19.7.4: Takım lideri de dış yöneticiye onaya gönderebilir (Saha operasyonu için kritik)
+    if (widget.isForeman || widget.supervisorIds.contains(a.userId)) return true;
+    return false;
   }
 
   @override
@@ -180,7 +186,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
               canApprove: canApprove,
               canDelete: canDelete,
               canSendToExt: canSendToExt,
-              isReadOnly: !appState.canPlanOperations,
+              isReadOnly: !(appState.canPlanOperations || widget.isForeman),
               onOpen: () => _openForm(context, key, row, editable, canApprove, canDelete, canSendToExt, appState),
             );
           }),
@@ -201,6 +207,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
   ) {
     final args = _FormArgs(
       orderId: widget.orderId,
+      order: _order,
       row: row,
       editable: editable,
       canApprove: canApprove,
@@ -229,6 +236,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
 
 class _FormArgs {
   final String orderId;
+  final Map<String, dynamic>? order;
   final Map<String, dynamic>? row;
   final bool editable;
   final bool canApprove;
@@ -238,11 +246,15 @@ class _FormArgs {
   final VoidCallback onRefresh;
 
   const _FormArgs({
-    required this.orderId, required this.row, required this.editable,
+    required this.orderId, this.order, required this.row, required this.editable,
     required this.canApprove, required this.canDelete,
     this.canSendToExt = false,
     required this.appState, required this.onRefresh,
   });
+
+  String get orderNum => order?['order_number']?.toString() ?? '—';
+  String get customerName => order?['customer']?['name']?.toString() ?? '';
+  String get siteAddress => order?['site_address']?.toString() ?? '';
 
   Map<String, dynamic> get data => Map<String, dynamic>.from(row?['data'] as Map? ?? {});
   String get status => row?['status'] as String? ?? 'nicht_begonnen';
@@ -563,6 +575,10 @@ class _FormScaffoldState extends State<_FormScaffold> {
         data: submitData,
         userId: widget.args.appState.userId,
       );
+
+      // v19.7.7: Bildirim gönder (Almanca)
+      await SupabaseService.notifyExternalManagerAboutForm(widget.args.orderId, widget.formType);
+
       if (ctx.mounted) {
         if (widget.args.row != null) {
           widget.args.row!['data'] = submitData;
@@ -1432,12 +1448,14 @@ class _BereichsfreigabeState extends State<_BereichsfreigabeScreen> {
     super.initState();
     final d = widget.args.data;
     _status = widget.args.status;
-    _proj         = TextEditingController(text: d['projektbezeichnung'] ?? '');
-    _bereich      = TextEditingController(text: d['bereich'] ?? '');
-    _datum        = TextEditingController(text: d['datum'] ?? '');
+    final today = DateFormat('dd.MM.yyyy').format(DateTime.now());
+
+    _proj         = TextEditingController(text: d['projektbezeichnung'] ?? widget.args.orderNum);
+    _bereich      = TextEditingController(text: d['bereich'] ?? widget.args.siteAddress);
+    _datum        = TextEditingController(text: d['datum'] ?? today);
     _team         = TextEditingController(text: d['team'] ?? '');
     _bauleiter    = TextEditingController(text: d['bauleiter'] ?? '');
-    _auftraggeber = TextEditingController(text: d['auftraggeber'] ?? '');
+    _auftraggeber = TextEditingController(text: d['auftraggeber'] ?? widget.args.customerName);
     _hinweise     = TextEditingController(text: d['hinweise'] ?? '');
     _notizen      = TextEditingController(text: d['notizen'] ?? '');
     _freigabeVon  = TextEditingController(text: d['freigabe_von'] ?? '');
@@ -1513,11 +1531,13 @@ class _QualitaetskontrolleState extends State<_QualitaetskontrolleScreen> {
     final d = widget.args.data;
     _status = widget.args.status;
     final teamName = '${widget.args.appState.currentUser?['first_name'] ?? ''} ${widget.args.appState.currentUser?['last_name'] ?? ''}'.trim();
-    _proj          = TextEditingController(text: d['projektbezeichnung'] ?? '');
-    _auftraggeber  = TextEditingController(text: d['auftraggeber'] ?? '');
-    _bereich       = TextEditingController(text: d['bereich'] ?? '');
-    _datumRein     = TextEditingController(text: d['datum_reinigung'] ?? '');
-    _datumAbna     = TextEditingController(text: d['datum_abnahme'] ?? '');
+    final today = DateFormat('dd.MM.yyyy').format(DateTime.now());
+
+    _proj          = TextEditingController(text: d['projektbezeichnung'] ?? widget.args.orderNum);
+    _auftraggeber  = TextEditingController(text: d['auftraggeber'] ?? widget.args.customerName);
+    _bereich       = TextEditingController(text: d['bereich'] ?? widget.args.siteAddress);
+    _datumRein     = TextEditingController(text: d['datum_reinigung'] ?? today);
+    _datumAbna     = TextEditingController(text: d['datum_abnahme'] ?? today);
     _teamleiter    = TextEditingController(text: d['teamleiter'] ?? teamName);
     _restmaengel   = TextEditingController(text: d['restmaengel'] ?? '');
     _hinweise      = TextEditingController(text: d['hinweise'] ?? '');
@@ -1620,10 +1640,12 @@ class _StundenlohnState extends State<_StundenlohnScreen> {
     super.initState();
     final d = widget.args.data;
     _status = widget.args.status;
-    _proj         = TextEditingController(text: d['projektbezeichnung'] ?? '');
-    _auftraggeber = TextEditingController(text: d['auftraggeber'] ?? '');
-    _bereich      = TextEditingController(text: d['bereich'] ?? '');
-    _datum        = TextEditingController(text: d['datum'] ?? '');
+    final today = DateFormat('dd.MM.yyyy').format(DateTime.now());
+
+    _proj         = TextEditingController(text: d['projektbezeichnung'] ?? widget.args.orderNum);
+    _auftraggeber = TextEditingController(text: d['auftraggeber'] ?? widget.args.customerName);
+    _bereich      = TextEditingController(text: d['bereich'] ?? widget.args.siteAddress);
+    _datum        = TextEditingController(text: d['datum'] ?? today);
     _mitarbeiter  = TextEditingController(text: d['mitarbeiter'] ?? '');
     _beginn       = TextEditingController(text: d['beginn'] ?? '');
     _ende         = TextEditingController(text: d['ende'] ?? '');
@@ -1707,10 +1729,12 @@ class _MaengellisteState extends State<_MaengellisteScreen> {
     super.initState();
     final d = widget.args.data;
     _status = widget.args.status;
-    _proj           = TextEditingController(text: d['projektbezeichnung'] ?? '');
-    _auftraggeber   = TextEditingController(text: d['auftraggeber'] ?? '');
-    _bereich        = TextEditingController(text: d['bereich'] ?? '');
-    _datumErf       = TextEditingController(text: d['datum_erfassung'] ?? '');
+    final today = DateFormat('dd.MM.yyyy').format(DateTime.now());
+
+    _proj           = TextEditingController(text: d['projektbezeichnung'] ?? widget.args.orderNum);
+    _auftraggeber   = TextEditingController(text: d['auftraggeber'] ?? widget.args.customerName);
+    _bereich        = TextEditingController(text: d['bereich'] ?? widget.args.siteAddress);
+    _datumErf       = TextEditingController(text: d['datum_erfassung'] ?? today);
     _erfasstVon     = TextEditingController(text: d['erfasst_von'] ?? '');
     _weitereHinweise = TextEditingController(text: d['weitere_hinweise'] ?? '');
     _freiNotizen    = TextEditingController(text: d['notizen'] ?? '');
@@ -1788,10 +1812,12 @@ class _TagesrapportState extends State<_TagesrapportScreen> {
     super.initState();
     final d = widget.args.data;
     _status = widget.args.status;
-    _proj          = TextEditingController(text: d['projektbezeichnung'] ?? '');
-    _auftraggeber  = TextEditingController(text: d['auftraggeber'] ?? '');
-    _datum         = TextEditingController(text: d['datum'] ?? '');
-    _bereich       = TextEditingController(text: d['bereich'] ?? '');
+    final today = DateFormat('dd.MM.yyyy').format(DateTime.now());
+
+    _proj          = TextEditingController(text: d['projektbezeichnung'] ?? widget.args.orderNum);
+    _auftraggeber  = TextEditingController(text: d['auftraggeber'] ?? widget.args.customerName);
+    _datum         = TextEditingController(text: d['datum'] ?? today);
+    _bereich       = TextEditingController(text: d['bereich'] ?? widget.args.siteAddress);
     _ereignisse    = TextEditingController(text: d['ereignisse'] ?? '');
     _statErledigt  = TextEditingController(text: d['status_erledigt'] ?? '');
     _statBehindert = TextEditingController(text: d['status_behindert'] ?? '');

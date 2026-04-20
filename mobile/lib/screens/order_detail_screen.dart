@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
@@ -10,6 +11,7 @@ import 'extra_work_form_screen.dart';
 import 'work_report_screen.dart';
 import 'order_formulare_tab.dart';
 import 'gws_tagesplan_screen.dart';
+import 'gleisbau_screens.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -23,6 +25,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
   Map<String, dynamic>? _order;
   List<Map<String, dynamic>> _siteUpdates = [];
   List<Map<String, dynamic>> _gwsTagesplaene = [];
+  List<Map<String, dynamic>> _internalContacts = [];
   bool _loading = true;
   late TabController _tabs;
 
@@ -54,11 +57,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
         } catch (_) {}
       }
 
+      // v19.7.6: Şirket iletişim kişilerini yükle
+      List<Map<String, dynamic>> internal = [];
+      if (order != null && order['department_id'] != null) {
+        internal = await SupabaseService.getManagementUsersForOrder(order['department_id'].toString());
+      }
+
       if (mounted) {
         setState(() {
           _order = order;
           _siteUpdates = updates;
           _gwsTagesplaene = gwsPlans;
+          _internalContacts = internal;
           
           final saName = (order?['service_area']?['name'] ?? '').toString().toLowerCase();
           final appState = Provider.of<AppState>(context, listen: false);
@@ -67,10 +77,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
           final canSeeFormsAndPlanlama = appState.canPlanOperations || appState.isExternalManager || isAssignedForeman;
           
           final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
+          final isGleisbau = saName.contains('gleis') || saName.contains('db') || saName.contains('rail');
           
           int tLen = 4;
           if (canSeeFormsAndPlanlama) tLen++;
           if (canSeeFormsAndPlanlama && isFormEnabled) tLen++;
+          // v19.8.0: Gleisbausicherung spezifische Tabs
+          if (isGleisbau && appState.canAccessGleisbauLeitstand) tLen++; // SAKRA-Leitstand
+          if (isGleisbau && appState.canDurchfuehrenUnterweisung) tLen++; // Unterweisung
+          if (isGleisbau) tLen++; // Ferngesprächsbuch
 
           if (_tabs.length != tLen) {
             _tabs.dispose();
@@ -123,7 +138,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
     final canAddExtraWork = isAssignedForeman || appState.isBetriebsleiter || appState.isGeschaeftsfuehrer || appState.isSystemAdmin;
     final saName = serviceArea?['name']?.toString().toLowerCase() ?? '';
     final isFormEnabled = saName.contains('gebäude') || saName.contains('gastwirtschaft');
+    final isGleisbau = saName.contains('gleis') || saName.contains('db') || saName.contains('rail');
     final canSeeFormsAndPlanlama = appState.canPlanOperations || appState.isExternalManager || isAssignedForeman;
+
+    // Gleisbausicherung: Operative Mitarbeiter-Ansicht (nur ihre eigene reduzierte Sicht)
+    final isGleisbauOperativMitarbeiter = isGleisbau && appState.isGleisbauOperativ;
 
     return Scaffold(
       floatingActionButton: (canSeeReport || canAddExtraWork || appState.canPlanOperations) ? Column(
@@ -208,13 +227,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                     isScrollable: true,
                     labelStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 12),
                     unselectedLabelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12),
-                      tabs: [
+                    tabs: [
                         Tab(text: tr('Bilgiler')),
                         if (canSeeFormsAndPlanlama) Tab(text: '${tr('Planlama')} (${plans.length})'),
                         Tab(text: '${tr('Saha Günlüğü')} (${_siteUpdates.length})'),
                         Tab(text: '${tr('Belgeler')} (${docs.length})'),
                         Tab(text: '${tr('Geçmiş')} (${history.length})'),
                         if (canSeeFormsAndPlanlama && isFormEnabled) const Tab(text: 'Formulare'),
+                        // v19.8.0: Gleisbausicherung Tabs
+                        if (isGleisbau && appState.canAccessGleisbauLeitstand) const Tab(icon: Icon(Icons.security, size: 16), text: 'Leitstand'),
+                        if (isGleisbau && appState.canDurchfuehrenUnterweisung) const Tab(icon: Icon(Icons.school, size: 16), text: 'Unterweisung'),
+                        if (isGleisbau) const Tab(icon: Icon(Icons.phone_in_talk, size: 16), text: 'Ferngespräch'),
                       ],
                   ),
                 ],
@@ -228,12 +251,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                   SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(children: [
+                      // v19.7.4: Muhattap & Sachbearbeiter bilgileri artık ana kartta (Daha görünür olması için)
                       _InfoCard(tr('İş Bilgileri'), [
                         _InfoRow(tr('İş Numarası'), o['order_number']),
                         _InfoRow(tr('Öncelik'), o['priority']),
                         _InfoRow(tr('Başlangıç'), o['planned_start_date']),
                         _InfoRow(tr('Bitiş'), o['planned_end_date']),
                         _InfoRow(tr('Saha Adresi'), o['site_address']),
+                        
+                        // v19.7.6: Muhattap (Ext. Manager) Detaylı
+                        if (o['customer_contact'] != null) ...[
+                          _InfoRow(
+                            'Muhattap', 
+                            (o['customer_contact'] as Map)['name'],
+                            trailing: _ContactActions(
+                              phone: (o['customer_contact'] as Map)['phone'],
+                              email: (o['customer_contact'] as Map)['email'],
+                            ),
+                          ),
+                          if ((o['customer_contact'] as Map)['phone'] != null)
+                             _InfoRow('Muhattap Tel', (o['customer_contact'] as Map)['phone']),
+                        ],
+                        // Sachbearbeiter (Müşteri Yetkilisi)
+                        if (o['sachbearbeiter_contact'] != null)
+                          _InfoRow('Sachbearbeiter', (o['sachbearbeiter_contact'] as Map)['name']),
+
                         _InfoRow(tr('Min. Faturalanacak Saat'), o['minimum_billable_hours']?.toString()),
                         _InfoRow(tr('Malzeme/Ekipman'), o['material_notes']),
                         // Fiyat bilgisi sadece yetkili roller
@@ -242,6 +284,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           if ((o['net_amount'] as num?) != null)
                             _InfoRow('Summe netto', '${(o['net_amount'] as num).toStringAsFixed(2)} €'),
                         ],
+                        
+                        // Taşeron Firma (Subunternehmen)
+                        if (o['is_subcontractor'] == true) ...[
+                          const Divider(height: 16),
+                          Row(
+                            children: [
+                              const Icon(Icons.handshake_outlined, size: 20, color: Color(0xFF00ACC1)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('Taşeron Firma: ${o['subcontractor']?['name'] ?? 'Bilinmiyor'}', 
+                                  style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, color: Color(0xFF00ACC1))),
+                              ),
+                            ],
+                          ),
+                        ],
                       ]),
                       const SizedBox(height: 12),
                       _InfoCard(tr('Müşteri'), [
@@ -249,28 +306,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                         _InfoRow(tr('Telefon'), customer?['phone'], isMasked: !appState.canSeeFullCustomerDetails),
                         _InfoRow(tr('E-posta'), customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
                       ]),
-                      // ── Muhattap & Sachbearbeiter ──
-                      Builder(builder: (ctx) {
-                        final contact = o['customer_contact'] as Map<String, dynamic>?;
-                        final sachb = o['sachbearbeiter_contact'] as Map<String, dynamic>?;
-                        if (contact == null && sachb == null) return const SizedBox.shrink();
-                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const SizedBox(height: 12),
-                          _InfoCard('Kunden – Externe Kontakte', [
-                            if (contact != null) ...[ 
-                              _InfoRow('Muhattap (Ext. Mgr.)', contact['name']),
-                              _InfoRow('Telefon', contact['phone']),
-                              _InfoRow('E-Mail', contact['email']),
-                            ],
-                            if (sachb != null) ...[ 
-                              if (contact != null) const SizedBox(height: 6),
-                              _InfoRow('Sachbearbeiter', sachb['name']),
-                              _InfoRow('Telefon', sachb['phone']),
-                              _InfoRow('E-Mail', sachb['email']),
-                            ],
-                          ]),
-                        ]);
-                      }),
                       const SizedBox(height: 12),
                       if (o['short_description'] != null || o['detailed_description'] != null)
                         _InfoCard(tr('Açıklama'), [
@@ -279,6 +314,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           if (o['detailed_description'] != null)
                             Text(o['detailed_description'], style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppTheme.textSub)),
                         ]),
+
+                      // ── v19.7.6: Unsere Ansprechpartner (Hanse Kollektiv Yetkilileri) ──
+                      if (_internalContacts.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _InfoCard('Unsere Ansprechpartner (Hanse Kollektiv)', [
+                          ..._internalContacts.map((u) {
+                            final roleMap = {
+                              'geschaeftsfuehrer': 'Geschäftsführer',
+                              'betriebsleiter': 'Betriebsleiter',
+                              'bereichsleiter': 'Bereichsleiter (${u['department']?['name'] ?? ''})',
+                            };
+                            final roleLabel = roleMap[u['role']?.toString().toLowerCase()] ?? u['role']?.toString() ?? '';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                ),
+                                child: Row(children: [
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text('$roleLabel:', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primary, fontFamily: 'Inter')),
+                                    Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                                  ])),
+                                  _ContactActions(phone: u['phone'], email: u['email']),
+                                ]),
+                              ),
+                            );
+                          }),
+                        ]),
+                      ],
                       // ── GWS Tagesplanung Bölümü ──
                       if (canSeeFormsAndPlanlama && isFormEnabled && saName.contains('gastwirtschaft')) ...[
                         const SizedBox(height: 12),
@@ -567,6 +635,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                           .where((id) => id.isNotEmpty)
                           .toList(),
                     ),
+                  // v19.8.0: Gleisbausicherung Tabs
+                  // Tab: SAKRA-Leitstand
+                  if (isGleisbau && appState.canAccessGleisbauLeitstand)
+                    isGleisbauOperativMitarbeiter
+                        ? GleisbauMitarbeiterView(order: o)
+                        : GleisbauSakraLeitstandScreen(order: o),
+                  // Tab: Unterweisung
+                  if (isGleisbau && appState.canDurchfuehrenUnterweisung)
+                    GleisbauUnterweisungScreen(order: o),
+                  // Tab: Ferngesprächsbuch
+                  if (isGleisbau)
+                    GleisbauFerngespraechScreen(order: o),
                 ],
               ),
             ),
@@ -748,34 +828,88 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String? value;
-  final bool isMasked;
-  const _InfoRow(this.label, this.value, {this.isMasked = false});
+Widget _InfoRow(String label, String? value, {bool isMasked = false, Widget? trailing}) {
+  if (value == null || value.isEmpty) return const SizedBox.shrink();
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Text(label, style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontFamily: 'Inter')),
+        ),
+        Expanded(
+          flex: 6,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  isMasked ? '• • • • • •' : value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontFamily: 'Inter',
+                    color: isMasked ? AppTheme.textSub : AppTheme.textMain,
+                    fontStyle: isMasked ? FontStyle.italic : FontStyle.normal,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ContactActions extends StatelessWidget {
+  final String? phone;
+  final String? email;
+  const _ContactActions({this.phone, this.email});
+
+  void _showPhoneOptions(BuildContext context, String p) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ListTile(
+          leading: const Icon(Icons.phone, color: Colors.blue),
+          title: const Text('Anrufen (Ara)'),
+          onTap: () { Navigator.pop(ctx); launchUrl(Uri.parse('tel:$p')); },
+        ),
+        ListTile(
+          leading: const Icon(Icons.message, color: Colors.green),
+          title: const Text('WhatsApp Message'),
+          onTap: () {
+            Navigator.pop(ctx);
+            final clean = p.replaceAll(RegExp(r'[^0-9+]'), '');
+            final waUrl = "https://wa.me/${clean.startsWith('+') ? clean : '+$clean'}";
+            launchUrl(Uri.parse(waUrl), mode: LaunchMode.externalApplication);
+          },
+        ),
+      ])),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (value == null || value!.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter'))),
-          Expanded(
-            child: Text(
-              isMasked ? '• • • • • •' : value!,
-              style: TextStyle(
-                fontSize: 13,
-                fontFamily: 'Inter',
-                color: isMasked ? AppTheme.textSub : AppTheme.textMain,
-                fontStyle: isMasked ? FontStyle.italic : FontStyle.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (phone != null && phone!.trim().isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.phone_android, size: 18, color: AppTheme.primary),
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          onPressed: () => _showPhoneOptions(context, phone!),
+        ),
+      if (email != null && email!.trim().isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.email_outlined, size: 18, color: Colors.blueGrey),
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          onPressed: () => launchUrl(Uri.parse('mailto:$email')),
+        ),
+    ]);
   }
 }

@@ -43,6 +43,40 @@ class AppState extends ChangeNotifier {
   bool get isSystemAdmin => role == 'system_admin';
   bool get isExternalManager => role == 'external_manager';
 
+  // ── v19.8.0: DB-Gleisbausicherung spezifische Rollen ──────────────────
+  String get dbGleisbauRole => (_currentUser?['db_gleisbau_role'] ?? '').toString().trim().toLowerCase();
+  bool get isSakra => dbGleisbauRole == 'sakra';
+  bool get isSiPo => dbGleisbauRole == 'sipo';
+  bool get isBuep => dbGleisbauRole == 'buep';
+  bool get isSeSi => dbGleisbauRole == 'sesi';
+  bool get isSas => dbGleisbauRole == 'sas';
+  bool get isHib => dbGleisbauRole == 'hib';
+  bool get isBahnerder => dbGleisbauRole == 'bahnerder';
+  bool get isSbahnKurzschliess => dbGleisbauRole == 'sbahn_kurzschliess';
+  bool get isBedienerMonteur => dbGleisbauRole == 'bediener_monteur';
+  bool get isRaeumer => dbGleisbauRole == 'raeumer';
+  bool get isPlanerPruefer => dbGleisbauRole == 'planer_pruefer';
+  bool get hasGleisbauRole => dbGleisbauRole.isNotEmpty;
+
+  /// Gleisbau: Operative Rollen (können nur eigene Einsätze sehen)
+  bool get isGleisbauOperativ => isSiPo || isBuep || isSeSi || isHib || isBahnerder || isSbahnKurzschliess || isBedienerMonteur || isRaeumer;
+  /// Gleisbau: Führungsrollen  
+  bool get isGleisbauFuehrung => isSakra || isSas || isPlanerPruefer;
+  /// Gleisbau: Leitstand-Zugriff (SAKRA, GF, BL, BRL)
+  bool get canAccessGleisbauLeitstand => isSakra || isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin || isBackoffice;
+  /// Gleisbau: Unterweisung durchführen
+  bool get canDurchfuehrenUnterweisung => isSakra || isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin;
+  /// Gleisbau: Ereignisse & Ferngespräche erfassen (SAKRA + Führungsrollen + bestimmte operative)
+  bool get canErfassenGleisbauEvents => isSakra || isSas || isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin || isBackoffice;
+  /// Gleisbau: Abschluss melden
+  bool get canGleisbauAbschluss => isSakra || isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  /// Gleisbau: Planung und Disposition
+  bool get canGleisbauPlanung => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
+  /// Gleisbau: Ferngesprächsbuch – eingeschränkte Erfassung für operative Rollen
+  bool get canFerngespraech => canErfassenGleisbauEvents || isSiPo || isBuep || isHib || isSeSi;
+  /// Gleisbau: Dokumente freigeben & als geprüft markieren
+  bool get canGleisbauDokumentePruefen => isPlanerPruefer || isSakra || isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+
   /// Externer Manager'ın muhattap olduğu customer contact ID'leri
   String get externalManagerEmail => _currentUser?['email'] ?? '';
   String get externalManagerContactRef => _currentUser?['id'] ?? '';
