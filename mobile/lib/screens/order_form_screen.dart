@@ -420,7 +420,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     child: Column(
                       children: [
                         SwitchListTile(
-                          title: Text(tr('Bu iş bir Taşeron Firmaya mı (Subunternehmen) verilecek?'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 13)),
+                          title: Text('Wird dieser Auftrag an ein Subunternehmen vergeben?', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 13)),
                           value: _isSubcontractor,
                           activeColor: const Color(0xFF00ACC1),
                           onChanged: (v) => setState(() => _isSubcontractor = v),
@@ -430,8 +430,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: DropdownButtonFormField<String>(
                               value: _selectedSubcontractorId,
-                              decoration: InputDecoration(
-                                labelText: tr('Taşeron Firma Seçin'),
+                              decoration: const InputDecoration(
+                                labelText: 'Subunternehmen auswählen',
                                 filled: true,
                                 fillColor: Colors.white,
                               ),

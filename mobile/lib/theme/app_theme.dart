@@ -184,7 +184,7 @@ class AppTheme {
       case 'active':           return tr('Aktif');
       case 'inactive':         return tr('Pasif');
       case 'potential':        return tr('Potansiyel');
-      case 'subunternehmen':   return tr('Taşeron Firma');
+      case 'subunternehmen':   return 'Subunternehmen';
       default:                 return status;
     }
   }

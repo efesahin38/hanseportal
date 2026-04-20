@@ -285,7 +285,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                             _InfoRow('Summe netto', '${(o['net_amount'] as num).toStringAsFixed(2)} €'),
                         ],
                         
-                        // Taşeron Firma (Subunternehmen)
+                        // Subunternehmen
                         if (o['is_subcontractor'] == true) ...[
                           const Divider(height: 16),
                           Row(
@@ -293,7 +293,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                               const Icon(Icons.handshake_outlined, size: 20, color: Color(0xFF00ACC1)),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Text('Taşeron Firma: ${o['subcontractor']?['name'] ?? 'Bilinmiyor'}', 
+                                child: Text('Subunternehmen: ${o['subcontractor']?['name'] ?? 'Unbekannt'}', 
                                   style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold, color: Color(0xFF00ACC1))),
                               ),
                             ],

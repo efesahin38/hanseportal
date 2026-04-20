@@ -30,14 +30,19 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   Future<void> _load() async {
     try {
       final data = await SupabaseService.getCustomer(widget.customerId);
-      final orders = await SupabaseService.getOrders(customerId: widget.customerId);
-      // Sort orders: planned first, active second, completed last
-      orders.sort((a, b) {
-        final stA = _statusWeight(a['status']);
-        final stB = _statusWeight(b['status']);
-        if (stA != stB) return stA.compareTo(stB);
-        return (b['created_at'] ?? '').compareTo(a['created_at'] ?? '');
-      });
+      List<Map<String, dynamic>> orders = [];
+      try {
+        orders = await SupabaseService.getOrders(customerId: widget.customerId);
+        // Sort orders: planned first, active second, completed last
+        orders.sort((a, b) {
+          final stA = _statusWeight(a['status']);
+          final stB = _statusWeight(b['status']);
+          if (stA != stB) return stA.compareTo(stB);
+          return (b['created_at'] ?? '').compareTo(a['created_at'] ?? '');
+        });
+      } catch (e) {
+        debugPrint('Failed to load orders, backend might be unmigrated: $e');
+      }
 
       if (mounted) setState(() { _customer = data; _orders = orders; _loading = false; });
     } catch (_) {

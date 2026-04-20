@@ -522,7 +522,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')}', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'subunternehmen', child: Text('🔄 ${tr('Taşeron Firma')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'subunternehmen', child: Text('🔄 Subunternehmen', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')}', style: const TextStyle(fontFamily: 'Inter'))),
       ],
       onChanged: canEditStatus ? (v) => setState(() => _status = v!) : null,
