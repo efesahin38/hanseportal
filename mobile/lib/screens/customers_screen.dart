@@ -107,7 +107,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                               selectedColor: AppTheme.primary,
                               backgroundColor: AppTheme.bg,
                               onSelected: (_) {
-                                setState(() { _statusFilter = entry.value; _loading = true; });
+                                setState(() { _statusFilter = entry.value; _loading = true; _filtered = []; _all = []; });
                                 _load();
                               },
                             ),
