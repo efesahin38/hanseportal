@@ -180,7 +180,7 @@ class _OrderFormulareTabState extends State<OrderFormulareTab> {
               canApprove: canApprove,
               canDelete: canDelete,
               canSendToExt: canSendToExt,
-              isVorarbeiter: appState.isVorarbeiter,
+              isReadOnly: !appState.canPlanOperations,
               onOpen: () => _openForm(context, key, row, editable, canApprove, canDelete, canSendToExt, appState),
             );
           }),
@@ -264,14 +264,14 @@ class _FormCard extends StatelessWidget {
   final bool canApprove;
   final bool canDelete;
   final bool canSendToExt;
-  final bool isVorarbeiter;
+  final bool isReadOnly;
   final VoidCallback onOpen;
 
   const _FormCard({
     required this.meta, required this.row, required this.editable,
     required this.canApprove, required this.canDelete,
     this.canSendToExt = false,
-    required this.isVorarbeiter,
+    required this.isReadOnly,
     required this.onOpen,
   });
 
@@ -425,7 +425,7 @@ class _FormCard extends StatelessWidget {
                   ],
                 ])),
                 const SizedBox(width: 12),
-                if (row == null && isVorarbeiter)
+                if (row == null && isReadOnly)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),

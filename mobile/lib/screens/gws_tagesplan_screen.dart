@@ -117,7 +117,8 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
       } else {
         _isTeamLeader = appState.isVorarbeiter;
       }
-      _isReadOnlyForMe = appState.isExternalManager || appState.isVorarbeiter;
+      // Only GF, BL, Bereichsleiter, and System Admin can modify structure
+      _isReadOnlyForMe = !appState.canPlanOperations;
         _selectedOrderId = widget.initialOrderId;
         final o = orders.where((x) => x['id'].toString() == widget.initialOrderId).firstOrNull;
         if (o != null) {
