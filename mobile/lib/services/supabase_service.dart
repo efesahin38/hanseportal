@@ -247,6 +247,27 @@ class SupabaseService {
     return response;
   }
 
+  // ── Aylık Onaylar (Stundenzettel) ────────────────────────
+  static Future<Map<String, dynamic>?> getMonthlyApproval(String userId, String month) async {
+    try {
+      final data = await _client
+          .from('personnel_monthly_approvals')
+          .select('*, manager:users!manager_id(first_name, last_name)')
+          .eq('employee_id', userId)
+          .eq('month', month)
+          .maybeSingle();
+      return data;
+    } catch (e) {
+      debugPrint('[SUPABASE] getMonthlyApproval error: $e');
+      return null;
+    }
+  }
+
+  static Future<void> upsertMonthlyApproval(Map<String, dynamic> data) async {
+    // employee_id ve month unique olduğu için upsert çalışacaktır
+    await _client.from('personnel_monthly_approvals').upsert(data, onConflict: 'employee_id, month');
+  }
+
   // ── Müşteriler ────────────────────────────────────────────
   static Future<List<String>> _resolveServiceAreaIds(String? singleId, List<String>? multipleIds) async {
     List<String> ids = [];

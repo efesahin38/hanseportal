@@ -235,6 +235,8 @@ class PdfService {
     required int year,
     required int month,
     required List<Map<String, dynamic>> sessions,
+    String? employeeSignature,
+    String? approvalDate,
   }) async {
     final pdf = pw.Document();
     final font = await PdfGoogleFonts.notoSansRegular();
@@ -405,13 +407,26 @@ class PdfService {
           // İmza alanları
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                if (employeeSignature != null && employeeSignature.isNotEmpty)
+                  pw.Container(
+                    width: 120,
+                    height: 50,
+                    margin: const pw.EdgeInsets.only(bottom: 2),
+                    child: pw.Image(pw.MemoryImage(base64Decode(employeeSignature.contains(',') ? employeeSignature.split(',').last : employeeSignature))),
+                  ),
                 pw.Container(width: 160, height: 0.5, color: PdfColors.grey400),
                 pw.SizedBox(height: 4),
                 pw.Text('Mitarbeiter: $fullName', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
               ]),
               pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                if (approvalDate != null)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 4),
+                    child: pw.Text(approvalDate, style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.black)),
+                  ),
                 pw.Container(width: 160, height: 0.5, color: PdfColors.grey400),
                 pw.SizedBox(height: 4),
                 pw.Text('Vorgesetzte/r / Datum', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),

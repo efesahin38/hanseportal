@@ -62,6 +62,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         role: _roleFilter,
         status: 'active',
+        serviceAreaIds: appState.isBereichsleiter ? appState.serviceAreaIds : null,
       );
       if (mounted) setState(() { _all = data; _applyFilter(); _loading = false; });
     } catch (_) {

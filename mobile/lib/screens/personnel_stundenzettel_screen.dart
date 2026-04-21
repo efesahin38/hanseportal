@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
 import '../services/pdf_service.dart';
 import '../services/localization_service.dart';
+import '../providers/app_state.dart';
+import '../widgets/signature_pad_widget.dart';
 
 /// Üst yetkililer için: Belirli bir çalışanın aylık Stundenzettel'ini gösterir.
 /// Ay seçimi, 31 günlük tablo, onaylanan saatler ve PDF indirme.
@@ -19,8 +23,11 @@ class PersonnelStundenzettelScreen extends StatefulWidget {
 class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   List<Map<String, dynamic>> _sessions = [];
+  Map<String, dynamic>? _approvalData;
   bool _loading = false;
   bool _pdfLoading = false;
+  String? _newSignature;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -31,12 +38,21 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await SupabaseService.getApprovedSessionsDetailByMonth(
+      final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      final sessions = await SupabaseService.getApprovedSessionsDetailByMonth(
         widget.employee['id'],
         _selectedMonth.year,
         _selectedMonth.month,
       );
-      if (mounted) setState(() { _sessions = data; _loading = false; });
+      final approval = await SupabaseService.getMonthlyApproval(widget.employee['id'], monthStr);
+      
+      if (mounted) {
+        setState(() { 
+          _sessions = sessions; 
+          _approvalData = approval;
+          _loading = false; 
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -44,6 +60,55 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
           SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error),
         );
       }
+    }
+  }
+
+  Future<void> _sendToManager() async {
+    if (_newSignature == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte unterschreiben Sie zuerst.')));
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      await SupabaseService.upsertMonthlyApproval({
+        'employee_id': widget.employee['id'],
+        'month': monthStr,
+        'employee_signature': _newSignature,
+        'employee_signed_at': DateTime.now().toIso8601String(),
+        'status': 'pending',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bericht an Bereichsleiter gesendet!'), backgroundColor: AppTheme.success));
+        _load();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _approve() async {
+    setState(() => _isSaving = true);
+    try {
+      final appState = context.read<AppState>();
+      final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      await SupabaseService.upsertMonthlyApproval({
+        'employee_id': widget.employee['id'],
+        'month': monthStr,
+        'manager_id': appState.userId,
+        'manager_approved_at': DateTime.now().toIso8601String(),
+        'status': 'approved',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bericht erfolgreich genehmigt!'), backgroundColor: AppTheme.success));
+        _load();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -90,11 +155,17 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
   Future<void> _downloadPdf() async {
     setState(() => _pdfLoading = true);
     try {
+      final approvalDate = _approvalData?['manager_approved_at'] != null 
+          ? DateFormat('dd.MM.yyyy').format(DateTime.parse(_approvalData!['manager_approved_at'])) 
+          : null;
+
       final bytes = await PdfService.buildStundenzettelPdf(
         employee: widget.employee,
         year: _selectedMonth.year,
         month: _selectedMonth.month,
         sessions: _sessions,
+        employeeSignature: _approvalData?['employee_signature'],
+        approvalDate: approvalDate,
       );
       final name = '${widget.employee['first_name']}_${widget.employee['last_name']}'
           '_${_selectedMonth.year}_${_selectedMonth.month.toString().padLeft(2, '0')}.pdf';
@@ -482,7 +553,127 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
           ),
         ),
         const SizedBox(height: 20),
+
+        // ── İmza ve Onay Bölümü ──
+        _buildApprovalSection(),
+        const SizedBox(height: 40),
       ],
+    );
+  }
+
+  Widget _buildApprovalSection() {
+    final appState = context.watch<AppState>();
+    final isOwnProfile = widget.employee['id'] == appState.userId;
+    final status = _approvalData?['status'] ?? 'none';
+    final isApproved = status == 'approved';
+    final isSigned = status == 'pending' || isApproved;
+
+    // Yetki kontrolü (Onaylayabilir mi?)
+    bool canApprove = appState.isGeschaeftsfuehrer || 
+                      appState.isBetriebsleiter || 
+                      appState.isSystemAdmin || 
+                      appState.isBuchhaltung;
+    
+    // Bereichsleiter ise ortak servis alanı var mı bak
+    if (!canApprove && appState.isBereichsleiter) {
+      final myAreas = appState.serviceAreaIds;
+      final empAreas = (widget.employee['user_service_areas'] as List?)?.map((a) => a['service_area_id'].toString()).toList() ?? [];
+      canApprove = myAreas.any((id) => empAreas.contains(id));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isApproved ? const Color(0xFFF0FDF4) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isApproved ? const Color(0xFFBBF7D0) : AppTheme.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isApproved ? Icons.verified : (isSigned ? Icons.history : Icons.edit_note),
+                color: isApproved ? AppTheme.success : (isSigned ? Colors.orange : AppTheme.textSub),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isApproved ? 'Monatlicher Bericht Genehmigt' : (isSigned ? 'Warten auf Genehmigung' : 'Bericht Unterschreiben'),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isApproved ? AppTheme.success : AppTheme.textMain,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              if (isApproved) ...[
+                const Spacer(),
+                const Icon(Icons.check_circle, color: AppTheme.success, size: 24),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (isApproved) ...[
+            _infoRow('Mitarbeiter Signatur', 'Bereit im PDF'),
+            _infoRow('Genehmigt von', '${_approvalData?['manager']?['first_name'] ?? ''} ${_approvalData?['manager']?['last_name'] ?? ''}'),
+            _infoRow('Datum', _approvalData?['manager_approved_at'] != null ? DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(_approvalData!['manager_approved_at'])) : '-'),
+          ] else if (isSigned) ...[
+            // İmzalı ama onay bekliyor
+            if (_approvalData?['employee_signature'] != null)
+              Center(
+                child: Container(
+                  height: 80,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(border: Border.all(color: AppTheme.divider), borderRadius: BorderRadius.circular(8)),
+                  child: Image.memory(base64Decode(_approvalData!['employee_signature'])),
+                ),
+              ),
+            const SizedBox(height: 12),
+            Text('Gesendet am: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(_approvalData!['employee_signed_at']))}', 
+              textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+            const SizedBox(height: 16),
+            if (canApprove)
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _approve,
+                icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check_circle),
+                label: const Text('BERİCHTİ ONAYLA', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+          ] else if (isOwnProfile) ...[
+            // Henüz imzalanmamış ve kendi profili
+            const Text('Bitte unterschreiben Sie den Bericht für diesen Monat, um ihn an Ihren Bereichsleiter zu senden:', style: TextStyle(fontSize: 13, color: AppTheme.textSub)),
+            const SizedBox(height: 12),
+            SignaturePadWidget(
+              onSigned: (b64) => _newSignature = b64,
+              color: AppTheme.primary,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _isSaving ? null : _sendToManager,
+              icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send),
+              label: const Text('UNTERSCHREİBEN & SENDEN', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+            ),
+          ] else ...[
+            const Center(child: Text('Der Mitarbeiter hat diesen Bericht noch nicht unterschrieben.', style: TextStyle(fontStyle: FontStyle.italic, color: AppTheme.textSub))),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub)),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
