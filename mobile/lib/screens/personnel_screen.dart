@@ -20,6 +20,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   List<Map<String, dynamic>> _all = [];
   List<Map<String, dynamic>> _filtered = [];
   bool _loading = true;
+  String _search = '';
   String? _roleFilter;
   Map<String, String> _approvalStatuses = {}; // employee_id -> status
 
