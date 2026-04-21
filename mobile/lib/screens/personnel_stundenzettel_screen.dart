@@ -237,6 +237,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
     final monthLabel = DateFormat('MMMM yyyy', 'de_DE').format(_selectedMonth);
     final hoursByDay = _hoursByDay;
     final orderByDay = _orderByDay;
+    final status = _approvalData?['status'] ?? 'none';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -279,7 +280,15 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter')),
+                          Row(
+                            children: [
+                              Expanded(child: Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter'))),
+                              if (status == 'approved')
+                                const Icon(Icons.check_circle, color: AppTheme.success, size: 20)
+                              else if (status == 'pending')
+                                const Icon(Icons.access_time_filled, color: Colors.orange, size: 20),
+                            ],
+                          ),
                           Text(AppTheme.roleLabel(widget.employee['role'] ?? ''), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]),
                       ),

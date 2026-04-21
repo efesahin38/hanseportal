@@ -57,17 +57,16 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // 1. Kullanıcıları çek
-      // Eğer GF, BF, Admin, Accounting, Backoffice ise herşeyi görür (serviceAreaIds: null)
-      // Eğer Bereichsleiter ise sadece kendi alanlarını görür
+      // Eğer GF, BF, Admin, Accounting, Backoffice ise herşeyi görür (companyId: null, serviceAreaIds: null)
+      // Bu roller holding üzerindeki tüm personelleri görebilmeli.
       final isHighLevel = appState.isGeschaeftsfuehrer || 
-                         appState.isBetriebsleiter || 
                          appState.isSystemAdmin || 
+                         appState.isBetriebsleiter || 
                          appState.isBuchhaltung || 
                          appState.isBackoffice;
 
       final data = await SupabaseService.getUsers(
-        companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
+        companyId: isHighLevel ? null : appState.companyId,
         role: _roleFilter,
         status: 'active',
         serviceAreaIds: isHighLevel ? null : appState.serviceAreaIds,
@@ -242,21 +241,11 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                   backgroundColor: saColor.withOpacity(0.15),
                                   child: Text(initial, style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name.isEmpty ? tr('İsimsiz Personel') : name,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
-                                      ),
-                                    ),
-                                    // Onay Durumu İkonu
-                                    if (_approvalStatuses[u['id']] == 'approved')
-                                      const Icon(Icons.check_circle, color: AppTheme.success, size: 16)
-                                    else if (_approvalStatuses[u['id']] == 'pending')
-                                      const Icon(Icons.access_time_filled, color: Colors.orange, size: 16),
-                                  ],
-                                ),                                subtitle: Column(
+                                title: Text(
+                                  name.isEmpty ? tr('İsimsiz Personel') : name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
+                                ),
+                                subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w500)),
