@@ -794,10 +794,10 @@ class SupabaseService {
     ''').eq('status', 'completed').eq('approval_status', 'pending');
     
     if (departmentId != null) {
-      query = query.eq('orders.department_id', departmentId) as dynamic;
+      query = query.eq('order.department_id', departmentId) as dynamic;
     }
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('orders.service_area_id', serviceAreaIds) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     }
     
     final data = await query.order('actual_end', ascending: false);
@@ -810,18 +810,26 @@ class SupabaseService {
       String userId, int year, int month, {List<String>? serviceAreaIds}) async {
     final start = DateTime(year, month, 1).toIso8601String();
     final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
-    final data = await _client
+    
+    final inner = (serviceAreaIds != null && serviceAreaIds.isNotEmpty) ? '!inner' : '';
+
+    var query = _client
         .from('work_sessions')
         .select('''
           id, actual_start, actual_end, actual_duration_h, approved_billable_hours,
           approved_at, approval_status, note,
-          order:orders!work_sessions_order_id_fkey(id, title, order_number)
+          order:orders!work_sessions_order_id_fkey$inner(id, title, order_number, service_area_id)
         ''')
         .eq('user_id', userId)
         .eq('approval_status', 'approved')
         .gte('actual_start', start)
-        .lte('actual_start', end)
-        .order('actual_start');
+        .lte('actual_start', end);
+
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+    }
+
+    final data = await query.order('actual_start');
     return List<Map<String, dynamic>>.from(data);
   }
 
