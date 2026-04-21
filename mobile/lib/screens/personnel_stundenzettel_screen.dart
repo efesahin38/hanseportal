@@ -40,7 +40,10 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
       final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
       final appState = context.read<AppState>();
       final isHighLevel = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isBackoffice;
-      final saIds = isHighLevel ? null : appState.serviceAreaIds;
+      final isStaffManager = appState.departmentId == widget.employee['department_id']?.toString();
+      
+      // Kendi personeliyse TÜM saatleri görmeli (Onaylayabilmesi için), değilse sadece kendi servis alanlarını görmeli
+      final saIds = (isHighLevel || isStaffManager) ? null : appState.serviceAreaIds;
 
       final sessions = await SupabaseService.getApprovedSessionsDetailByMonth(
         widget.employee['id'],
@@ -594,13 +597,12 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
       if (empUsa is List) {
         empAreas = empUsa.map((a) => (a['service_area_id'] ?? '').toString()).where((id) => id.isNotEmpty).toList();
       }
-      final myDeptId = appState.departmentId;
-      final empDeptId = widget.employee['department_id']?.toString();
-      
-      // Hem ortak servis alanı olmalı hem de aynı departman olmalı
-      canApprove = (myDeptId != null && myDeptId == empDeptId) && 
-                   myAreas.any((id) => empAreas.contains(id));
-    }
+       final myDeptId = appState.departmentId;
+       final empDeptId = widget.employee['department_id']?.toString();
+       
+       // Eğer kendi departmanının personeli ise direkt olarak onaylama yetkisi vardır
+       canApprove = (myDeptId != null && myDeptId.isNotEmpty && myDeptId == empDeptId);
+     }
 
     return Container(
       padding: const EdgeInsets.all(20),

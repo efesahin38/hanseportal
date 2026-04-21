@@ -67,7 +67,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
 
       final data = await SupabaseService.getUsers(
         companyId: (appState.canViewAllPersonnel || appState.isBereichsleiter) ? null : appState.companyId,
-        departmentId: null, // v1.0.8: Relaxed filtering to ensure visibility via Service Areas
+        departmentId: null, // v1.0.9: Relaxed filtering to ensure visibility via Service Areas
         role: _roleFilter,
         status: 'active',
         serviceAreaIds: appState.canViewAllPersonnel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds),
