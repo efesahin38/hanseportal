@@ -50,7 +50,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
       // This catches projects even if sessions aren't currently "active" in the filter.
       final pastOrdersQuery = await SupabaseService.client.from('orders').select('''
         *,
-        customer:customers(id, name),
+        customer:customers!orders_customer_id_fkey(id, name),
         invoice_drafts(total_amount, subtotal),
         extra_works(estimated_material_cost, estimated_labor_cost, recorded_material_cost, recorded_labor_cost),
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost, actual_labor_cost, actual_material_cost),

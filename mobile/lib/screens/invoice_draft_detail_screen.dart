@@ -36,7 +36,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
           .from('invoice_drafts')
           .select('''
             *,
-            customer:customers(id, name, phone, email),
+            customer:customers!orders_customer_id_fkey(id, name, phone, email),
             issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, iban, bic, tax_number)
           ''')
           .eq('id', widget.draftId)

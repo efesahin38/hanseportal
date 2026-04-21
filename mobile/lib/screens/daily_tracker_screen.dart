@@ -31,7 +31,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
             users(id, first_name, last_name, role),
             operation_plans!inner(
               id, plan_date, start_time, end_time, status, site_instructions,
-              order:orders(id, title, site_address, customer:customers(id, name)),
+              order:orders(id, title, site_address, customer:customers!orders_customer_id_fkey(id, name)),
               company:orders(company:companies(name))
             )
           ''')

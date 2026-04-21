@@ -1213,7 +1213,7 @@ class SupabaseService {
         id, title, order_number, service_area_id, department_id,
         work_reports(total_revenue, estimated_labor_cost, estimated_material_cost)
       ),
-      customer:customers(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
+      customer:customers!orders_customer_id_fkey(id, name, email, phone, address, tax_number, vat_number, iban, bic, notes),
       issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, address, iban, bic, tax_number, vat_number)
     ''');
     if (status != null) {
@@ -1657,7 +1657,7 @@ class SupabaseService {
         extra_works(*), 
         work_sessions(approved_billable_hours)
       ),
-      customer:customers(id, name)
+      customer:customers!orders_customer_id_fkey(id, name)
     ''')
         .gte('created_at', dateFrom)
         .lte('created_at', '${dateTo} 23:59:59')
