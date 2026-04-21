@@ -37,6 +37,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
 
   List<Map<String, dynamic>> _personnel = [];
   Set<String> _conflictingUserIds = {};
+  String? _orderDepartmentId; // v1.0.2: RLS için departman ID sakla
 
   @override
   void initState() {
@@ -53,7 +54,10 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
     try {
       final order = await SupabaseService.getOrder(widget.orderId);
       if (order != null && mounted) {
-        setState(() => _orderTitle = order['title'] ?? tr('İş'));
+        setState(() {
+          _orderTitle = order['title'] ?? tr('İş');
+          _orderDepartmentId = order['department_id']?.toString();
+        });
       }
     } catch (_) {}
   }
@@ -235,6 +239,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         'material_notes': _materialNotes.text.trim(),
         'status': _status,
         'notes': _notes.text.trim(),
+        if (_orderDepartmentId != null) 'department_id': _orderDepartmentId, // v1.0.2: RLS izolasyonu için
       };
 
       if (widget.planId == null) {

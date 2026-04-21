@@ -351,7 +351,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
-                  const Center(child: Text('HansePortal v1.0.1', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+                  const Center(child: Text('HansePortal v1.0.2', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
                 ],
               );
             },
