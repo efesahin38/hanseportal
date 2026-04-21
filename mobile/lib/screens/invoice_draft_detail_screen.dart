@@ -36,7 +36,10 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
           .from('invoice_drafts')
           .select('''
             *,
-            customer:customers!orders_customer_id_fkey(id, name, phone, email),
+            order:orders(
+              id,
+              customer:customers!orders_customer_id_fkey(id, name, phone, email)
+            ),
             issuing_company:companies!invoice_drafts_issuing_company_id_fkey(id, name, short_name, iban, bic, tax_number)
           ''')
           .eq('id', widget.draftId)
@@ -139,7 +142,8 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
 
     final d = _draft!;
     final status = d['status'] ?? '';
-    final customer = d['customer'];
+    final orderObj = d['order'] ?? {};
+    final customer = orderObj['customer'];
     final company = d['issuing_company'];
     
     // Fallback: If total_amount is 0, check if we can get it from work_reports via FutureBuilder or a pre-loaded value.

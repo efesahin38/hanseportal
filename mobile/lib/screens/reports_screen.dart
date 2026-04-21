@@ -178,7 +178,8 @@ class _InvoiceDraftTab extends StatelessWidget {
         itemBuilder: (_, i) {
           final d = drafts[i];
           final status = d['status'] ?? 'auto_generated';
-          final customer = d['customer'];
+          final order = d['order'] ?? {};
+          final customer = order['customer'];
           final total = d['total_amount'];
           final issuer = d['issuing_company'];
 
@@ -1525,18 +1526,19 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                       ),
                       ...invoices.map((inv) {
                         // Relationship handling (Safety against List vs Map)
-                        Map customer = {};
-                        if (inv['customer'] is Map) {
-                          customer = inv['customer'];
-                        } else if (inv['customer'] is List && (inv['customer'] as List).isNotEmpty) {
-                          customer = (inv['customer'] as List).first;
-                        }
-
                         Map order = {};
                         if (inv['order'] is Map) {
                           order = inv['order'];
                         } else if (inv['order'] is List && (inv['order'] as List).isNotEmpty) {
                           order = (inv['order'] as List).first;
+                        }
+
+                        Map customer = {};
+                        if (order['customer'] is Map) {
+                          customer = order['customer'];
+                        } else if (inv['customer'] is Map) {
+                          // Fallback to top-level if still present
+                          customer = inv['customer'];
                         }
 
                         // NET KAR HESAPLAMA (Safe version)

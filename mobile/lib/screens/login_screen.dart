@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     tr('Dijital Yönetim Sistemi'),
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
                   ),
-                  const Text('v1.1.2', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                  const Text('v1.1.3', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                   const SizedBox(height: 48),
   
                   // ── Form Kartı ─────────────────────────────────
