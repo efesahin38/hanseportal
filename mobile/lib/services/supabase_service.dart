@@ -777,7 +777,10 @@ class SupabaseService {
   }
 
   static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId, List<String>? serviceAreaIds}) async {
-    final inner = serviceAreaIds != null ? '!inner' : '';
+    // v1.0.6: Strict isolation - if a manager has no areas, they see NOTHING.
+    if (serviceAreaIds != null && serviceAreaIds.isEmpty) return [];
+
+    final inner = (serviceAreaIds != null && serviceAreaIds.isNotEmpty) ? '!inner' : '';
     var query = _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name),
@@ -808,6 +811,9 @@ class SupabaseService {
   /// Stundenzettel (çalışma saati çizelgesi) ekranı için kullanılır.
   static Future<List<Map<String, dynamic>>> getApprovedSessionsDetailByMonth(
       String userId, int year, int month, {List<String>? serviceAreaIds}) async {
+    // v1.0.6: Strict isolation - if a manager has no areas, they see NOTHING.
+    if (serviceAreaIds != null && serviceAreaIds.isEmpty) return [];
+
     final start = DateTime(year, month, 1).toIso8601String();
     final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
     

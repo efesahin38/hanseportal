@@ -29,7 +29,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
     try {
       final appState = context.read<AppState>();
       final isHighLevel = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isBackoffice;
-      final serviceAreaIds = isHighLevel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds);
+      final serviceAreaIds = isHighLevel ? null : appState.serviceAreaIds;
       
       final data = await SupabaseService.getWorkSessionsPendingApproval(
         departmentId: null, // v1.0.4: Replaced by serviceAreaIds for better isolation
