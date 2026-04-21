@@ -779,6 +779,28 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  /// Bir çalışanın belirli bir ay içindeki onaylı seanslarını detaylı getirir.
+  /// Stundenzettel (çalışma saati çizelgesi) ekranı için kullanılır.
+  static Future<List<Map<String, dynamic>>> getApprovedSessionsDetailByMonth(
+      String userId, int year, int month) async {
+    final start = DateTime(year, month, 1).toIso8601String();
+    final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
+
+    final data = await _client
+        .from('work_sessions')
+        .select('''
+          id, actual_start, actual_end, actual_duration_h, approved_billable_hours,
+          approved_at, approval_status, note,
+          order:orders!work_sessions_order_id_fkey(id, title, order_number)
+        ''')
+        .eq('user_id', userId)
+        .eq('approval_status', 'approved')
+        .gte('actual_start', start)
+        .lte('actual_start', end)
+        .order('actual_start');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
   static Future<double> getApprovedHoursByMonth(String userId, DateTime month) async {
     final start = DateTime(month.year, month.month, 1).toIso8601String();
     final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59).toIso8601String();

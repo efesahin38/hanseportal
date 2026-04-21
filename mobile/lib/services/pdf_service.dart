@@ -227,8 +227,213 @@ class PdfService {
   }
 
   // ─────────────────────────────────────────────────────────
+  // STUNDENZETTEL (ÇALIŞAN AYLIK SAATLERİ) PDF
+  // ─────────────────────────────────────────────────────────
+  static Future<Uint8List> buildStundenzettelPdf({
+    required Map<String, dynamic> employee,
+    required int year,
+    required int month,
+    required List<Map<String, dynamic>> sessions,
+  }) async {
+    final pdf = pw.Document();
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
+
+    final monthName = DateFormat('MMMM yyyy', 'de_DE').format(DateTime(year, month));
+    final fullName = '${employee['first_name'] ?? ''} ${employee['last_name'] ?? ''}'.trim();
+
+    // Her gün için onaylı saatleri hesapla
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final Map<int, double> hoursByDay = {};
+    final Map<int, String> orderByDay = {};
+
+    for (final s in sessions) {
+      final start = s['actual_start'] != null
+          ? DateTime.tryParse(s['actual_start'])?.toLocal()
+          : null;
+      if (start == null) continue;
+      final day = start.day;
+      final hrs = (s['approved_billable_hours'] as num?)?.toDouble() ?? 0.0;
+      hoursByDay[day] = (hoursByDay[day] ?? 0.0) + hrs;
+      final orderTitle = s['order']?['title']?.toString() ?? '';
+      if (orderTitle.isNotEmpty) {
+        if (orderByDay[day] == null || !orderByDay[day]!.contains(orderTitle)) {
+          orderByDay[day] = orderByDay[day] != null
+              ? '${orderByDay[day]}, $orderTitle'
+              : orderTitle;
+        }
+      }
+    }
+
+    final totalHours = hoursByDay.values.fold(0.0, (a, b) => a + b);
+    final workDays = hoursByDay.keys.length;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(base: font, bold: fontBold),
+        header: (ctx) => _buildHeader(ctx, font, fontBold, logo: logo),
+        footer: (ctx) => _buildFooter(ctx, font, fontBold),
+        build: (ctx) => [
+          pw.SizedBox(height: 6),
+
+          // Başlık
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.blueGrey800,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('STUNDENZETTEL', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.white)),
+                pw.Text(monthName.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 13, color: PdfColors.amber)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+
+          // Çalışan Bilgisi
+          _infoTable([
+            ['Mitarbeiter', fullName],
+            ['Monat', monthName],
+            ['Arbeitstage', '$workDays Tage'],
+            ['Gesamtstunden', '${totalHours.toStringAsFixed(2)} Std.'],
+          ], font, fontBold),
+          pw.SizedBox(height: 14),
+
+          // Günlük tablo başlığı
+          _sectionTitle('Tagesübersicht – Genehmigte Stunden', fontBold),
+          pw.SizedBox(height: 6),
+
+          // 31 günlük tablo
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+            columnWidths: {
+              0: const pw.FixedColumnWidth(50),
+              1: const pw.FixedColumnWidth(100),
+              2: const pw.FixedColumnWidth(60),
+              3: const pw.FlexColumnWidth(),
+            },
+            children: [
+              // Header
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
+                children: ['Tag', 'Wochentag', 'Zeit (Std.)', 'Auftrag'].map((h) =>
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+                    child: pw.Text(h, style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.white)),
+                  )
+                ).toList(),
+              ),
+              // Günler
+              ...List.generate(daysInMonth, (i) {
+                final day = i + 1;
+                final date = DateTime(year, month, day);
+                final weekday = DateFormat('EEE', 'de_DE').format(date);
+                final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+                final hours = hoursByDay[day];
+                final hasWork = hours != null && hours > 0;
+                final bgColor = isWeekend ? PdfColors.grey100 : (hasWork ? PdfColors.lightGreen50 : PdfColors.white);
+
+                return pw.TableRow(
+                  decoration: pw.BoxDecoration(color: bgColor),
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: pw.Text('$day', style: pw.TextStyle(font: fontBold, fontSize: 9, color: isWeekend ? PdfColors.grey500 : PdfColors.black)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: pw.Text(weekday, style: pw.TextStyle(font: font, fontSize: 9, color: isWeekend ? PdfColors.grey500 : PdfColors.black)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: pw.Text(
+                        hasWork ? hours!.toStringAsFixed(2) : (isWeekend ? '-' : ''),
+                        style: pw.TextStyle(
+                          font: hasWork ? fontBold : font,
+                          fontSize: 9,
+                          color: hasWork ? PdfColors.green800 : PdfColors.grey400,
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: pw.Text(
+                        orderByDay[day] ?? '',
+                        style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey700),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+
+              // Toplam satırı
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: pw.Text('Σ', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.white)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: pw.Text('Gesamt', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.white)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: pw.Text('${totalHours.toStringAsFixed(2)}', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.amber)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: pw.Text('$workDays Arbeitstage', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.white70)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          pw.SizedBox(height: 20),
+
+          // İmza alanları
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Container(width: 160, height: 0.5, color: PdfColors.grey400),
+                pw.SizedBox(height: 4),
+                pw.Text('Mitarbeiter: $fullName', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
+              ]),
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Container(width: 160, height: 0.5, color: PdfColors.grey400),
+                pw.SizedBox(height: 4),
+                pw.Text('Vorgesetzte/r / Datum', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
+              ]),
+            ],
+          ),
+
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Erstellt am: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())} – Hanse Kollektiv GmbH – HansePortal ERP',
+            style: pw.TextStyle(font: font, fontSize: 7.5, color: PdfColors.grey500, fontStyle: pw.FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  // ─────────────────────────────────────────────────────────
   // GASTWIRTSCHAFTSSERVICE (GWS) RAPORU
   // ─────────────────────────────────────────────────────────
+
   static Future<Uint8List> buildGwsReportPdf({
     required Map<String, dynamic> plan,
     required List<Map<String, dynamic>> rooms,

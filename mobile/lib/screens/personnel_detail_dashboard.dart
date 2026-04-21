@@ -8,6 +8,7 @@ import '../services/localization_service.dart';
 import 'personnel_form_screen.dart';
 import 'employee_folder_screen.dart';
 import 'work_session_approval_screen.dart';
+import 'personnel_stundenzettel_screen.dart';
 
 class PersonnelDetailDashboard extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -18,6 +19,10 @@ class PersonnelDetailDashboard extends StatelessWidget {
     final appState = context.read<AppState>();
     final isExternalManager = (user['role'] ?? '') == 'external_manager';
     final canManageLeave = (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) && !isExternalManager;
+    // Üst yetkililer (GF, BL, Bereichsleiter, Buchhaltung, Admin) çalışanın
+    // Stundenzettel'ini görebilir; diğerleri kendi onay ekranına gider.
+    final canViewStundenzettel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter ||
+        appState.isBereichsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
 
     return Scaffold(
       appBar: AppBar(title: Text('${user['first_name']} ${user['last_name']}')),
@@ -82,10 +87,18 @@ class PersonnelDetailDashboard extends StatelessWidget {
               _MenuCard(
                 icon: Icons.access_time,
                 title: tr('Arbeitszeiterfassung'),
-                subtitle: tr('Einsatzdaten & Stundenzettel'),
+                subtitle: canViewStundenzettel
+                    ? tr('Monatliche Stundenzettel & Zeiten ansehen')
+                    : tr('Einsatzdaten & Stundenzettel'),
                 color: const Color(0xFFF59E0B),
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen()));
+                  if (canViewStundenzettel) {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PersonnelStundenzettelScreen(employee: user),
+                    ));
+                  } else {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkSessionApprovalScreen()));
+                  }
                 },
               ),
 
