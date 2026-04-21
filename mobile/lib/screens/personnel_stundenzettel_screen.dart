@@ -37,12 +37,16 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try {
       final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      final appState = context.read<AppState>();
+      final isHighLevel = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isBackoffice;
+      final saIds = isHighLevel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds);
+
       final sessions = await SupabaseService.getApprovedSessionsDetailByMonth(
         widget.employee['id'],
         _selectedMonth.year,
         _selectedMonth.month,
+        serviceAreaIds: saIds,
       );
       final approval = await SupabaseService.getMonthlyApproval(widget.employee['id'], monthStr);
       

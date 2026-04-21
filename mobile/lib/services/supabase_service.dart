@@ -776,12 +776,13 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId}) async {
+  static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId, List<String>? serviceAreaIds}) async {
+    final inner = serviceAreaIds != null ? '!inner' : '';
     var query = _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name),
-      order:orders(
-        id, title, order_number, department_id,
+      order:orders$inner(
+        id, title, order_number, department_id, service_area_id,
         department:departments(name),
         customer:customers!orders_customer_id_fkey(name),
         extra_works:extra_works!extra_works_order_id_fkey(
@@ -795,6 +796,9 @@ class SupabaseService {
     if (departmentId != null) {
       query = query.eq('orders.department_id', departmentId) as dynamic;
     }
+    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
+      query = query.inFilter('orders.service_area_id', serviceAreaIds) as dynamic;
+    }
     
     final data = await query.order('actual_end', ascending: false);
     return List<Map<String, dynamic>>.from(data);
@@ -803,10 +807,9 @@ class SupabaseService {
   /// Bir çalışanın belirli bir ay içindeki onaylı seanslarını detaylı getirir.
   /// Stundenzettel (çalışma saati çizelgesi) ekranı için kullanılır.
   static Future<List<Map<String, dynamic>>> getApprovedSessionsDetailByMonth(
-      String userId, int year, int month) async {
+      String userId, int year, int month, {List<String>? serviceAreaIds}) async {
     final start = DateTime(year, month, 1).toIso8601String();
     final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
-
     final data = await _client
         .from('work_sessions')
         .select('''

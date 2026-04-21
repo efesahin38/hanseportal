@@ -28,8 +28,13 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
     setState(() => _loading = true);
     try {
       final appState = context.read<AppState>();
-      String? deptId = appState.isBereichsleiter ? appState.departmentId : null;
-      final data = await SupabaseService.getWorkSessionsPendingApproval(departmentId: deptId);
+      final isHighLevel = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isBackoffice;
+      final serviceAreaIds = isHighLevel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds);
+      
+      final data = await SupabaseService.getWorkSessionsPendingApproval(
+        departmentId: null, // v1.0.4: Replaced by serviceAreaIds for better isolation
+        serviceAreaIds: serviceAreaIds,
+      );
       
       // Group by operation_plan_id or order_id
       Map<String, List<Map<String, dynamic>>> groups = {};
