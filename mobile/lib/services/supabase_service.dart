@@ -776,13 +776,9 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId, List<String>? serviceAreaIds}) async {
-    // v1.0.6: Strict isolation - if a manager has no areas, they see NOTHING.
-    if (serviceAreaIds != null && serviceAreaIds.isEmpty) return [];
-
-    // v1.1.0: Broaden filter to allow matches by either Service Area OR Primary Department.
-    // Use a standard join and then apply a flexible OR filter.
-    var query = _client.from('work_sessions').select('''
+    // v1.1.1: Reliable App-Level Filtering.
+    // Fetch all pending sessions and filter in Dart to avoid SQL join/OR pitfalls.
+    final data = await _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name),
       order:orders(
@@ -795,22 +791,31 @@ class SupabaseService {
         )
       ),
       operation_plan:operation_plans(id, estimated_duration_h, start_time, end_time)
-    ''').eq('status', 'completed').eq('approval_status', 'pending');
+    ''').eq('status', 'completed').eq('approval_status', 'pending').order('actual_end', ascending: false);
     
-    final filterStrings = <String>[];
-    if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      filterStrings.add('order.service_area_id.in.(${serviceAreaIds.join(',')})');
-    }
-    if (departmentId != null) {
-      filterStrings.add('order.department_id.eq.$departmentId');
-    }
+    final sessions = List<Map<String, dynamic>>.from(data);
     
-    if (filterStrings.isNotEmpty) {
-      query = query.or(filterStrings.join(',')) as dynamic;
+    // If no filter is provided (Admin), return all.
+    if (departmentId == null && (serviceAreaIds == null || serviceAreaIds.isEmpty)) {
+      return sessions;
     }
-    
-    final data = await query.order('actual_end', ascending: false);
-    return List<Map<String, dynamic>>.from(data);
+
+    // Filter by Service Area OR Department
+    final myDeptId = departmentId?.toString();
+    final myAreas = serviceAreaIds ?? [];
+
+    return sessions.where((s) {
+      final order = s['order'];
+      if (order == null) return false;
+      
+      final orderSaId = order['service_area_id']?.toString();
+      final orderDeptId = order['department_id']?.toString();
+      
+      final matchesArea = orderSaId != null && myAreas.contains(orderSaId);
+      final matchesDept = orderDeptId != null && orderDeptId == myDeptId;
+      
+      return matchesArea || matchesDept;
+    }).toList();
   }
 
   /// Bir çalışanın belirli bir ay içindeki onaylı seanslarını detaylı getirir.
