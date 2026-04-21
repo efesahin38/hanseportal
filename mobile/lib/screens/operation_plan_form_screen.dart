@@ -475,7 +475,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                                   child: Row(children: [
                                     const Icon(Icons.info_outline, color: AppTheme.warning, size: 14),
                                     const SizedBox(width: 8),
-                                    Expanded(child: Text(tr('Bu personelin seçili tarihte başka bir departmanda / projede de mesaisi var!'), style: const TextStyle(fontSize: 11, color: AppTheme.warning))),
+                                    Expanded(child: Text(tr('Bu personelin seçili tarihte başka bir departman / proje de mesaisi var!'), style: const TextStyle(fontSize: 11, color: AppTheme.warning))),
                                   ]),
                                 ),
                               )

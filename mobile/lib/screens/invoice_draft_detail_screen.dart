@@ -259,17 +259,16 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                 double effectiveRevenue = total;
                 double realLaborCost = 0;
                 double realMaterialCost = 0;
-                String source = 'Henüz iş sonu raporu girilmemiş';
+                String source = tr('Henüz iş sonu raporu girilmemiş');
                 
                 if (snapshot.hasData && snapshot.data != null) {
                   final wr = snapshot.data as Map<String, dynamic>;
                   realLaborCost = (wr['estimated_labor_cost'] as num?)?.toDouble() ?? 0;
                   realMaterialCost = (wr['estimated_material_cost'] as num?)?.toDouble() ?? 0;
-                  if (effectiveRevenue == 0) {
-                    effectiveRevenue = (wr['total_revenue'] as num?)?.toDouble() ?? 0;
-                    source = 'Tahmini Gelir ve Gider iş sonu raporundan alınmıştır';
-                  } else {
-                    source = 'İş sonu raporundan gider verileri çekilmiştir';
+                  if (wr['actual_labor_cost'] != null || wr['actual_material_cost'] != null) {
+                    source = tr('Tahmini Gelir ve Gider iş sonu raporundan alınmıştır');
+                  } else if (wr['actual_labor_cost'] != null) {
+                    source = tr('İş sonu raporundan gider verileri çekilmiştir');
                   }
                 }
   

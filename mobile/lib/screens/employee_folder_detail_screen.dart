@@ -375,7 +375,7 @@ class _DocumentItemState extends State<_DocumentItem> {
         await PlatformHelper.saveAndOpenFile(
           bytes: Uint8List.fromList(bytes),
           fileName: fileName,
-          title: widget.doc['title'] ?? 'Dokument',
+          title: widget.doc['title'] ?? tr('Dokument'),
           isShare: false,
         );
       }

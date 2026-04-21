@@ -66,10 +66,11 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                          appState.isBackoffice;
 
       final data = await SupabaseService.getUsers(
-        companyId: isHighLevel ? null : appState.companyId,
+        companyId: appState.canViewAllPersonnel ? null : appState.companyId,
+        departmentId: null, // v1.0.1: Relaxed filtering to ensure visibility via Service Areas
         role: _roleFilter,
         status: 'active',
-        serviceAreaIds: isHighLevel ? null : appState.serviceAreaIds,
+        serviceAreaIds: appState.canViewAllPersonnel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds),
       );
 
       // 2. Bu ayın onay durumlarını çek

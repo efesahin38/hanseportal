@@ -89,7 +89,7 @@ class AppState extends ChangeNotifier {
   bool get canViewReports => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canManageInvoices => isGeschaeftsfuehrer || isBuchhaltung || isBetriebsleiter || isSystemAdmin;
   bool get canViewAllOrders => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
-  bool get canViewAllCustomers => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canViewAllCustomers => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin || isBuchhaltung || isBackoffice;
   bool get canManageDocuments => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isBuchhaltung || isSystemAdmin;
   bool get canManageArchive => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canManageRoles => isGeschaeftsfuehrer || isSystemAdmin;
@@ -98,7 +98,7 @@ class AppState extends ChangeNotifier {
   bool get canSeeFinancialDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canSeeFullCustomerDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
   bool get canViewAllPersonnel => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin || isBuchhaltung || isBackoffice;
-  bool get canViewAllDepartments => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canViewAllDepartments => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin || isBuchhaltung || isBackoffice;
 
   /// Returns the IDs of companies the user is authorized to view based on their service areas.
   /// If the user is a GF or Admin, they might see all companies? Actually, following the strict 

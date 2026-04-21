@@ -418,8 +418,18 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
                 ),
               ],
             ])),
-            SizedBox(width: fw, child: DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: tr('Rolle *')),
-              items: _roles.entries.map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(), onChanged: restrictSensitive ? null : (v) => setState(() => _role = v!))),
+            SizedBox(width: fw, child: DropdownButtonFormField<String>(
+              value: _role,
+              decoration: InputDecoration(labelText: tr('Rolle *')),
+              items: _roles.entries.where((e) {
+                // Sadece yetkili rolleri göster
+                if (context.read<AppState>().isBereichsleiter) {
+                  return e.key == 'mitarbeiter' || e.key == 'vorarbeiter';
+                }
+                return true;
+              }).map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value))).toList(),
+              onChanged: restrictSensitive ? null : (v) => setState(() => _role = v!),
+            )),
 
             // v19.8.0: DB-Gleisbausicherung spezifische Rolle (nur wenn Gleisbau-Bereich gewählt)
             if (_isGleisbauSelected) ...[
@@ -532,7 +542,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
             : Text(widget.userId == null ? tr('Personal erstellen') : tr('Speichern'))),
           const SizedBox(height: 24),
-          const Center(child: Text('HansePortal v19.3.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+          const Center(child: Text('HansePortal v1.0.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
         ]);
       }))),
     );

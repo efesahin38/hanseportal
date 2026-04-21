@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import 'company_form_screen.dart';
 
 class CompaniesScreen extends StatefulWidget {
@@ -43,8 +44,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const CompanyFormScreen()),
               ).then((ok) { if (ok == true) _load(); }),
-              icon: const Icon(Icons.add),
-              label: const Text('Yeni Şirket', style: TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Yeni Şirket'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -55,8 +55,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                 child: _companies.isEmpty
                     ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Icon(Icons.apartment_outlined, size: 56, color: AppTheme.textSub),
-                        SizedBox(height: 12),
-                        Text('Şirket bulunamadı', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                        Text(tr('Şirket bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                       ]))
                     : ListView.builder(
                         padding: const EdgeInsets.all(12),
@@ -100,12 +99,12 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                 ),
                                 childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 children: [
-                                  _DetailRow(icon: Icons.location_on_outlined, label: 'Adres', value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
-                                  _DetailRow(icon: Icons.phone_outlined, label: 'Telefon', value: c['phone']),
-                                  _DetailRow(icon: Icons.email_outlined, label: 'E-posta', value: c['email']),
-                                  _DetailRow(icon: Icons.receipt_outlined, label: 'Vergi No', value: c['tax_number']),
-                                  _DetailRow(icon: Icons.account_balance_outlined, label: 'IBAN', value: c['iban']),
-                                  _DetailRow(icon: Icons.business_center_outlined, label: 'Hizmet Alanı', value: c['service_description']),
+                                  _DetailRow(icon: Icons.location_on_outlined, label: tr('Adres'), value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
+                                  _DetailRow(icon: Icons.phone_outlined, label: tr('Telefon'), value: c['phone']),
+                                  _DetailRow(icon: Icons.email_outlined, label: tr('E-posta'), value: c['email']),
+                                  _DetailRow(icon: Icons.receipt_outlined, label: tr('Vergi No'), value: c['tax_number']),
+                                  _DetailRow(icon: Icons.account_balance_outlined, label: tr('IBAN'), value: c['iban']),
+                                  _DetailRow(icon: Icons.business_center_outlined, label: tr('Hizmet Alanı'), value: c['service_description']),
                                   if (canCreate)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
@@ -116,8 +115,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                               context,
                                               MaterialPageRoute(builder: (_) => CompanyFormScreen(company: c)),
                                             ).then((ok) { if (ok == true) _load(); }),
-                                            icon: const Icon(Icons.edit_outlined, size: 16),
-                                            label: const Text('Düzenle', style: TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                                            label: Text(tr('Düzenle'), style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
                                           ),
                                         ],
                                       ),
@@ -245,32 +243,30 @@ class _CompanyFormSheetState extends State<_CompanyFormSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: 16),
-              Text(widget.company == null ? 'Yeni Şirket' : 'Şirket Düzenle',
+              Text(widget.company == null ? tr('Yeni Şirket') : tr('Şirket Düzenle'),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
               const SizedBox(height: 20),
-              _field('Şirket Adı *', _name, required: true),
-              _field('Kısa Ad', _shortName),
+              _field(tr('Şirket Adı *'), _name, required: true),
+              _field(tr('Kısa Ad'), _shortName),
               DropdownButtonFormField<String>(
                 value: _type,
-                decoration: const InputDecoration(labelText: 'Şirket Türü'),
+                decoration: InputDecoration(labelText: tr('Şirket Türü')),
                 items: ['GmbH', 'UG', 'KG', 'GbR', 'AG', 'Einzelunternehmen', 'other']
                     .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontFamily: 'Inter'))))
                     .toList(),
                 onChanged: (v) => setState(() => _type = v!),
               ),
               const SizedBox(height: 12),
-              _field('Şehir', _city),
-              _field('Telefon', _phone),
-              _field('E-posta', _email),
-              _field('Vergi Numarası', _taxNumber),
-              _field('IBAN', _iban),
+              _field(tr('Şehir'), _city),
+              _field(tr('Telefon'), _phone),
+              _field(tr('E-posta'), _email),
+              _field(tr('Vergi Numarası'), _taxNumber),
+              _field(tr('IBAN'), _iban),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Kaydet'),
+                    : Text(tr('Kaydet')),
               ),
             ],
           ),
@@ -283,8 +279,7 @@ class _CompanyFormSheetState extends State<_CompanyFormSheet> {
     padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(
       controller: ctrl,
-      decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
     ),
   );
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
-import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import '../services/supabase_service.dart';
 
 class GwsPersonnelPlanningScreen extends StatefulWidget {
   final String planId;
@@ -55,7 +55,7 @@ class _GwsPersonnelPlanningScreenState extends State<GwsPersonnelPlanningScreen>
         assignments: _assignments,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Personalplanung gespeichert ✓'), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Personalplanung gespeichert ✓')), backgroundColor: AppTheme.success));
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -70,7 +70,7 @@ class _GwsPersonnelPlanningScreenState extends State<GwsPersonnelPlanningScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Personal Hinzufügen'),
+        title: Text(tr('Personal Hinzufügen')),
         content: SizedBox(
           width: 400,
           height: 500,
@@ -153,7 +153,7 @@ class _GwsPersonnelPlanningScreenState extends State<GwsPersonnelPlanningScreen>
                       style: ElevatedButton.styleFrom(backgroundColor: _color),
                       onPressed: _addPersonnelDialog,
                       icon: const Icon(Icons.add),
-                      label: const Text('Personal auswählen'),
+                      label: Text(tr('Personal auswählen')),
                     ),
                   ],
                 ),

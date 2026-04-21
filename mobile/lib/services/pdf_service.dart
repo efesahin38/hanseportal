@@ -479,7 +479,7 @@ class PdfService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('OPERATİONEL GWS RAPORU', style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
+                pw.Text(tr('OPERASYONEL GWS RAPORU'), style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.blueGrey800)),
                 pw.Text('v1.19.8', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey)),
               ],
             ),
@@ -488,8 +488,8 @@ class PdfService {
           
           _sectionTitle('Genel Bilgiler', fontBold),
           _infoTable([
-            ['Müşteri / Otel', object['name'] ?? '-'],
-            ['Sipariş (Auftrag)', order['title'] ?? '-'],
+            [tr('Müşteri / Otel'), object['name'] ?? '-'],
+            [tr('Sipariş (Auftrag)'), order['title'] ?? '-'],
             ['Plan Tarihi', _fmtDate(plan['plan_date'])],
             ['Saha Sorumlusu', '${leader['first_name'] ?? ''} ${leader['last_name'] ?? ''}'],
             ['Rapor Durumu', plan['status'] ?? 'Draft'],
@@ -497,7 +497,7 @@ class PdfService {
           pw.SizedBox(height: 20),
 
           if (rooms.isNotEmpty) ...[
-            _sectionTitle('Zimmerliste / Oda Detayları', fontBold),
+            _sectionTitle('${tr('Zimmerliste')} / ${tr('Oda Detayları')}', fontBold),
             _gwsItemsTable(rooms, true, font, fontBold),
             pw.SizedBox(height: 20),
           ],
@@ -508,7 +508,7 @@ class PdfService {
             pw.SizedBox(height: 20),
           ],
 
-          _sectionTitle('Müşteri Onayı (External Manager)', fontBold),
+          _sectionTitle(tr('Müşteri Onayı (External Manager)'), fontBold),
           pw.Container(
             padding: const pw.EdgeInsets.all(12),
             decoration: pw.BoxDecoration(
@@ -518,11 +518,11 @@ class PdfService {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Müşteri Notu:', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                pw.Text(tr('Müşteri Notu:'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
                 pw.Text(plan['customer_comment'] ?? '-', style: pw.TextStyle(font: font, fontSize: 10)),
                 pw.SizedBox(height: 15),
                 if (plan['customer_signature'] != null) ...[
-                  pw.Text('Elektronik İmza:', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                  pw.Text(tr('Elektronik İmza'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
                   pw.SizedBox(height: 5),
                   pw.Container(
                     height: 60,
@@ -530,9 +530,9 @@ class PdfService {
                     child: pw.Image(pw.MemoryImage(base64Decode(plan['customer_signature'])), fit: pw.BoxFit.contain),
                   ),
                   pw.SizedBox(height: 5),
-                  pw.Text('İmza Tarihi: ${_fmtTimestamp(plan['signed_at'])}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
+                  pw.Text('${tr('İmza Tarihi')}: ${_fmtTimestamp(plan['signed_at'])}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey600)),
                 ] else
-                  pw.Text('Dijital imza henüz atılmamıştır.', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.red)),
+                  pw.Text(tr('Dijital imza henüz atılmamıştır.'), style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.red)),
               ],
             ),
           ),
@@ -556,9 +556,9 @@ class PdfService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
           children: [
-            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isRoom ? 'Oda No' : 'Alan Adı', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isRoom ? tr('Oda No') : tr('Alan Adı'), style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Checklist / Notlar', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
-            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Çalışan', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(tr('Çalışan'), style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Durum', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
           ],
         ),
@@ -571,7 +571,7 @@ class PdfService {
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(checklistStr.isEmpty ? 'Kayıt bulunmuyor' : checklistStr, style: pw.TextStyle(font: font, fontSize: 8)),
+                pw.Text(checklistStr.isEmpty ? tr('Kayıt bulunmuyor') : checklistStr, style: pw.TextStyle(font: font, fontSize: 8)),
                 if (itm['worker_notes'] != null)
                   pw.Text('Not: ${itm['worker_notes']}', style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic)),
               ],

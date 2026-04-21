@@ -91,7 +91,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Hizmet alanları yüklenemedi: $e');
+      debugPrint('${tr('Hizmet alanları yüklenemedi')}: $e');
     }
     if (widget.customerId != null) {
       await _loadCustomer();
@@ -313,7 +313,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _section('Ansprechpartner / Kontakte'),
+                      _section(tr('Ansprechpartner / Kontakte')),
                       IconButton(
                         icon: const Icon(Icons.add_circle, color: AppTheme.primary),
                         onPressed: _showAddSachbearbeiterDialog,
@@ -321,9 +321,9 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     ],
                   ),
                   if (_sachbearbeiters.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(bottom: 16.0),
-                      child: Text('Henüz eklenmemiş', style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      child: Text(tr('Henüz eklenmemiş'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     ),
                   ..._sachbearbeiters.map((s) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -351,7 +351,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
                   ),
                   const SizedBox(height: 24),
-                  const Center(child: Text('HansePortal v19.3.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+                  const Center(child: Text('HansePortal v1.0.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
                 ],
               );
             },
@@ -406,10 +406,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               )),
               if (contactType == 'ExtManager') ...
                 [const SizedBox(height: 8), Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppTheme.gwsColor.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-                  child: const Row(children: [
+                  child: Row(children: [
                     Icon(Icons.info_outline, color: AppTheme.gwsColor, size: 16),
                     SizedBox(width: 8),
-                    Expanded(child: Text('E-posta girilirse otomatik portal hesabı oluşturulur.', style: TextStyle(fontSize: 12, color: AppTheme.gwsColor, fontFamily: 'Inter'))),
+                    Expanded(child: Text(tr('E-posta girilirse otomatik portal hesabı oluşturulur.'), style: TextStyle(fontSize: 12, color: AppTheme.gwsColor, fontFamily: 'Inter'))),
                   ]),
                 )],
             ],
@@ -447,12 +447,12 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         context: context,
                         builder: (_) => AlertDialog(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: const Row(children: [Icon(Icons.check_circle, color: AppTheme.success), SizedBox(width: 8), Text('Portal Hesabı Oluşturuldu', style: TextStyle(fontFamily: 'Inter', fontSize: 15))]),
+                          title: Row(children: [const Icon(Icons.check_circle, color: AppTheme.success), const SizedBox(width: 8), Text(tr('Portal Hesabı Oluşturuldu'), style: const TextStyle(fontFamily: 'Inter', fontSize: 15))]),
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Externer Manager bu bilgilerle giriş yapabilir:', style: TextStyle(fontFamily: 'Inter')),
+                              Text(tr('Externer Manager bu bilgilerle giriş yapabilir:'), style: const TextStyle(fontFamily: 'Inter')),
                               const SizedBox(height: 12),
                               Container(
                                 padding: const EdgeInsets.all(14),
@@ -475,7 +475,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                       );
                     }
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Portal hesabı hatası: $e'), backgroundColor: AppTheme.error));
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Portal hesabı hatası:')} $e'), backgroundColor: AppTheme.error));
                   }
                 }
 
@@ -490,7 +490,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   });
                 });
               },
-              child: Text(contactType == 'ExtManager' ? 'Ekle + Hesap Oluştur' : tr('Ekle')),
+              child: Text(contactType == 'ExtManager' ? tr('Ekle + Hesap Oluştur') : tr('Ekle')),
             ),
           ],
         ),

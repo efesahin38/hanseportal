@@ -64,10 +64,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
   }
 
   Future<void> _sendToManager() async {
-    if (_newSignature == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte unterschreiben Sie zuerst.')));
-      return;
-    }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen onay için imza atınız.'))));
     setState(() => _isSaving = true);
     try {
       final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
@@ -79,11 +76,11 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
         'status': 'pending',
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bericht an Bereichsleiter gesendet!'), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Onay gönderildi ✓')), backgroundColor: AppTheme.success));
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -106,7 +103,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppTheme.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -653,7 +650,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
               ElevatedButton.icon(
                 onPressed: _isSaving ? null : _approve,
                 icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check_circle),
-                label: const Text('BERİCHTİ ONAYLA', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text('BERICHT GENEHMIGEN', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
           ] else if (isOwnProfile) ...[
@@ -668,7 +665,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
             ElevatedButton.icon(
               onPressed: _isSaving ? null : _sendToManager,
               icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send),
-              label: const Text('UNTERSCHREİBEN & SENDEN', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text('UNTERSCHREIBEN & SENDEN', style: TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ] else ...[

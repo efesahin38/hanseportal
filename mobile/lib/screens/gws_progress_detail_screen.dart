@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/web_utils.dart';
 import '../services/supabase_service.dart';
+import '../services/localization_service.dart';
 import '../providers/app_state.dart';
 import '../widgets/signature_pad_widget.dart';
 import 'gws_item_form_screen.dart';
@@ -61,7 +62,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
 
   Future<void> _submitFeedback() async {
     if (_signatureBase64 == null && widget.isExternalManager) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen onay için imza atınız.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen onay için imza atınız.'))));
       return;
     }
     setState(() => _saving = true);
@@ -72,7 +73,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
         signatureBase64: _signatureBase64 ?? '',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Onay gönderildi ✓'), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Onay gönderildi ✓')), backgroundColor: AppTheme.success));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -160,13 +161,13 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
           controller: _commentController,
           maxLines: 4,
           decoration: InputDecoration(
-            label: const Text('Kommentar / Açıklama'),
+            label: Text(tr('Kommentar')),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            hintText: 'İşle ilgili görüşlerinizi buraya yazabilirsiniz...',
+            hintText: tr('İşle ilgili görüşlerinizi buraya yazabilirsiniz...'),
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Digitale Unterschrift / Dijital İmza:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+        Text('${tr('Digitale Unterschrift')}:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
         const SizedBox(height: 8),
         SignaturePadWidget(
           color: _color,
@@ -182,7 +183,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
           onPressed: _saving ? null : _submitFeedback,
           child: _saving 
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : const Text('BİTTİ VE ŞİRKETE GERİ YOLLA', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+            : Text(tr('BİTTİ VE ŞİRKETE GERİ YOLLA'), style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
         ),
       ],
     );
@@ -199,7 +200,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Gesamtfortschritt', style: TextStyle(fontWeight: FontWeight.bold, color: _color)),
-              Text('%$perc', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontSize: 18)),
+              Text('$perc %', style: TextStyle(fontWeight: FontWeight.bold, color: _color, fontSize: 18)),
             ],
           ),
           const SizedBox(height: 10),
