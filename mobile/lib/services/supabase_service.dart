@@ -800,7 +800,7 @@ class SupabaseService {
       query = query.eq('order.department_id', departmentId) as dynamic;
     }
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     }
     
     final data = await query.order('actual_end', ascending: false);
@@ -832,7 +832,7 @@ class SupabaseService {
         .lte('actual_start', end);
 
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     }
 
     final data = await query.order('actual_start');
@@ -1003,7 +1003,7 @@ class SupabaseService {
     ''').eq('approval_status', 'approved');
     
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     } else if (departmentId != null) {
       query = query.eq('order.department_id', departmentId) as dynamic;
     }
@@ -1237,7 +1237,7 @@ class SupabaseService {
       query = query.eq('status', status) as dynamic;
     }
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     } else if (departmentId != null) {
       query = query.eq('order.department_id', departmentId) as dynamic;
     }
@@ -1482,9 +1482,9 @@ class SupabaseService {
     var completedOrdersQ = _client.from('orders').select('id').eq('status', 'completed').gte('updated_at', monthStart);
 
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      invoicedQ = invoicedQ.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
-      pendingQ = pendingQ.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
-      allPendingQ = allPendingQ.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      invoicedQ = invoicedQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      pendingQ = pendingQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      allPendingQ = allPendingQ.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
       completedOrdersQ = completedOrdersQ.inFilter('service_area_id', serviceAreaIds) as dynamic;
     } else if (departmentId != null) {
       invoicedQ = invoicedQ.eq('order.department_id', departmentId) as dynamic;
@@ -1635,7 +1635,7 @@ class SupabaseService {
         .lte('approved_at', '${dateTo}T23:59:59');
 
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds.join(',')) as dynamic;
+      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
     } else if (departmentId != null) {
       query = query.eq('order.department_id', departmentId) as dynamic;
     }
