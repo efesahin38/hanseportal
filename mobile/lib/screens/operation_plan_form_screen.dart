@@ -239,7 +239,6 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
         'material_notes': _materialNotes.text.trim(),
         'status': _status,
         'notes': _notes.text.trim(),
-        if (_orderDepartmentId != null) 'department_id': _orderDepartmentId, // v1.0.2: RLS izolasyonu için
       };
 
       if (widget.planId == null) {
