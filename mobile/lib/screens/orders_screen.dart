@@ -168,7 +168,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            Text('v1.0.7', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                            Text('v1.0.8', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
@@ -241,7 +241,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ),
           ),
-          const Text('HansePortal v1.0.7', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
+          const Text('HansePortal v1.0.8', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
         ],
       ),
     ),

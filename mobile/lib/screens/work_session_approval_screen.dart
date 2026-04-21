@@ -184,6 +184,13 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
     final start = first['actual_start'] != null ? DateTime.parse(first['actual_start']).toLocal() : null;
     final dateStr = start != null ? DateFormat('dd.MM.yyyy').format(start) : '--';
 
+    final appState = context.read<AppState>();
+    final isHighLevel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin || appState.isBackoffice || appState.isBuchhaltung;
+    final orderSaId = order?['service_area_id']?.toString();
+    final canApprove = isHighLevel || (orderSaId != null && appState.serviceAreaIds.contains(orderSaId));
+
+    if (!canApprove) return const SizedBox.shrink(); // Hide the whole card if they can't manage this area
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
