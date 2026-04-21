@@ -36,7 +36,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    try {
       final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
       final appState = context.read<AppState>();
       final isHighLevel = appState.isGeschaeftsfuehrer || appState.isSystemAdmin || appState.isBetriebsleiter || appState.isBuchhaltung || appState.isBackoffice;
