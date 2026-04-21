@@ -1695,6 +1695,14 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  static Future<List<Map<String, dynamic>>> getMonthlyApprovalsSummary(String month) async {
+    final response = await _client
+        .from('personnel_monthly_approvals')
+        .select('employee_id, status')
+        .eq('month', month);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
   // ── Mitarbeiter Dokumenten-Verwaltung ─────────────────────
 
   /// Çalışanın 10 standart klasörünü getirir.

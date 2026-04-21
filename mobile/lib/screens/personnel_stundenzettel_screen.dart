@@ -569,15 +569,21 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
     final isSigned = status == 'pending' || isApproved;
 
     // Yetki kontrolü (Onaylayabilir mi?)
+    // Üst yetkililer herkesi onaylayabilir
     bool canApprove = appState.isGeschaeftsfuehrer || 
                       appState.isBetriebsleiter || 
                       appState.isSystemAdmin || 
-                      appState.isBuchhaltung;
+                      appState.isBuchhaltung ||
+                      appState.isBackoffice;
     
-    // Bereichsleiter ise ortak servis alanı var mı bak
+    // Bereichsleiter ise SADECE ortak servis alanı varsa onaylayabilir (Görse bile onaylayamaz)
     if (!canApprove && appState.isBereichsleiter) {
       final myAreas = appState.serviceAreaIds;
-      final empAreas = (widget.employee['user_service_areas'] as List?)?.map((a) => a['service_area_id'].toString()).toList() ?? [];
+      final empUsa = widget.employee['user_service_areas'];
+      List<String> empAreas = [];
+      if (empUsa is List) {
+        empAreas = empUsa.map((a) => (a['service_area_id'] ?? '').toString()).where((id) => id.isNotEmpty).toList();
+      }
       canApprove = myAreas.any((id) => empAreas.contains(id));
     }
 

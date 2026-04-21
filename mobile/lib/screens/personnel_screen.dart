@@ -20,8 +20,8 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   List<Map<String, dynamic>> _all = [];
   List<Map<String, dynamic>> _filtered = [];
   bool _loading = true;
-  String _search = '';
   String? _roleFilter;
+  Map<String, String> _approvalStatuses = {}; // employee_id -> status
 
     final _roles = {
       tr('Tümü'): null,
@@ -56,15 +56,39 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Future<void> _load() async {
     final appState = context.read<AppState>();
     try {
-      // Departman filtresi kaldırıldı: Bereichsleiter kendi şirketindeki
-      // TÜM Mitarbeiter+Vorarbeiter'ı görebilmeli (hizmet alanına atanmış olsun/olmasın)
+      // 1. Kullanıcıları çek
+      // Eğer GF, BF, Admin, Accounting, Backoffice ise herşeyi görür (serviceAreaIds: null)
+      // Eğer Bereichsleiter ise sadece kendi alanlarını görür
+      final isHighLevel = appState.isGeschaeftsfuehrer || 
+                         appState.isBetriebsleiter || 
+                         appState.isSystemAdmin || 
+                         appState.isBuchhaltung || 
+                         appState.isBackoffice;
+
       final data = await SupabaseService.getUsers(
         companyId: (appState.isGeschaeftsfuehrer || appState.isSystemAdmin) ? null : appState.companyId,
         role: _roleFilter,
         status: 'active',
-        serviceAreaIds: appState.isBereichsleiter ? appState.serviceAreaIds : null,
+        serviceAreaIds: isHighLevel ? null : appState.serviceAreaIds,
       );
-      if (mounted) setState(() { _all = data; _applyFilter(); _loading = false; });
+
+      // 2. Bu ayın onay durumlarını çek
+      final now = DateTime.now();
+      final monthStr = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final approvals = await SupabaseService.getMonthlyApprovalsSummary(monthStr);
+      final statusMap = <String, String>{};
+      for (final a in approvals) {
+        statusMap[a['employee_id'].toString()] = a['status'].toString();
+      }
+
+      if (mounted) {
+        setState(() { 
+          _all = data; 
+          _approvalStatuses = statusMap;
+          _applyFilter(); 
+          _loading = false; 
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -217,8 +241,21 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                   backgroundColor: saColor.withOpacity(0.15),
                                   child: Text(initial, style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
-                                title: Text(name.isEmpty ? tr('İsimsiz Personel') : name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter')),
-                                subtitle: Column(
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        name.isEmpty ? tr('İsimsiz Personel') : name,
+                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
+                                      ),
+                                    ),
+                                    // Onay Durumu İkonu
+                                    if (_approvalStatuses[u['id']] == 'approved')
+                                      const Icon(Icons.check_circle, color: AppTheme.success, size: 16)
+                                    else if (_approvalStatuses[u['id']] == 'pending')
+                                      const Icon(Icons.access_time_filled, color: Colors.orange, size: 16),
+                                  ],
+                                ),                                subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(AppTheme.roleLabel(u['role'] ?? ''), style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w500)),

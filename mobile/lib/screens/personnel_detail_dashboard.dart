@@ -20,9 +20,10 @@ class PersonnelDetailDashboard extends StatelessWidget {
     final isExternalManager = (user['role'] ?? '') == 'external_manager';
     final canManageLeave = (appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin) && !isExternalManager;
     // Üst yetkililer (GF, BL, Bereichsleiter, Buchhaltung, Admin) çalışanın
-    // Stundenzettel'ini görebilir; diğerleri kendi onay ekranına gider.
+    // Stundenzettel'ini görebilir; ayrıca her çalışan kendi çizelgesini görebilir.
     final canViewStundenzettel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter ||
-        appState.isBereichsleiter || appState.isBuchhaltung || appState.isSystemAdmin;
+        appState.isBereichsleiter || appState.isBuchhaltung || appState.isSystemAdmin ||
+        (user['id'] == appState.userId);
 
     return Scaffold(
       appBar: AppBar(title: Text('${user['first_name']} ${user['last_name']}')),
