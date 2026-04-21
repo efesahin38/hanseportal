@@ -587,14 +587,12 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
                       appState.isBackoffice;
     
     // Bereichsleiter ise SADECE ortak servis alanı varsa onaylayabilir (Görse bile onaylayamaz)
-    if (!canApprove && appState.isBereichsleiter) {
-      final myAreas = appState.serviceAreaIds;
-      final empUsa = widget.employee['user_service_areas'];
-      List<String> empAreas = [];
-      if (empUsa is List) {
-        empAreas = empUsa.map((a) => (a['service_area_id'] ?? '').toString()).where((id) => id.isNotEmpty).toList();
-      }
-      canApprove = myAreas.any((id) => empAreas.contains(id));
+      final myDeptId = appState.departmentId;
+      final empDeptId = widget.employee['department_id']?.toString();
+      
+      // Hem ortak servis alanı olmalı hem de aynı departman olmalı
+      canApprove = (myDeptId != null && myDeptId == empDeptId) && 
+                   myAreas.any((id) => empAreas.contains(id));
     }
 
     return Container(

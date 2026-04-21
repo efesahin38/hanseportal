@@ -542,7 +542,7 @@ class _PersonnelFormScreenState extends State<PersonnelFormScreen> {
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
             : Text(widget.userId == null ? tr('Personal erstellen') : tr('Speichern'))),
           const SizedBox(height: 24),
-          const Center(child: Text('HansePortal v1.0.6', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+          const Center(child: Text('HansePortal v1.0.7', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
         ]);
       }))),
     );
