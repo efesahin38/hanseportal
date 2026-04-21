@@ -776,6 +776,7 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  static Future<List<Map<String, dynamic>>> getWorkSessionsPendingApproval({String? departmentId, List<String>? serviceAreaIds}) async {
     // v1.1.1: Reliable App-Level Filtering.
     // Fetch all pending sessions and filter in Dart to avoid SQL join/OR pitfalls.
     final data = await _client.from('work_sessions').select('''
