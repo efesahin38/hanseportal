@@ -856,11 +856,17 @@ class _FormScaffoldState extends State<_FormScaffold> {
       combinedData.addAll(newData);
       combinedData['photos'] = _photos;
 
+      final serviceArea = widget.args.order?['service_area'] as Map?;
+      final isHako = (serviceArea?['slug'] == 'gastwirtschaft' || 
+                      serviceArea?['slug'] == 'gastwirtschaftsservice' ||
+                      (serviceArea?['name']?.toString().toLowerCase().contains('gast') ?? false));
+
       final bytes = await PdfService.generateGenericFormPdf(
         title: widget.title,
         subtitle: widget.subtitle,
         orderId: widget.args.orderId,
         data: combinedData,
+        isHako: isHako,
       );
       await PdfService.downloadPdf(bytes, 'Formular_${widget.formType}.pdf');
     } catch (e) {

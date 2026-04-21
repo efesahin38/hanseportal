@@ -97,7 +97,7 @@ class AppState extends ChangeNotifier {
   
   bool get canSeeFinancialDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBuchhaltung || isSystemAdmin;
   bool get canSeeFullCustomerDetails => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isBackoffice || isSystemAdmin;
-  bool get canViewAllPersonnel => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
+  bool get canViewAllPersonnel => isGeschaeftsfuehrer || isBetriebsleiter || isBereichsleiter || isSystemAdmin;
   bool get canViewAllDepartments => isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
 
   /// Returns the IDs of companies the user is authorized to view based on their service areas.

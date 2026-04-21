@@ -37,6 +37,7 @@ class PdfService {
 
     final customer = order['customer'] as Map<String, dynamic>? ?? {};
     final serviceArea = order['service_area'] as Map<String, dynamic>? ?? {};
+    final isHako = (serviceArea['slug'] == 'gastwirtschaft' || serviceArea['slug'] == 'gastwirtschaftsservice' || (serviceArea['name']?.toString().toLowerCase().contains('gast') ?? false));
 
     double totalActual = 0, totalBillable = 0, totalExtra = 0;
     for (final s in sessions) {
@@ -54,8 +55,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
-        footer: (context) => _buildFooter(context, font, fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo, isHako: isHako),
+        footer: (context) => _buildFooter(context, font, fontBold, isHako: isHako),
         build: (context) => [
           pw.SizedBox(height: 4),
           // ── İş Özeti ──
@@ -392,7 +393,7 @@ class PdfService {
                   ),
                   pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                    child: pw.Text('$workDays Arbeitstage', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.white70)),
+                    child: pw.Text('$workDays Arbeitstage', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey300)),
                   ),
                 ],
               ),
@@ -455,8 +456,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
-        footer: (context) => _buildFooter(context, font, fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo, isHako: true),
+        footer: (context) => _buildFooter(context, font, fontBold, isHako: true),
         build: (context) => [
           pw.Header(
             level: 0,
@@ -596,14 +597,15 @@ class PdfService {
 
     final mainItems = items.where((i) => i['item_type'] == 'main').toList();
     final extraItems = items.where((i) => i['item_type'] == 'extra').toList();
+    final isHako = company['name']?.toString().toLowerCase().contains('gast') ?? false;
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
-        footer: (context) => _buildFooter(context, font, fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo, isHako: isHako),
+        footer: (context) => _buildFooter(context, font, fontBold, isHako: isHako),
         build: (context) => [
           pw.SizedBox(height: 2),
           // ── Başlık ──
@@ -803,7 +805,49 @@ class PdfService {
   // YARDIMCI WIDGET'LAR
   // ─────────────────────────────────────────────────────────
 
-  static pw.Widget _buildHeader(pw.Context context, pw.Font font, pw.Font fontBold, {pw.MemoryImage? logo}) {
+  static pw.Widget _buildHeader(pw.Context context, pw.Font font, pw.Font fontBold, {pw.MemoryImage? logo, bool isHako = false}) {
+    if (isHako) {
+      return pw.Container(
+        padding: const pw.EdgeInsets.only(bottom: 6),
+        margin: const pw.EdgeInsets.only(bottom: 6),
+        decoration: const pw.BoxDecoration(
+          border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.5)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.end,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('HaKo Gastwirtschaftsservice GmbH & Co. KG', style: pw.TextStyle(font: fontBold, fontSize: 13, color: PdfColors.blueGrey900)),
+                pw.Text('Eiffestr. 598, 20537 Hamburg', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+                pw.Text('Tel: 040 303 978 87 / Fax: 040 303 978 88', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+                pw.Text('E-Mail: info@hako-gws.de, www.hako-gws.de', style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+                pw.SizedBox(height: 6),
+                pw.Text('HaKo Gastwirtschaftsservice GmbH & Co.KG - Eiffestr. 598, 20537 Hamburg', style: pw.TextStyle(font: fontBold, fontSize: 5, color: PdfColors.black)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('HAKO', style: pw.TextStyle(font: fontBold, fontSize: 24, letterSpacing: 1.5, color: PdfColors.blueGrey900)),
+                    pw.Text('III', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.red800)),
+                  ],
+                ),
+                pw.Text('Gastwirtschaftsservice', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                pw.SizedBox(height: 6),
+                _buildMetaInfo(font, fontBold, isHako: isHako),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 6),
       margin: const pw.EdgeInsets.only(bottom: 6),
@@ -833,8 +877,10 @@ class PdfService {
                   height: 40,
                   child: pw.Image(logo, fit: pw.BoxFit.contain),
                 ),
+              pw.SizedBox(height: 2),
+              pw.Text('Ihr Partner für alle Fälle', style: pw.TextStyle(font: font, fontSize: 8.5, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic)),
               pw.SizedBox(height: 6),
-              _buildMetaInfo(font, fontBold),
+              _buildMetaInfo(font, fontBold, isHako: isHako),
             ],
           ),
         ],
@@ -842,7 +888,18 @@ class PdfService {
     );
   }
 
-  static pw.Widget _buildMetaInfo(pw.Font font, pw.Font fontBold) {
+  static pw.Widget _buildMetaInfo(pw.Font font, pw.Font fontBold, {bool isHako = false}) {
+    if (isHako) {
+      return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.end,
+          children: [
+            _metaLine('Steuer-Nr.:', '46/626/02871', font, fontBold),
+            _metaLine('UST-ID:', 'DE352040690', font, fontBold),
+            _metaLine('Tel:', '040 303 978 87', font, fontBold),
+            _metaLine('Datum:', _date.format(DateTime.now()), font, fontBold),
+          ],
+      );
+    }
     return pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.end,
         children: [
@@ -867,7 +924,39 @@ class PdfService {
     );
   }
 
-  static pw.Widget _buildFooter(pw.Context context, pw.Font font, pw.Font fontBold) {
+  static pw.Widget _buildFooter(pw.Context context, pw.Font font, pw.Font fontBold, {bool isHako = false}) {
+    if (isHako) {
+      return pw.Container(
+        decoration: const pw.BoxDecoration(
+          border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 0.5)),
+        ),
+        padding: const pw.EdgeInsets.only(top: 10),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Bankverbindung: Hamburger Sparkasse', style: pw.TextStyle(font: font, fontSize: 9)),
+                pw.Text('IBAN: DE22 2005 0550 1502 3300 10', style: pw.TextStyle(font: font, fontSize: 9)),
+                pw.Text('BIC: HASPDEHHXXX', style: pw.TextStyle(font: font, fontSize: 9)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Geschäftsführer: Ekrem Demir', style: pw.TextStyle(font: font, fontSize: 9)),
+                pw.Text('HRA 128409', style: pw.TextStyle(font: font, fontSize: 9)),
+                pw.SizedBox(height: 4),
+                pw.Text('Sayfa ${context.pageNumber} / ${context.pagesCount}', style: pw.TextStyle(font: font, fontSize: 8, color: PdfColors.grey500)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return pw.Container(
       decoration: const pw.BoxDecoration(
         border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 0.5)),
@@ -1322,15 +1411,22 @@ class PdfService {
     required String subtitle,
     required String orderId,
     required Map<String, dynamic> data,
+    bool isHako = false,
   }) async {
     final pdf = pw.Document();
     final font = await PdfGoogleFonts.notoSansRegular();
     final fontBold = await PdfGoogleFonts.notoSansBold();
 
+    final logoImage = await rootBundle.load('assets/logo.jpeg');
+    final logo = pw.MemoryImage(logoImage.buffer.asUint8List());
+
     final metaKeys = ['photos', '_workflow_stage', '_completed_at', '_sent_to_ext_at', '_ext_returned_at'];
 
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
+      header: (context) => _buildHeader(context, font, fontBold, logo: logo, isHako: isHako),
+      footer: (context) => _buildFooter(context, font, fontBold, isHako: isHako),
+      margin: const pw.EdgeInsets.all(32),
       build: (pw.Context context) {
         return [
           pw.Padding(
@@ -1436,8 +1532,8 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        header: (context) => _buildHeader(context, font, fontBold, logo: logo),
-        footer: (context) => _buildFooter(context, font, fontBold),
+        header: (context) => _buildHeader(context, font, fontBold, logo: logo, isHako: true),
+        footer: (context) => _buildFooter(context, font, fontBold, isHako: true),
         build: (context) => [
           pw.Header(
             level: 0,

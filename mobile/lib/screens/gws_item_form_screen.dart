@@ -208,6 +208,7 @@ class _GwsItemFormScreenState extends State<GwsItemFormScreen> {
         title: widget.type == 'room' ? 'Zimmer ${widget.item['room_number']}' : (widget.item['area_name'] ?? 'Bereich'),
         subtitle: 'GWS Bericht',
         orderId: widget.planId, // Bu GWS plan ID'si ama PDF title'da gözükecek
+        isHako: true,
         data: {
           'Checkliste': _checklist,
           'Mitarbeiter-Notizen': _workerNotes.text,
