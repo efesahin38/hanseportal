@@ -780,11 +780,12 @@ class SupabaseService {
     // v1.0.6: Strict isolation - if a manager has no areas, they see NOTHING.
     if (serviceAreaIds != null && serviceAreaIds.isEmpty) return [];
 
-    final inner = (serviceAreaIds != null && serviceAreaIds.isNotEmpty) ? '!inner' : '';
+    // v1.1.0: Broaden filter to allow matches by either Service Area OR Primary Department.
+    // Use a standard join and then apply a flexible OR filter.
     var query = _client.from('work_sessions').select('''
       *,
       user:users!work_sessions_user_id_fkey(id, first_name, last_name),
-      order:orders$inner(
+      order:orders(
         id, title, order_number, department_id, service_area_id,
         department:departments(name),
         customer:customers!orders_customer_id_fkey(name),
@@ -796,11 +797,16 @@ class SupabaseService {
       operation_plan:operation_plans(id, estimated_duration_h, start_time, end_time)
     ''').eq('status', 'completed').eq('approval_status', 'pending');
     
-    if (departmentId != null) {
-      query = query.eq('order.department_id', departmentId) as dynamic;
-    }
+    final filterStrings = <String>[];
     if (serviceAreaIds != null && serviceAreaIds.isNotEmpty) {
-      query = query.inFilter('order.service_area_id', serviceAreaIds) as dynamic;
+      filterStrings.add('order.service_area_id.in.(${serviceAreaIds.join(',')})');
+    }
+    if (departmentId != null) {
+      filterStrings.add('order.department_id.eq.$departmentId');
+    }
+    
+    if (filterStrings.isNotEmpty) {
+      query = query.or(filterStrings.join(',')) as dynamic;
     }
     
     final data = await query.order('actual_end', ascending: false);

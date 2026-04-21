@@ -32,7 +32,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       final serviceAreaIds = isHighLevel ? null : appState.serviceAreaIds;
       
       final data = await SupabaseService.getWorkSessionsPendingApproval(
-        departmentId: null, // v1.0.4: Replaced by serviceAreaIds for better isolation
+        departmentId: isHighLevel ? null : appState.departmentId, 
         serviceAreaIds: serviceAreaIds,
       );
       
@@ -187,7 +187,12 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
     final appState = context.read<AppState>();
     final isHighLevel = appState.isGeschaeftsfuehrer || appState.isBetriebsleiter || appState.isSystemAdmin || appState.isBackoffice || appState.isBuchhaltung;
     final orderSaId = order?['service_area_id']?.toString();
-    final canApprove = isHighLevel || (orderSaId != null && appState.serviceAreaIds.contains(orderSaId));
+    final orderDeptId = order?['department_id']?.toString();
+    
+    // v1.1.0: Hem servis alanı hem de departman bazlı kontrol (Tam izolasyon ve görünürlük)
+    final canApprove = isHighLevel || 
+                       (orderSaId != null && appState.serviceAreaIds.contains(orderSaId)) ||
+                       (orderDeptId != null && orderDeptId == appState.departmentId);
 
     if (!canApprove) return const SizedBox.shrink(); // Hide the whole card if they can't manage this area
 

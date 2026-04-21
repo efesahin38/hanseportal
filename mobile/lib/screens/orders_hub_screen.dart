@@ -256,7 +256,7 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                 ),
                 const Text(
-                  'HansePortal v1.0.9',
+                  'HansePortal v1.1.0',
                   style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'),
                 ),
                 Text(
