@@ -914,5 +914,11 @@
   "Zorunlu alan": "Pflichtfeld",
   "Adres": "Adresse",
   "Vergi No": "Steuernummer",
-  "Hizmet Alanı": "Fachbereich / Dienstleistung"
+  "Hizmet Alanı": "Fachbereich / Dienstleistung",
+  "Plan yok": "Kein Plan",
+  "Tagesplan": "Tagesansicht",
+  "İsimsiz Sipariş": "Unbenannter Auftrag",
+  "Konum belirsiz": "Standort unklar",
+  "Personeller": "Personal",
+  "İş Takvimi": "Auftragskalender"
 }

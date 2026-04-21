@@ -162,7 +162,7 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(width: 12),
                     const Expanded(
                         child: Text(
-                          'HansePortal v1.0.0',
+                          'HansePortal v1.0.1',
                           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                         ),
                     ),
@@ -317,8 +317,8 @@ class _WebSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HansePortal v1.0.0', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          const Text('v1.0.0', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          const Text('HansePortal v1.0.1', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          const Text('v1.0.1', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                         ],
                       ),
                     ),
