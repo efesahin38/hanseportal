@@ -54,7 +54,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _company == null
-              ? Center(child: Text(tr('Veri bulunamadı'), style: const TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)))
+              ? Center(child: Text(tr('Keine Daten gefunden'), style: const TextStyle(fontFamily: 'Inter', color: AppTheme.textSub)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: SingleChildScrollView(
@@ -73,35 +73,35 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                           icon: Icons.business_outlined,
                           children: [
                             _InfoRow(tr('Tam Unvan'), _company!['name']),
-                            _InfoRow(tr('Kısa Ad'), _company!['short_name']),
-                            _InfoRow(tr('Şirket Türü'), _company!['company_type']),
-                            _InfoRow(tr('Yapı'), _company!['relation_type'] == 'parent' ? tr('Ana Şirket') : _company!['relation_type'] == 'subsidiary' ? tr('Bağlı Şirket') : tr('İştirak')),
+                            _InfoRow(tr('Kurzname'), _company!['short_name']),
+                            _InfoRow(tr('Unternehmenstyp'), _company!['company_type']),
+                            _InfoRow(tr('Struktur'), _company!['relation_type'] == 'parent' ? tr('Muttergesellschaft') : _company!['relation_type'] == 'subsidiary' ? tr('Tochtergesellschaft') : tr('Beteiligung')),
                             if (_company!['service_description'] != null)
-                              _InfoRow(tr('Faaliyet Alanı'), _company!['service_description']),
+                              _InfoRow(tr('Tätigkeitsbereich'), _company!['service_description']),
                           ],
                         ),
                         const SizedBox(height: 12),
 
                         // Adres
                         _SectionCard(
-                          title: tr('Adres'),
+                          title: tr('Adresse'),
                           icon: Icons.location_on_outlined,
                           children: [
-                            _InfoRow(tr('Adres'), _company!['address']),
+                            _InfoRow(tr('Adresse'), _company!['address']),
                             _InfoRow(tr('Posta Kodu'), _company!['postal_code']),
-                            _InfoRow(tr('Şehir'), _company!['city']),
-                            _InfoRow(tr('Ülke'), _company!['country']),
+                            _InfoRow(tr('Stadt'), _company!['city']),
+                            _InfoRow(tr('Land'), _company!['country']),
                           ],
                         ),
                         const SizedBox(height: 12),
 
                         // İletişim
                         _SectionCard(
-                          title: tr('İletişim'),
+                          title: tr('Kontakt'),
                           icon: Icons.contact_phone_outlined,
                           children: [
                             _InfoRow(tr('Telefon'), _company!['phone'], isLink: true, linkPrefix: 'tel:'),
-                            _InfoRow(tr('E-posta'), _company!['email'], isLink: true, linkPrefix: 'mailto:'),
+                            _InfoRow(tr('E-Mail'), _company!['email'], isLink: true, linkPrefix: 'mailto:'),
                             _InfoRow(tr('Web Sitesi'), _company!['website'], isLink: true, linkPrefix: ''),
                           ],
                         ),
@@ -150,7 +150,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                         const SizedBox(height: 24),
                         // Meta Bilgiler
                         Text(
-                          '${tr('Oluşturulma')}: ${_formatDate(_company!['created_at'])}',
+                          '${tr('Erstellt am')}: ${_formatDate(_company!['created_at'])}',
                           style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter'),
                         ),
                       ],
@@ -192,7 +192,7 @@ class _StatusBanner extends StatelessWidget {
             color: isActive ? AppTheme.success : AppTheme.error, size: 18),
         const SizedBox(width: 8),
         Text(
-          isActive ? tr('Aktif Şirket') : tr('Pasif Şirket'),
+          isActive ? tr('Aktives Unternehmen') : tr('Inaktives Unternehmen'),
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontFamily: 'Inter',

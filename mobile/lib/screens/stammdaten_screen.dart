@@ -101,12 +101,12 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                             const Icon(Icons.error_outline, size: 48, color: Colors.white70),
                             const SizedBox(height: 12),
                             Text(
-                              tr('Şirket yapılandırması eksik'),
+                              tr('Unternehmenskonfiguration fehlt'),
                               style: const TextStyle(color: Colors.white, fontSize: 16),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              tr('Lütfen yönetici ile iletişime geçin'),
+                              tr('Bitte kontaktieren Sie den Administrator'),
                               style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
                             ),
                           ],

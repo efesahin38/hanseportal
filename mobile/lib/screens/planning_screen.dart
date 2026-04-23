@@ -130,7 +130,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
                       },
                       child: Column(
                         children: [
-                          Text(isToday ? tr('Bugün') : '', style: const TextStyle(color: AppTheme.accent, fontFamily: 'Inter', fontSize: 12)),
+                          Text(isToday ? tr('Heute') : '', style: const TextStyle(color: AppTheme.accent, fontFamily: 'Inter', fontSize: 12)),
                           Text(
                             '${_selectedDate.day}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}',
                             textAlign: TextAlign.center,
@@ -232,7 +232,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
                                       
                                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Plan silindi ve personel bilgilendirildi'))));
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
                                     }
                                   } else if (dir == DismissDirection.startToEnd) {
                                     final orderId = plan['order_id'];

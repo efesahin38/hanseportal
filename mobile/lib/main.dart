@@ -120,7 +120,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             SizedBox(height: 12),
             Text(
-              tr('Dijital Yönetim Sistemi'),
+              tr('Digitales Managementsystem'),
               style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Inter'),
             ),
             SizedBox(height: 48),

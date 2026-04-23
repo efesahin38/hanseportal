@@ -458,7 +458,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               if (!kIsWeb) ...[
                 const SizedBox(height: 8),
                 Row(
-                  children: [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')]
+                  children: [tr('Mo'), tr('Di'), tr('Mi'), tr('Do'), tr('Fr'), tr('Sa'), tr('So')]
                       .map((d) => Expanded(child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter'))))
                       .toList(),
                 ),
@@ -608,7 +608,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
-        children: [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')]
+        children: [tr('Mo'), tr('Di'), tr('Mi'), tr('Do'), tr('Fr'), tr('Sa'), tr('So')]
             .map((d) => Expanded(child: Text(d, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSub, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter'))))
             .toList(),
       ),

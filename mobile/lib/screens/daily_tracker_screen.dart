@@ -93,7 +93,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
     for (final row in _activity) {
       final plan = row['operation_plans'];
       final order = plan?['order'];
-      final jobKey = order?['title'] ?? tr('Bilinmeyen İş');
+      final jobKey = order?['title'] ?? tr('Unbekannter Auftrag');
       byJob.putIfAbsent(jobKey, () => []).add(row);
     }
     final sessionStarted  = _activity.where((r) => r['session']?['status'] == 'started').length;
@@ -107,7 +107,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
         backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(tr('Günlük Takip'), style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(tr('Tagesübersicht'), style: const TextStyle(fontWeight: FontWeight.bold)),
           Text(_fmtDisplay(_selectedDate), style: const TextStyle(fontSize: 11, color: Colors.white70)),
         ]),
         actions: [
@@ -141,7 +141,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                   child: Row(children: [
                     Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                     const SizedBox(width: 10),
-                    Text(tr('Bugünün canlı durumu görüntüleniyor.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+                    Text(tr('Heutiger Live-Status wird angezeigt.'), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
                   ]),
                 ),
 
@@ -150,7 +150,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                   children: [
                     Icon(Icons.event_busy, size: 60, color: Colors.grey.shade300),
                     const SizedBox(height: 12),
-                    Text(tr('Bu gün için kayıt bulunamadı.'), style: const TextStyle(color: Colors.grey)),
+                    Text(tr('Keine Einträge für heute gefunden.'), style: const TextStyle(color: Colors.grey)),
                   ],
                 )),
 
@@ -171,7 +171,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                         const SizedBox(width: 8),
                         Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
                         const Spacer(),
-                        Text('${entry.value.length} ${tr('kişi')}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('${entry.value.length} ${tr('Personen')}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       ]),
                     ),
                     // Workers in this job
@@ -244,7 +244,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
                                   const Icon(Icons.bolt, size: 14, color: Color(0xFF4F46E5)),
                                   const SizedBox(width: 6),
                                   Expanded(child: Text(
-                                    '${tr('Gerçekleşen')}: ${sess['actual_start'] != null ? DateTime.parse(sess['actual_start']).toLocal().toString().substring(11, 16) : '?'} – ${sess['actual_end'] != null ? DateTime.parse(sess['actual_end']).toLocal().toString().substring(11, 16) : tr('Devam ediyor')}',
+                                    '${tr('Ist-Zeit')}: ${sess['actual_start'] != null ? DateTime.parse(sess['actual_start']).toLocal().toString().substring(11, 16) : '?'} – ${sess['actual_end'] != null ? DateTime.parse(sess['actual_end']).toLocal().toString().substring(11, 16) : tr('Laufend')}',
                                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
                                   )),
                                   if (sess['actual_duration_h'] != null)
@@ -271,7 +271,7 @@ class _DailyTrackerScreenState extends State<DailyTrackerScreen> {
   );
 
   Widget _statusBadge(String status, Color color, IconData icon) {
-    String label = status == 'started' ? tr('SAHADA') : (status == 'completed' ? tr('BİTTİ') : tr('BEKLİYOR'));
+    String label = status == 'started' ? tr('VOR ORT') : (status == 'completed' ? tr('AUSGEFÜHRT') : tr('WARTET'));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),

@@ -62,7 +62,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
 
   Future<void> _submitFeedback() async {
     if (_signatureBase64 == null && widget.isExternalManager) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen onay için imza atınız.'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Bitte für die Genehmigung unterschreiben.'))));
       return;
     }
     setState(() => _saving = true);
@@ -73,7 +73,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
         signatureBase64: _signatureBase64 ?? '',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Onay gönderildi ✓')), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Genehmigung gesendet ✓')), backgroundColor: AppTheme.success));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -163,7 +163,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
           decoration: InputDecoration(
             label: Text(tr('Kommentar')),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            hintText: tr('İşle ilgili görüşlerinizi buraya yazabilirsiniz...'),
+            hintText: tr('Hier können Sie Ihr Feedback zum Auftrag schreiben...'),
           ),
         ),
         const SizedBox(height: 20),
@@ -183,7 +183,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
           onPressed: _saving ? null : _submitFeedback,
           child: _saving 
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Text(tr('BİTTİ VE ŞİRKETE GERİ YOLLA'), style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+            : Text(tr('ABGESCHLOSSEN & AN FIRMA ZURÜCK'), style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
         ),
       ],
     );

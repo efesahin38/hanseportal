@@ -7,7 +7,7 @@ class ShiftPlanCreateScreen extends StatelessWidget {
   const ShiftPlanCreateScreen({super.key, this.targetCompanyId});
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: Center(child: Text(tr('Bu ekran yeni sisteme taşındı.'),
+    body: Center(child: Text(tr('Dieser Bildschirm wurde in das neue System verschoben.'),
       style: const TextStyle(fontFamily: 'Inter', color: Colors.grey))),
   );
 }

@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     tr('Dijital Yönetim Sistemi'),
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
                   ),
-                  const Text('v1.1.3', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                  const Text('v1.0.0', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                   const SizedBox(height: 48),
   
                   // ── Form Kartı ─────────────────────────────────
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'HansePortal v19.3.8',
+                            'HansePortal v1.0.0',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -120,23 +120,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                             decoration: InputDecoration(
-                              labelText: tr('E-posta'),
+                              labelText: tr('E-Mail'),
                               prefixIcon: const Icon(Icons.email_outlined),
                             ),
                             validator: (v) => (v == null || !v.contains('@'))
-                                ? tr('Geçerli bir e-posta girin')
+                                ? tr('Ültige E-Mail eingeben')
                                 : null,
                           ),
                           const SizedBox(height: 16),
   
-                          // Şifre
+                          // Passwort
                           TextFormField(
                             controller: _passCtrl,
                             obscureText: _obscure,
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _login(),
                             decoration: InputDecoration(
-                              labelText: tr('Şifre'),
+                              labelText: tr('Passwort'),
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
@@ -144,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             validator: (v) => (v == null || v.length < 4)
-                                ? tr('Şifre en az 4 karakter olmalı')
+                                ? tr('Passwort muss mindestens 4 Zeichen lang sein')
                                 : null,
                           ),
   
@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
                               title: Text(
-                                tr('Oturumu Açık Tut'),
+                                tr('Angemeldet bleiben'),
                                 style: const TextStyle(fontSize: 13, color: AppTheme.textSub, fontFamily: 'Inter'),
                               ),
                               value: _rememberMe,
@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       height: 22,
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                     )
-                                  : Text(tr('Giriş Yap')),
+                                  : Text(tr('Anmelden')),
                             ),
                           ),
                         ],

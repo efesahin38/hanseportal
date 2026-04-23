@@ -260,7 +260,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
             children: [
               _summaryItem(tr('Tahmini Gelir'), '€ ${todayIncome.toStringAsFixed(0)}', Colors.greenAccent),
               _summaryItem(tr('Tahmini Gider'), '€ ${todayExpense.toStringAsFixed(0)}', Colors.orangeAccent),
-              _summaryItem(tr('Net Kar'), '€ ${todayProfit.toStringAsFixed(0)}', todayProfit >= 0 ? Colors.blueAccent : Colors.redAccent),
+              _summaryItem(tr('Nettogewinn'), '€ ${todayProfit.toStringAsFixed(0)}', todayProfit >= 0 ? Colors.blueAccent : Colors.redAccent),
             ],
           ),
 
@@ -450,7 +450,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                                   margin: const EdgeInsets.only(right: 8),
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(color: Colors.green.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-                                  child: Text(tr('Faturalandır'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                                  child: Text(tr('Fakturieren'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
                               ),
                             if (isAlreadyInvoiced)
@@ -482,7 +482,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                   children: [
                     _finItem(tr('Tahmini Gelir'), '€ ${totalIncome.toStringAsFixed(0)}', Colors.green),
                     _finItem(tr('Tahmini Gider'), '€ ${totalExpense.toStringAsFixed(0)}', Colors.redAccent),
-                    _finItem(tr('Net Kar'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
+                    _finItem(tr('Nettogewinn'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -550,7 +550,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(tr('Kar Marjı'), style: TextStyle(fontSize: 10, color: AppTheme.textSub)),
+                  Text(tr('Gewinnmarge'), style: TextStyle(fontSize: 10, color: AppTheme.textSub)),
                   const SizedBox(height: 12),
                 ],
                 

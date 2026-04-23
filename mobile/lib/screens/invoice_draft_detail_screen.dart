@@ -79,7 +79,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -98,7 +98,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('${tr('PDF hatası')}: $e')));
+            .showSnackBar(SnackBar(content: Text('${tr('PDF-Fehler')}: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,9 +108,9 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
   String _draftStatusLabel(String s) {
     switch (s) {
       case 'auto_generated':   return tr('Otomatik Oluşturuldu');
-      case 'under_review':     return tr('İncelemede');
+      case 'under_review':     return tr('In Prüfung');
       case 'correction_needed': return tr('Düzeltme Gerekli');
-      case 'approved':         return tr('Onaylandı');
+      case 'approved':         return tr('Genehmigt');
       case 'invoiced':         return tr('Faturalandı');
       case 'cancelled':        return tr('İptal Edildi');
       default:                 return s;
@@ -138,7 +138,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_draft == null) return Scaffold(appBar: AppBar(title: Text(tr('Ön Fatura'))), body: Center(child: Text(tr('Veri bulunamadı'))));
+    if (_draft == null) return Scaffold(appBar: AppBar(title: Text(tr('Ön Fatura'))), body: Center(child: Text(tr('Keine Daten gefunden'))));
 
     final d = _draft!;
     final status = d['status'] ?? '';
@@ -285,7 +285,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                     children: [
                       _financialSummaryItem(tr('Tahmini Gelir'), '€ ${effectiveRevenue.toStringAsFixed(2)}', Colors.green),
                       _financialSummaryItem(tr('Tahmini Gider'), '€ ${realExpense.toStringAsFixed(2)}', Colors.orange),
-                      _financialSummaryItem(tr('Net Kar'), '€ ${realProfit.toStringAsFixed(2)}', realProfit >= 0 ? AppTheme.primary : AppTheme.error),
+                      _financialSummaryItem(tr('Nettogewinn'), '€ ${realProfit.toStringAsFixed(2)}', realProfit >= 0 ? AppTheme.primary : AppTheme.error),
                     ],
                   ),
                   const SizedBox(height: 8),

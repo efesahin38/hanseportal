@@ -99,12 +99,12 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                 ),
                                 childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 children: [
-                                  _DetailRow(icon: Icons.location_on_outlined, label: tr('Adres'), value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
+                                  _DetailRow(icon: Icons.location_on_outlined, label: tr('Adresse'), value: '${c['address'] ?? ''}, ${c['postal_code'] ?? ''} ${c['city'] ?? ''} ${c['country'] ?? ''}'),
                                   _DetailRow(icon: Icons.phone_outlined, label: tr('Telefon'), value: c['phone']),
-                                  _DetailRow(icon: Icons.email_outlined, label: tr('E-posta'), value: c['email']),
+                                  _DetailRow(icon: Icons.email_outlined, label: tr('E-Mail'), value: c['email']),
                                   _DetailRow(icon: Icons.receipt_outlined, label: tr('Vergi No'), value: c['tax_number']),
                                   _DetailRow(icon: Icons.account_balance_outlined, label: tr('IBAN'), value: c['iban']),
-                                  _DetailRow(icon: Icons.business_center_outlined, label: tr('Hizmet Alanı'), value: c['service_description']),
+                                  _DetailRow(icon: Icons.business_center_outlined, label: tr('Fachbereich'), value: c['service_description']),
                                   if (canCreate)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
@@ -115,7 +115,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                               context,
                                               MaterialPageRoute(builder: (_) => CompanyFormScreen(company: c)),
                                             ).then((ok) { if (ok == true) _load(); }),
-                                            label: Text(tr('Düzenle'), style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
+                                            label: Text(tr('Bearbeiten'), style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
                                           ),
                                         ],
                                       ),
@@ -247,26 +247,26 @@ class _CompanyFormSheetState extends State<_CompanyFormSheet> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
               const SizedBox(height: 20),
               _field(tr('Şirket Adı *'), _name, required: true),
-              _field(tr('Kısa Ad'), _shortName),
+              _field(tr('Kurzname'), _shortName),
               DropdownButtonFormField<String>(
                 value: _type,
-                decoration: InputDecoration(labelText: tr('Şirket Türü')),
+                decoration: InputDecoration(labelText: tr('Unternehmenstyp')),
                 items: ['GmbH', 'UG', 'KG', 'GbR', 'AG', 'Einzelunternehmen', 'other']
                     .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontFamily: 'Inter'))))
                     .toList(),
                 onChanged: (v) => setState(() => _type = v!),
               ),
               const SizedBox(height: 12),
-              _field(tr('Şehir'), _city),
+              _field(tr('Stadt'), _city),
               _field(tr('Telefon'), _phone),
-              _field(tr('E-posta'), _email),
+              _field(tr('E-Mail'), _email),
               _field(tr('Vergi Numarası'), _taxNumber),
               _field(tr('IBAN'), _iban),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    : Text(tr('Kaydet')),
+                    : Text(tr('Speichern')),
               ),
             ],
           ),

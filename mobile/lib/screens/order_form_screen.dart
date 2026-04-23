@@ -310,7 +310,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -448,7 +448,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   const SizedBox(height: 16),
 
                   _section(tr('Saha & Operasyon Detayları')),
-                  _textField(tr('Saha Adresi'), _siteAddress),
+
                   Wrap(spacing: 16, runSpacing: 0, children: [
                     SizedBox(width: fieldWidth, child: _textField(tr('Straße'), _streetCtrl)),
                     SizedBox(width: fieldWidth * 0.4, child: _textField(tr('Hausnr.'), _houseNumberCtrl)),
@@ -876,7 +876,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
               const SizedBox(height: 2),
               Text(
-                date == null ? tr('Seçiniz') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
+                date == null ? tr('Auswählen') : '${date.day}.${date.month.toString().padLeft(2, '0')}.${date.year}',
                 style: TextStyle(fontSize: 14, fontFamily: 'Inter', color: date == null ? AppTheme.textSub : AppTheme.textMain),
               ),
             ]),

@@ -83,7 +83,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('Arşiv')),
+        title: Text(tr('Archiv')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(104),
           child: Column(
@@ -122,7 +122,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
                 isScrollable: true,
                 tabs: [
-                  Tab(text: tr('Tamamlanan İşler')),
+                  Tab(text: tr('Abgeschlossene Aufträge')),
                   Tab(text: tr('Faturalanan İşler')),
                   Tab(text: tr('Arşivlenen Müşteriler')),
                 ],
@@ -341,7 +341,7 @@ class _ArchiveCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: AppTheme.bg, borderRadius: BorderRadius.circular(6)),
-                child: Text('${tr('Tarih')}: $formattedDate', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
+                child: Text('${tr('Datum')}: $formattedDate', style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontFamily: 'Inter')),
               ),
             ],
           ]),

@@ -50,7 +50,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _loading = false);
       }
     }
@@ -67,7 +67,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _loading = false);
       }
     }
@@ -100,7 +100,7 @@ class _WorkSessionApprovalScreenState extends State<WorkSessionApprovalScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
       }
     }
   }
@@ -293,14 +293,14 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                           ),
                           const SizedBox(width: 8),
                           _buildActionBtn(
-                            label: '${tr('Gerçekleşen')}: ${actual.toStringAsFixed(1)}h',
+                            label: '${tr('Ist-Zeit')}: ${actual.toStringAsFixed(1)}h',
                             color: Colors.orange,
                             isSelected: false,
                             onTap: isSessionApproved ? null : () => _approveIndividual(sessionId, actual),
                           ),
                           const SizedBox(width: 8),
                           _buildActionBtn(
-                            label: tr('Düzenle'),
+                            label: tr('Bearbeiten'),
                             color: AppTheme.textSub,
                             icon: Icons.edit_outlined,
                             isSelected: false,
@@ -424,7 +424,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                   setState(() => _approvedExtraWorks.add(ew['id']));
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, minimumSize: const Size(60, 32)),
-                child: Text(tr('Onayla'), style: const TextStyle(fontSize: 11, color: Colors.white)),
+                child: Text(tr('Bestätigen'), style: const TextStyle(fontSize: 11, color: Colors.white)),
               ),
         ],
       ),
@@ -443,8 +443,8 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
           decoration: InputDecoration(labelText: tr('Onaylanan Saat')),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text)), child: Text(tr('Onayla'))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen'))),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text)), child: Text(tr('Bestätigen'))),
         ],
       ),
     );

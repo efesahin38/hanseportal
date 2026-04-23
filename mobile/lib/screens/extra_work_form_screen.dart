@@ -66,7 +66,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -114,7 +114,7 @@ class _ExtraWorkFormScreenState extends State<ExtraWorkFormScreen> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(tr('İş Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                         Text(
-                          _workDate == null ? tr('Seçiniz') : '${_workDate!.day.toString().padLeft(2, '0')}.${_workDate!.month.toString().padLeft(2, '0')}.${_workDate!.year}',
+                          _workDate == null ? tr('Auswählen') : '${_workDate!.day.toString().padLeft(2, '0')}.${_workDate!.month.toString().padLeft(2, '0')}.${_workDate!.year}',
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
                         ),
                       ]),

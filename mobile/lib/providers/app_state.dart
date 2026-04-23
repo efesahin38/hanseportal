@@ -6,7 +6,7 @@ import 'dart:convert';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
 
-// Backend URL – Render production sunucusu
+// Backend URL – Render Produktionsserver
 const String _backendBase = 'https://ekrem.onrender.com/api';
 
 class AppState extends ChangeNotifier {
@@ -43,7 +43,7 @@ class AppState extends ChangeNotifier {
   bool get isSystemAdmin => role == 'system_admin';
   bool get isExternalManager => role == 'external_manager';
 
-  // ── v19.8.0: DB-Gleisbausicherung spezifische Rollen ──────────────────
+  // ── v1.0.0: DB-Gleisbausicherung spezifische Rollen ──────────────────
   String get dbGleisbauRole => (_currentUser?['db_gleisbau_role'] ?? '').toString().trim().toLowerCase();
   bool get isSakra => dbGleisbauRole == 'sakra';
   bool get isSiPo => dbGleisbauRole == 'sipo';
@@ -77,7 +77,7 @@ class AppState extends ChangeNotifier {
   /// Gleisbau: Dokumente freigeben & als geprüft markieren
   bool get canGleisbauDokumentePruefen => isPlanerPruefer || isSakra || isGeschaeftsfuehrer || isBetriebsleiter || isSystemAdmin;
 
-  /// Externer Manager'ın muhattap olduğu customer contact ID'leri
+  /// Kundenkontakt-IDs für den externen Manager
   String get externalManagerEmail => _currentUser?['email'] ?? '';
   String get externalManagerContactRef => _currentUser?['id'] ?? '';
 
@@ -161,7 +161,7 @@ class AppState extends ChangeNotifier {
         debugPrint('[AUTH] Failed: User not found or password incorrect.');
         _isLoading = false;
         notifyListeners();
-        return tr('E-posta veya şifre hatalı.');
+        return tr('E-Mail oder Passwort falsch.');
       }
       
       debugPrint('[AUTH] Success! User ID: ${user['id']}');
@@ -186,7 +186,7 @@ class AppState extends ChangeNotifier {
       debugPrint('[AUTH] Error during signIn: $e');
       _isLoading = false;
       notifyListeners();
-      return '${tr('Bağlantı hatası')}: ${e.toString()}';
+      return '${tr('Verbindungsfehler')}: ${e.toString()}';
     }
   }
 

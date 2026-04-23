@@ -33,7 +33,7 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   List<_NavItem> _buildNavItems(AppState appState) {
-    // v19.3.8: Aufträge her zaman İLK (index 0) ve ana sayfa
+    // v1.0.0: Aufträge her zaman İLK (index 0) ve ana sayfa
     // Meine Stammdaten: sadece GF, Betriebsleiter, Backoffice, Buchhaltung görebilir
     final canSeeStammdaten = appState.isGeschaeftsfuehrer ||
         appState.isSystemAdmin ||
@@ -162,7 +162,7 @@ class _MainShellState extends State<MainShell> {
                     const SizedBox(width: 12),
                     const Expanded(
                         child: Text(
-                          'HansePortal v1.1.3',
+                          'HansePortal v1.0.0',
                           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
                         ),
                     ),
@@ -199,7 +199,7 @@ class _MainShellState extends State<MainShell> {
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
-            title: Text(tr('Çıkış Yap'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+            title: Text(tr('Abmelden'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
             onTap: () async {
               Navigator.pop(context);
               await context.read<AppState>().signOut();
@@ -317,8 +317,8 @@ class _WebSidebar extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('HansePortal v1.1.3', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
-                          const Text('v1.1.3', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                          const Text('HansePortal v1.0.0', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          const Text('v1.0.0', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                         ],
                       ),
                     ),
@@ -397,7 +397,7 @@ class _WebSidebar extends StatelessWidget {
                 child: const Icon(Icons.logout, color: Colors.white70, size: 18),
               ),
               title: Text(
-                tr('Çıkış Yap'),
+                tr('Abmelden'),
                 style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter'),
               ),
               onTap: () async {

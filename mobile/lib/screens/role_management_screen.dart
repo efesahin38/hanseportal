@@ -50,14 +50,14 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('Yetki Yönetimi')),
+        title: Text(tr('Berechtigungsverwaltung')),
         bottom: TabBar(
           controller: _tabs,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           indicatorColor: Colors.white,
           tabs: [
-            Tab(text: tr('Kullanıcılar')),
+            Tab(text: tr('Benutzer')),
             Tab(text: tr('Rol Bilgileri')),
           ],
         ),
@@ -93,14 +93,14 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
       await SupabaseService.updateUserRole(userId, role);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('Rol güncellendi')), backgroundColor: AppTheme.success),
+          SnackBar(content: Text(tr('Rolle aktualisiert')), backgroundColor: AppTheme.success),
         );
         _load();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('Rol güncellenirken hata')), backgroundColor: AppTheme.error),
+          SnackBar(content: Text(tr('Fehler beim Aktualisieren der Rolle')), backgroundColor: AppTheme.error),
         );
       }
     }
@@ -112,7 +112,7 @@ class _RoleManagementScreenState extends State<RoleManagementScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(status == 'active' ? tr('Kullanıcı aktif edildi') : tr('Kullanıcı pasife alındı')),
+            content: Text(status == 'active' ? tr('Benutzer aktiviert') : tr('Benutzer deaktiviert')),
             backgroundColor: status == 'active' ? AppTheme.success : AppTheme.warning,
           ),
         );
@@ -182,7 +182,7 @@ class _UsersTab extends StatelessWidget {
               ? const Center(child: CircularProgressIndicator())
               : users.isEmpty
                   ? Center(
-                      child: Text(tr('Kullanıcı bulunamadı'),
+                      child: Text(tr('Benutzer nicht gefunden'),
                           style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     )
                   : RefreshIndicator(
@@ -347,7 +347,7 @@ class _UserRoleCard extends StatelessWidget {
                     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       const Icon(Icons.swap_horiz, size: 16, color: AppTheme.primary),
                       const SizedBox(width: 4),
-                      Text(tr('Rol Değiştir'),
+                      Text(tr('Rolle ändern'),
                           style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                     ]),
                   ),
@@ -413,14 +413,14 @@ class _RoleInfoTab extends StatelessWidget {
   const _RoleInfoTab();
 
   static List<_RoleRow> get _roleInfo => [
-    _RoleRow('geschaeftsfuehrer', 'Geschäftsführer', tr('Tüm modüller, tüm şirketler, tam yetki.'), AppTheme.primary),
-    _RoleRow('betriebsleiter', 'Betriebsleiter', tr('Operasyon, planlama, raporlar, tüm işler.'), const Color(0xFF1565C0)),
-    _RoleRow('bereichsleiter', 'Bereichsleiter', tr('Kendi bölümü: iş açma, planlama, ek iş, kapanış.'), const Color(0xFF6A1B9A)),
-    _RoleRow('vorarbeiter', 'Vorarbeiter', tr('Kendi görevleri + bağlı ekip görünümü.'), const Color(0xFF2E7D32)),
-    _RoleRow('mitarbeiter', 'Mitarbeiter', tr('Yalnızca atanmış görevler ve saha ekranı.'), AppTheme.textSub),
-    _RoleRow('buchhaltung', 'Buchhaltung', tr('Tamamlanan işler, ön fatura taslakları, muhasebe.'), const Color(0xFFF57F17)),
-    _RoleRow('backoffice', 'Backoffice', tr('Müşteri kaydı, belge, iş açılışı desteği.'), const Color(0xFF00838F)),
-    _RoleRow('system_admin', 'System Admin', tr('Teknik ayarlar, kullanıcı yönetimi, log.'), const Color(0xFFC62828)),
+    _RoleRow('geschaeftsfuehrer', 'Geschäftsführer', tr('Alle Module, alle Firmen, volle Berechtigungen.'), AppTheme.primary),
+    _RoleRow('betriebsleiter', 'Betriebsleiter', tr('Operation, Planung, Berichte, alle Aufträge.'), const Color(0xFF1565C0)),
+    _RoleRow('bereichsleiter', 'Bereichsleiter', tr('Eigene Abteilung: Aufträge, Planung, Zusatzarbeiten.'), const Color(0xFF6A1B9A)),
+    _RoleRow('vorarbeiter', 'Vorarbeiter', tr('Eigene Aufgaben + Teamansicht.'), const Color(0xFF2E7D32)),
+    _RoleRow('mitarbeiter', 'Mitarbeiter', tr('Nur zugewiesene Aufgaben und Außendienst-Ansicht.'), AppTheme.textSub),
+    _RoleRow('buchhaltung', 'Buchhaltung', tr('Abgeschlossene Aufträge, Rechnungsentwürfe, Buchhaltung.'), const Color(0xFFF57F17)),
+    _RoleRow('backoffice', 'Backoffice', tr('Kundenregistrierung, Dokumente, Unterstützung.'), const Color(0xFF00838F)),
+    _RoleRow('system_admin', 'System Admin', tr('Technische Einstellungen, Benutzerverwaltung, Logs.'), const Color(0xFFC62828)),
   ];
 
   @override

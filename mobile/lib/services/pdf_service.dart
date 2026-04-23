@@ -62,10 +62,10 @@ class PdfService {
           // ── İş Özeti ──
           _sectionTitle(tr('İş Bilgileri'), fontBold),
           _infoTable([
-            [tr('İş Numarası'), order['order_number'] ?? '-'],
+            [tr('Auftragsnummer'), order['order_number'] ?? '-'],
             [tr('İş Başlığı'), order['title'] ?? '-'],
-            [tr('Müşteri'), customer['name'] ?? '-'],
-            [tr('Hizmet Alanı'), serviceArea['name'] ?? '-'],
+            [tr('Kunde'), customer['name'] ?? '-'],
+            [tr('Fachbereich'), serviceArea['name'] ?? '-'],
             [tr('Saha Adresi'), order['site_address'] ?? '-'],
             [
               tr('Tarih Aralığı'),
@@ -77,10 +77,10 @@ class PdfService {
           // ── Çalışma Süreleri ──
           _sectionTitle(tr('Çalışma Süre Özeti'), fontBold),
           _infoTable([
-            [tr('Toplam Fiili Süre'), '${totalActual.toStringAsFixed(1)} ${tr('saat')}'],
-            [tr('Faturalanabilir Süre'), '${totalBillable.toStringAsFixed(1)} ${tr('saat')}'],
-            [tr('Fazla Mesai'), '${totalExtra.toStringAsFixed(1)} ${tr('saat')}'],
-            [tr('Seans Sayısı'), '${sessions.length}'],
+            [tr('Toplam Fiili Süre'), '${totalActual.toStringAsFixed(1)} ${tr('Std.')}'],
+            [tr('Faturalanabilir Süre'), '${totalBillable.toStringAsFixed(1)} ${tr('Std.')}'],
+            [tr('Überstunden'), '${totalExtra.toStringAsFixed(1)} ${tr('Std.')}'],
+            [tr('Anzahl der Sitzungen'), '${sessions.length}'],
           ], font, fontBold),
 
           if (sessions.isNotEmpty) ...[
@@ -161,8 +161,8 @@ class PdfService {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          _totalLine(tr('Toplam Gider'), _euro.format(totalExpense), font, fontBold, bold: false),
-                          _totalLine(tr('Net Kar'), _euro.format(profit), font, fontBold, bold: true),
+                          _totalLine(tr('Gesamtausgaben'), _euro.format(totalExpense), font, fontBold, bold: false),
+                          _totalLine(tr('Nettogewinn'), _euro.format(profit), font, fontBold, bold: true),
                         ],
                       ),
                     ],
@@ -208,7 +208,7 @@ class PdfService {
               pw.SizedBox(height: 8),
             ],
             if ((report['customer_feedback'] ?? '').isNotEmpty) ...[
-              pw.Text(tr('Müşteri Geri Bildirimi'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              pw.Text(tr('Kunden-Feedback'), style: pw.TextStyle(font: fontBold, fontSize: 10)),
               pw.Text(report['customer_feedback'] ?? '',
                   style: pw.TextStyle(font: font, fontSize: 10)),
             ],
@@ -558,7 +558,7 @@ class PdfService {
           children: [
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(isRoom ? tr('Oda No') : tr('Alan Adı'), style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Checklist / Notlar', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
-            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(tr('Çalışan'), style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(tr('Mitarbeiter'), style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
             pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('Durum', style: pw.TextStyle(color: PdfColors.white, font: fontBold, fontSize: 9))),
           ],
         ),
@@ -643,7 +643,7 @@ class PdfService {
                   ],
                 ),
                 pw.Text(
-                  '${tr('Tarih')}: ${_date.format(DateTime.now())}',
+                  '${tr('Datum')}: ${_date.format(DateTime.now())}',
                   style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey600),
                 ),
               ],
@@ -766,7 +766,7 @@ class PdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    _totalLine(tr('Toplam Gelir'), _euro.format(total), font, fontBold, bold: false),
+                    _totalLine(tr('Gesamteinnahmen'), _euro.format(total), font, fontBold, bold: false),
                     _totalLine(tr('İşçilik Gideri'), _euro.format(laborCost ?? 0), font, fontBold, bold: false),
                     _totalLine(tr('Malzeme Gideri'), _euro.format(materialCost ?? 0), font, fontBold, bold: false),
                   ],
@@ -775,8 +775,8 @@ class PdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    _totalLine(tr('Toplam Gider'), _euro.format((laborCost ?? 0) + (materialCost ?? 0)), font, fontBold, bold: false),
-                    _totalLine(tr('Net Kar'), _euro.format(total - (laborCost ?? 0) - (materialCost ?? 0)), font, fontBold, bold: true),
+                    _totalLine(tr('Gesamtausgaben'), _euro.format((laborCost ?? 0) + (materialCost ?? 0)), font, fontBold, bold: false),
+                    _totalLine(tr('Nettogewinn'), _euro.format(total - (laborCost ?? 0) - (materialCost ?? 0)), font, fontBold, bold: true),
                   ],
                 ),
               ],
@@ -1058,7 +1058,7 @@ class PdfService {
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          children: [tr('Çalışan'), tr('Başlangıç'), tr('Bitiş'), tr('Fiili'), tr('Faturalanan')]
+          children: [tr('Mitarbeiter'), tr('Başlangıç'), tr('Bitiş'), tr('Fiili'), tr('Faturalanan')]
               .map((h) => pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
                     child: pw.Text(h, style: headerStyle),
@@ -1096,7 +1096,7 @@ class PdfService {
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          children: [tr('Ek İş Başlığı'), tr('Tarih'), tr('Süre'), tr('Durum')]
+          children: [tr('Ek İş Başlığı'), tr('Datum'), tr('Süre'), tr('Status')]
               .map((h) => pw.Padding(
                     padding: const pw.EdgeInsets.all(4),
                     child: pw.Text(h, style: headerStyle),
@@ -1306,11 +1306,11 @@ class PdfService {
 
           _sectionTitle(tr('Genel Özet'), fontBold),
           _infoTable([
-            [tr('Toplam Gelir'), _euro.format(totalIncome)],
+            [tr('Gesamteinnahmen'), _euro.format(totalIncome)],
             [tr('Toplam İşçilik Gideri'), _euro.format(totalLaborCost)],
             [tr('Toplam Malzeme Gideri'), _euro.format(totalMaterialCost)],
-            [tr('Toplam Gider'), _euro.format(totalLaborCost + totalMaterialCost)],
-            [tr('Net Kar'), _euro.format(totalProfit)],
+            [tr('Gesamtausgaben'), _euro.format(totalLaborCost + totalMaterialCost)],
+            [tr('Nettogewinn'), _euro.format(totalProfit)],
           ], font, fontBold),
           pw.SizedBox(height: 20),
 
@@ -1326,7 +1326,7 @@ class PdfService {
             children: [
               pw.TableRow(
                 decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-                children: [tr('Tarih'), tr('Gelir'), tr('Gider'), tr('Net Kar')]
+                children: [tr('Datum'), tr('Gelir'), tr('Gider'), tr('Nettogewinn')]
                     .map((h) => pw.Padding(
                           padding: const pw.EdgeInsets.all(4),
                           child: pw.Text(h, style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.white)),
@@ -1392,7 +1392,7 @@ class PdfService {
             children: [
               pw.TableRow(
                 decoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-                children: ['#', tr('Çalışan'), tr('Pozisyon'), tr('Toplam Saat')]
+                children: ['#', tr('Mitarbeiter'), tr('Pozisyon'), tr('Toplam Saat')]
                     .map((h) => pw.Padding(
                           padding: const pw.EdgeInsets.all(5),
                           child: pw.Text(h, style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.white)),
@@ -1413,7 +1413,7 @@ class PdfService {
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            '${tr('Toplam')}: ${personnelData.fold<double>(0, (sum, p) => sum + ((p['hours'] as num?)?.toDouble() ?? 0)).toStringAsFixed(1)} ${tr('saat')}',
+            '${tr('Toplam')}: ${personnelData.fold<double>(0, (sum, p) => sum + ((p['hours'] as num?)?.toDouble() ?? 0)).toStringAsFixed(1)} ${tr('Std.')}',
             style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey800),
           ),
         ],

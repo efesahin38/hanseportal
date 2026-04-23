@@ -64,14 +64,14 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
       if (mounted) {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('${tr('Fehler')}: $e'), backgroundColor: AppTheme.error),
         );
       }
     }
   }
 
   Future<void> _sendToManager() async {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen onay için imza atınız.'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Bitte für die Genehmigung unterschreiben.'))));
     setState(() => _isSaving = true);
     try {
       final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
@@ -83,11 +83,11 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
         'status': 'pending',
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Onay gönderildi ✓')), backgroundColor: AppTheme.success));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Genehmigung gesendet ✓')), backgroundColor: AppTheme.success));
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e'), backgroundColor: AppTheme.error));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -110,7 +110,7 @@ class _PersonnelStundenzettelScreenState extends State<PersonnelStundenzettelScr
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e'), backgroundColor: AppTheme.error));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

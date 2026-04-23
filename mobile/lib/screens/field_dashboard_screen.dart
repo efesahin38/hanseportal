@@ -135,7 +135,7 @@ class _FieldDashboardScreenState extends State<FieldDashboardScreen> {
                               style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, fontFamily: 'Inter', color: AppTheme.textMain),
                             ),
                             Text(
-                              tr('Saat'),
+                              tr('Std.'),
                               style: const TextStyle(fontSize: 14, color: AppTheme.textSub, fontWeight: FontWeight.w500, fontFamily: 'Inter'),
                             ),
                           ],
@@ -163,7 +163,7 @@ class _FieldDashboardScreenState extends State<FieldDashboardScreen> {
                 children: [
                   const Icon(Icons.history, size: 20, color: AppTheme.primary),
                   const SizedBox(width: 8),
-                  Text(tr('Onaylanmış Mesailer'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter')),
+                  Text(tr('Genehmigte Schichten'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Inter')),
                 ],
               ),
               const SizedBox(height: 16),

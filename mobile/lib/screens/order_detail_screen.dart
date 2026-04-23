@@ -152,7 +152,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
             FloatingActionButton.small(
               heroTag: 'work_report',
               backgroundColor: AppTheme.success,
-              tooltip: tr('İş Sonu Raporu'),
+              tooltip: tr('Abschlussbericht'),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WorkReportScreen(orderId: widget.orderId))).then((_) => _load()),
               child: const Icon(Icons.summarize_outlined, color: Colors.white),
             ),
@@ -253,11 +253,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                     child: Column(children: [
                       // v19.7.4: Muhattap & Sachbearbeiter bilgileri artık ana kartta (Daha görünür olması için)
                       _InfoCard(tr('İş Bilgileri'), [
-                        _InfoRow(tr('İş Numarası'), o['order_number']),
+                        _InfoRow(tr('Auftragsnummer'), o['order_number']),
                         _InfoRow(tr('Öncelik'), o['priority']),
                         _InfoRow(tr('Başlangıç'), o['planned_start_date']),
                         _InfoRow(tr('Bitiş'), o['planned_end_date']),
-                        _InfoRow(tr('Saha Adresi'), o['site_address']),
+                        _InfoRow(tr('Saha Adresi'), [
+                          o['street'],
+                          o['house_number'],
+                          o['postal_code'],
+                          o['city']
+                        ].where((e) => e != null && e.toString().isNotEmpty).join(' ')),
                         
                         // v19.7.6: Muhattap (Ext. Manager) Detaylı
                         if (o['customer_contact'] != null) ...[
@@ -301,10 +306,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                         ],
                       ]),
                       const SizedBox(height: 12),
-                      _InfoCard(tr('Müşteri'), [
-                        _InfoRow(tr('Müşteri'), customer?['name']),
+                      _InfoCard(tr('Kunde'), [
+                        _InfoRow(tr('Kunde'), customer?['name']),
                         _InfoRow(tr('Telefon'), customer?['phone'], isMasked: !appState.canSeeFullCustomerDetails),
-                        _InfoRow(tr('E-posta'), customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
+                        _InfoRow(tr('E-Mail'), customer?['email'], isMasked: !appState.canSeeFullCustomerDetails),
                       ]),
                       const SizedBox(height: 12),
                       if (o['short_description'] != null || o['detailed_description'] != null)
@@ -462,7 +467,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                                         Row(children: [
                                           const Icon(Icons.people_outline, size: 13, color: AppTheme.textSub),
                                           const SizedBox(width: 4),
-                                          Text('${tr('Atanan Personel')} (${personnel.length} ${tr('kişi')})', style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontWeight: FontWeight.w600)),
+                                          Text('${tr('Atanan Personel')} (${personnel.length} ${tr('Personen')})', style: const TextStyle(fontSize: 12, fontFamily: 'Inter', color: AppTheme.textSub, fontWeight: FontWeight.w600)),
                                         ]),
                                         const SizedBox(height: 6),
                                         ...personnel.map((pp) {

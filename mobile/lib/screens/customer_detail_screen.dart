@@ -60,7 +60,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_customer == null) return Scaffold(appBar: AppBar(title: Text(tr('Müşteri'))), body: Center(child: Text(tr('Bulunamadı'))));
+    if (_customer == null) return Scaffold(appBar: AppBar(title: Text(tr('Kunde'))), body: Center(child: Text(tr('Nicht gefunden'))));
 
     final c = _customer!;
 
@@ -140,15 +140,15 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _InfoSection(tr('İletişim'), [
+          _InfoSection(tr('Kontakt'), [
             _InfoRow(Icons.phone_outlined, tr('Telefon'), c['phone']),
-            _InfoRow(Icons.email_outlined, tr('E-posta'), c['email']),
+            _InfoRow(Icons.email_outlined, tr('E-Mail'), c['email']),
             _InfoRow(Icons.language_outlined, tr('Web'), c['website']),
           ]),
           const SizedBox(height: 12),
-          _InfoSection(tr('Adres'), [
-            _InfoRow(Icons.location_on_outlined, tr('Adres'), c['address']),
-            _InfoRow(Icons.location_city_outlined, tr('Şehir'), c['city']),
+          _InfoSection(tr('Adresse'), [
+            _InfoRow(Icons.location_on_outlined, tr('Adresse'), c['address']),
+            _InfoRow(Icons.location_city_outlined, tr('Stadt'), c['city']),
             _InfoRow(Icons.map_outlined, tr('Saha Adresi'), c['site_address']),
           ]),
           const SizedBox(height: 12),

@@ -112,11 +112,11 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(finalize ? tr('Rapor finalize edildi') : tr('Rapor kaydedildi'))),
+          SnackBar(content: Text(finalize ? tr('Bericht finalisiert') : tr('Bericht gespeichert'))),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -138,7 +138,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('${tr('PDF hatası')}: $e')));
+            .showSnackBar(SnackBar(content: Text('${tr('PDF-Fehler')}: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -164,19 +164,19 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('İş Sonu Raporu')),
+        title: Text(tr('Abschlussbericht')),
         actions: [
           // PDF Export
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: tr('PDF Oluştur & Paylaş'),
+            tooltip: tr('PDF erstellen & teilen'),
             onPressed: _saving ? null : () => _exportPdf(o, isFinalized),
           ),
           if (!isFinalized)
             TextButton.icon(
               onPressed: _saving ? null : () => _save(finalize: true),
               icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-              label: Text(tr('Finalizeye'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
+              label: Text(tr('Finalisieren'), style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
             ),
         ],
       ),
@@ -197,15 +197,15 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                 child: Row(children: [
                   const Icon(Icons.verified, color: AppTheme.success),
                   const SizedBox(width: 8),
-                  Text(tr('Bu rapor finalize edilmiştir'), style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                  Text(tr('Dieser Bericht wurde finalisiert'), style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
                 ]),
               ),
   
             // İş Özeti
-            if (o != null) _infoCard(tr('İş Özeti'), [
-              _stat(tr('İş Numarası'), o['order_number'] ?? ''),
-              _stat(tr('Müşteri'), o['customer']?['name'] ?? ''),
-              _stat(tr('Durum'), AppTheme.statusLabel(o['status'] ?? '')),
+            if (o != null) _infoCard(tr('Auftragszusammenfassung'), [
+              _stat(tr('Auftragsnummer'), o['order_number'] ?? ''),
+              _stat(tr('Kunde'), o['customer']?['name'] ?? ''),
+              _stat(tr('Status'), AppTheme.statusLabel(o['status'] ?? '')),
               _stat(tr('Saha Adresi'), o['site_address'] ?? ''),
             ]),
             const SizedBox(height: 12),
@@ -238,20 +238,20 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
   
                   return Column(
                     children: [
-                      _infoCard(tr('Çalışma Süre Özeti (Onaylı)'), [
-                        _stat(tr('Fiili Çalışma Süresi'), '${totalActual.toStringAsFixed(1)} ${tr('saat')}'),
-                        _stat(tr('Esas (Hizmet) Süresi'), '${displayBillable.toStringAsFixed(1)} ${tr('saat')}', isBold: true),
+                      _infoCard(tr('Arbeitszeit-Zusammenfassung (Genehmigt)'), [
+                        _stat(tr('Ist-Arbeitszeit'), '${totalActual.toStringAsFixed(1)} ${tr('Std.')}'),
+                        _stat(tr('Abrechenbare Zeit'), '${displayBillable.toStringAsFixed(1)} ${tr('Std.')}', isBold: true),
                         if (totalBillable < minH && totalBillable > 0)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text('⚠️ Not: ${tr('Minimum')} $minH ${tr('saat')} ${tr('kuralı uygulandı')}', style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontFamily: 'Inter')),
+                            child: Text('⚠️ Not: ${tr('Minimum')} $minH ${tr('Std.')} ${tr('Regel angewendet')}', style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontFamily: 'Inter')),
                           ),
                         const Divider(),
-                        _stat(tr('Fazla Mesai'), '${totalExtra.toStringAsFixed(1)} ${tr('saat')}'),
-                        _stat(tr('Seans Sayısı'), '${sessions.length}'),
+                        _stat(tr('Überstunden'), '${totalExtra.toStringAsFixed(1)} ${tr('Std.')}'),
+                        _stat(tr('Anzahl der Sitzungen'), '${sessions.length}'),
                       ]),
                       const SizedBox(height: 12),
-                      _infoCard(tr('Personel Çalışma Detayı'), [
+                      _infoCard(tr('Personal-Arbeitsdetails'), [
                         ...sessions.map((s) {
                           final u = s['user'];
                           final hrs = (s['approved_billable_hours'] as num?)?.toDouble() ?? (s['billable_hours'] as num?)?.toDouble() ?? 0;
@@ -271,7 +271,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                                     Text('${u['first_name']} ${u['last_name']}', style: const TextStyle(fontSize: 13, fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                                     Row(
                                       children: [
-                                        Text('${hrs.toStringAsFixed(1)} ${tr('saat')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                        Text('${hrs.toStringAsFixed(1)} ${tr('Std.')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                                         const SizedBox(width: 6),
                                         Icon(
                                           isApproved ? Icons.check_circle : Icons.pending,
@@ -315,9 +315,9 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
               ),
   
             // Ek İşler
-            _infoCard('${tr('Ek İşler')} (${_extraWorks.length})', [
+            _infoCard('${tr('Zusatzarbeiten')} (${_extraWorks.length})', [
               if (_extraWorks.isEmpty)
-                Text(tr('Ek iş yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'))
+                Text(tr('Keine Zusatzarbeiten'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'))
               else
                 ..._extraWorks.map((ew) => _extraWorkRow(ew)),
             ]),
@@ -325,7 +325,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
   
             // Maliyet / Gelir - Sadece yetkili personeller görebilir
             if (context.read<AppState>().isBuchhaltung || context.read<AppState>().isGeschaeftsfuehrer || context.read<AppState>().isBetriebsleiter || context.read<AppState>().isSystemAdmin)
-              _infoCard(tr('Tahmini Maliyet & Gelir (Yönetici Özeti)'), [
+              _infoCard(tr('Geschätzte Kosten & Einnahmen (Management-Zusammenfassung)'), [
                 TextFormField(
                   controller: _totalRevenue,
                   enabled: !isFinalized,
@@ -337,14 +337,14 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                   Expanded(child: TextFormField(
                     controller: _laborCost,
                     enabled: !isFinalized,
-                    decoration: InputDecoration(labelText: tr('İşçilik Maliyeti (€)')),
+                    decoration: InputDecoration(labelText: tr('Lohnkosten (€)')),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   )),
                   const SizedBox(width: 10),
                   Expanded(child: TextFormField(
                     controller: _materialCost,
                     enabled: !isFinalized,
-                    decoration: InputDecoration(labelText: tr('Malzeme Maliyeti (€)')),
+                    decoration: InputDecoration(labelText: tr('Materialkosten (€)')),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   )),
                 ]),
@@ -353,26 +353,26 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
               const SizedBox(height: 12),
   
             // Notlar
-            _infoCard(tr('Notlar & Değerlendirme'), [
+            _infoCard(tr('Notizen & Bewertung'), [
               TextFormField(
                 controller: _summaryNote,
                 enabled: !isFinalized,
                 maxLines: 3,
-                decoration: InputDecoration(labelText: tr('Genel Özet Notu')),
+                decoration: InputDecoration(labelText: tr('Allgemeine Zusammenfassung')),
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _qualityNote,
                 enabled: !isFinalized,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: tr('Kalite Notu')),
+                decoration: InputDecoration(labelText: tr('Qualitätsnotiz')),
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _customerFeedback,
                 enabled: !isFinalized,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: tr('Müşteri Geri Bildirimi')),
+                decoration: InputDecoration(labelText: tr('Kunden-Feedback')),
               ),
             ]),
   
@@ -382,7 +382,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
                 onPressed: _saving ? null : () => _save(),
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(tr('Taslak Olarak Kaydet'), style: const TextStyle(fontFamily: 'Inter')),
+                    : Text(tr('Als Entwurf speichern'), style: const TextStyle(fontFamily: 'Inter')),
               ),
               const SizedBox(height: 16),
             ],
@@ -395,7 +395,7 @@ class _WorkReportScreenState extends State<WorkReportScreen> {
               ),
               onPressed: _saving ? null : () => _exportPdf(o, isFinalized),
               icon: Icon(Icons.picture_as_pdf, color: isFinalized ? Colors.white : AppTheme.primary),
-              label: Text(tr('PDF 📄 ile Paylaş'), style: TextStyle(
+              label: Text(tr('Als PDF 📄 teilen'), style: TextStyle(
                 color: isFinalized ? Colors.white : AppTheme.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

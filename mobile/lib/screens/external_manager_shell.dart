@@ -136,7 +136,7 @@ class _ExternalManagerShellState extends State<ExternalManagerShell> {
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
-            title: Text(tr('Çıkış Yap'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+            title: Text(tr('Abmelden'), style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
             onTap: () async { Navigator.pop(context); await context.read<AppState>().signOut(); },
           ),
           const SizedBox(height: 16),
@@ -276,7 +276,7 @@ class _WebLayout extends StatelessWidget {
                       decoration: BoxDecoration(color: AppTheme.error.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
                       child: const Icon(Icons.logout, color: Colors.white70, size: 18),
                     ),
-                    title: Text(tr('Çıkış Yap'), style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
+                    title: Text(tr('Abmelden'), style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Inter')),
                     onTap: () async => await context.read<AppState>().signOut(),
                   ),
                 ),

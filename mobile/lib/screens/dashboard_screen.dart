@@ -96,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${tr('Merhaba')}, ${appState.fullName.split(' ').first} 👋',
+                                '${tr('Willkommen')}, ${appState.fullName.split(' ').first} 👋',
                                 style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                               ),
                               const SizedBox(height: 4),
@@ -116,9 +116,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Quick Stats Row
                       Row(
                         children: [
-                          _QuickStat(label: tr('Aktif İş'), value: '${_stats['activeOrders'] ?? 0}'),
+                          _QuickStat(label: tr('Aktive Aufträge'), value: '${_stats['activeOrders'] ?? 0}'),
                           const SizedBox(width: 12),
-                          _QuickStat(label: tr('Bugün'), value: '${_stats['todayPlans'] ?? 0}'),
+                          _QuickStat(label: tr('Heute'), value: '${_stats['todayPlans'] ?? 0}'),
                           const SizedBox(width: 12),
                           _QuickStat(label: tr('Bekleyen'), value: '${_stats['pendingDrafts'] ?? 0}'),
                         ],
@@ -135,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(tr('Departman Klasörleri'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                      Text(tr('Abteilungsordner'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
                       const SizedBox(height: 16),
                       GridView.count(
                         crossAxisCount: WebUtils.gridColumns(context, mobile: 2, tablet: 3, desktop: 5),
@@ -174,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-4444-4444-4444-444444444444')
                             _FolderCard(
-                              title: tr('Personel'),
+                              title: tr('Personal'),
                               subtitle: 'Überlassung',
                               icon: Icons.people_outline,
                               color: const Color(0xFF10B981),
@@ -183,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           if (appState.canViewAllOrders || appState.departmentId == 'dddddddd-5555-5555-5555-555555555555')
                             _FolderCard(
-                              title: tr('Yönetim'),
+                              title: tr('Verwaltung'),
                               subtitle: 'Verwaltung',
                               icon: Icons.admin_panel_settings_outlined,
                               color: const Color(0xFF6366F1),
@@ -209,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(tr('Bekleyen Taslak Faturalar'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
-                            TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen())), child: Text(tr('Tümü'))),
+                            TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen())), child: Text(tr('Alle'))),
                           ],
                         ),
                         ..._pendingDrafts.map((d) {
@@ -266,7 +266,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(tr('Son Hareketler'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
-                      TextButton(onPressed: () {}, child: Text(tr('Tümü'))),
+                      TextButton(onPressed: () {}, child: Text(tr('Alle'))),
                     ],
                   ),
                 ),
@@ -275,7 +275,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (_loading)
                 const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())))
               else if (_recentOrders.isEmpty)
-                SliverToBoxAdapter(child: Center(child: Padding(padding: const EdgeInsets.all(40), child: Text(tr('Henüz aktivite yok')))))
+                SliverToBoxAdapter(child: Center(child: Padding(padding: const EdgeInsets.all(40), child: Text(tr('Noch keine Aktivitäten vorhanden')))))
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -395,14 +395,14 @@ class _ActivityItem extends StatelessWidget {
                 try {
                   await SupabaseService.markOrderAsInvoiced(order['id'], context.read<AppState>().userId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Faturalandırıldı ve geçmişe eklendi.'))));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Fakturiert und zur Historie hinzugefügt.'))));
                   Navigator.push(context, MaterialPageRoute(builder: (_) => ReportsScreen()));
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
                 }
               },
               style: TextButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.1), minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-              child: Text(tr('Faturalandır'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text(tr('Fakturieren'), style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
             )
           else
             Text(AppTheme.statusLabel(status), style: TextStyle(fontSize: 11, color: AppTheme.statusColor(status), fontWeight: FontWeight.bold)),

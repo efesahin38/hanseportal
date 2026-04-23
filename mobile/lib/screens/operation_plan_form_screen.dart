@@ -259,7 +259,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -291,7 +291,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                 items: [
                   DropdownMenuItem(value: 'draft', child: Text(tr('Taslak'))),
                   DropdownMenuItem(value: 'sent', child: Text(tr('Gönderildi'))),
-                  DropdownMenuItem(value: 'confirmed', child: Text(tr('Onaylandı'))),
+                  DropdownMenuItem(value: 'confirmed', child: Text(tr('Genehmigt'))),
                   DropdownMenuItem(value: 'updated', child: Text(tr('Güncellendi'))),
                   DropdownMenuItem(value: 'cancelled', child: Text(tr('İptal Edildi'))),
                 ],
@@ -333,7 +333,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               Row(children: [
                 Expanded(child: _timeTile(tr('Başlangıç Saati *'), _startTime.format(context), () => _pickTime(true))),
                 const SizedBox(width: 12),
-                Expanded(child: _timeTile(tr('Bitiş Saati'), _endTime?.format(context) ?? tr('Seçiniz'), () => _pickTime(false))),
+                Expanded(child: _timeTile(tr('Ende'), _endTime?.format(context) ?? tr('Auswählen'), () => _pickTime(false))),
               ]),
               const SizedBox(height: 20),
   

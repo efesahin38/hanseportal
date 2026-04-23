@@ -51,7 +51,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isCreatingGroup ? tr('Yeni Grup Oluştur') : tr('Yeni Chat')),
+              title: Text(isCreatingGroup ? tr('Neue Gruppe erstellen') : tr('Neuer Chat')),
               content: SizedBox(
                 width: 400,
                 height: 500,
@@ -63,17 +63,17 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () => setDialogState(() => isCreatingGroup = true),
                           icon: const Icon(Icons.group_add),
-                          label: Text(tr('Grup Oluştur')),
+                          label: Text(tr('Gruppe erstellen')),
                           style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
                         ),
                       ),
                     if (isCreatingGroup) ...[
                       TextField(
-                        decoration: InputDecoration(hintText: tr('Grup İsmi')),
+                        decoration: InputDecoration(hintText: tr('Gruppenname')),
                         onChanged: (v) => groupName = v,
                       ),
                       const SizedBox(height: 12),
-                      Text(tr('Üyeleri Seçin:'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(tr('Mitglieder auswählen:'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                     Expanded(
                       child: ListView.builder(
@@ -130,7 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         'members': selectedUserIds,
                       });
                     },
-                    child: Text(tr('Oluştur')),
+                    child: Text(tr('Erstellen')),
                   ),
               ],
             );
@@ -368,7 +368,7 @@ class _ChatDetailState extends State<_ChatDetailScreen> {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: Text(tr('Katılımcılar')),
+                    title: Text(tr('Teilnehmer')),
                     content: SizedBox(
                       width: double.maxFinite,
                       child: ListView.builder(

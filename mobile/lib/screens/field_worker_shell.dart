@@ -65,7 +65,7 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
         },
       if (appState.isBereichsleiter)
         {
-          'title': tr('İş Takvimi'),
+          'title': tr('Auftragskalender'),
           'icon': Icons.event_note,
           'iconOut': Icons.event_note_outlined,
           'screen': const OrderCalendarScreen(),
@@ -245,22 +245,6 @@ class _FieldWorkerShellState extends State<FieldWorkerShell> {
         ),
       ),
       body: items[_selectedIndex]['screen'],
-      bottomNavigationBar: kIsWeb ? null : BottomNavigationBar(
-        currentIndex: _selectedIndex >= items.length ? 0 : _selectedIndex,
-        onTap: (idx) => setState(() => _selectedIndex = idx),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textSub,
-        showUnselectedLabels: true,
-        selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
-        unselectedLabelStyle: const TextStyle(fontSize: 10, fontFamily: 'Inter'),
-        items: items.map((it) => BottomNavigationBarItem(
-          icon: Icon(it['iconOut'], size: 20),
-          activeIcon: Icon(it['icon'], size: 20),
-          label: it['title'],
-        )).toList(),
-      ),
     );
   }
 }
-

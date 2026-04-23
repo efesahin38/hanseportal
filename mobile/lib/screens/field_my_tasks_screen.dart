@@ -115,7 +115,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('İptal'))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Abbrechen'))),
           ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Tamamla'))),
         ],
       ),
@@ -438,7 +438,7 @@ class _TaskCardState extends State<_TaskCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${tr('Hata')}: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('${tr('Fehler')}: $e'), backgroundColor: AppTheme.error),
         );
         setState(() => _sending = false);
       }

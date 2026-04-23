@@ -27,7 +27,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String? _statusFilter;
 
     final _statuses = ['', 'draft', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
-    final _statusLabels = [tr('Tümü'), tr('Taslak'), tr('Planlamada'), tr('Devam Ediyor'), tr('Tamamlandı'), tr('Faturalandı'), tr('Arşivlendi')];
+    final _statusLabels = [tr('Alle'), tr('Taslak'), tr('Planlamada'), tr('Devam Ediyor'), tr('Tamamlandı'), tr('Faturalandı'), tr('Arşivlendi')];
 
   @override
   void initState() {
@@ -168,7 +168,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           children: [
                             const Icon(Icons.work_off_outlined, size: 56, color: AppTheme.textSub),
                             const SizedBox(height: 12),
-                            Text('v1.1.3', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+                            Text('v1.0.0', style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
                             if (canCreate) ...[
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
@@ -177,7 +177,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   initialDepartmentId: widget.departmentId,
                                 ))).then((_) => _load()),
                                 icon: const Icon(Icons.add),
-                                label: Text(tr('Yeni İş Ekle')),
+                                label: Text(tr('Neuer Auftrag')),
                               ),
                             ],
                           ],
@@ -225,7 +225,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş başarıyla silindi'))));
                                   } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
                                 }
                                 _load();
                               },
@@ -241,7 +241,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ),
           ),
-          const Text('HansePortal v1.1.3', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
+          const Text('HansePortal v1.0.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10)),
         ],
       ),
     ),

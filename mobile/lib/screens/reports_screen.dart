@@ -103,11 +103,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     }
 
     final tabs = <Tab>[
-      Tab(text: tr('Muhasebe Özeti')),
-      Tab(text: tr('Aylık Rapor')),
-      if (canSeeFinancials) Tab(text: tr('Ön Fatura Taslakları')),
-      if (canSeeFinancials) Tab(text: tr('Personel Saatleri')),
-      if (canSeeFinancials) Tab(text: tr('Fatura Geçmişi')),
+      Tab(text: tr('Buchhaltungsübersicht')),
+      Tab(text: tr('Monatsbericht')),
+      if (canSeeFinancials) Tab(text: tr('Rechnungsentwürfe')),
+      if (canSeeFinancials) Tab(text: tr('Personalstunden')),
+      if (canSeeFinancials) Tab(text: tr('Rechnungshistorie')),
     ];
 
     final tabViews = <Widget>[
@@ -167,7 +167,7 @@ class _InvoiceDraftTab extends StatelessWidget {
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         const Icon(Icons.receipt_long_outlined, size: 56, color: AppTheme.textSub),
         const SizedBox(height: 12),
-        Text(tr('Ön fatura taslağı yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+        Text(tr('Keine Rechnungsentwürfe vorhanden'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
       ]));
     }
     return RefreshIndicator(
@@ -220,7 +220,7 @@ class _InvoiceDraftTab extends StatelessWidget {
                           MaterialPageRoute(builder: (_) => InvoiceDraftDetailScreen(draftId: d['id'])),
                         ).then((_) => onRefresh()),
                         icon: const Icon(Icons.visibility_outlined, size: 16),
-                        label: Text(tr('İncele'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
+                        label: Text(tr('Überprüfen'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           minimumSize: Size.zero,
@@ -234,7 +234,7 @@ class _InvoiceDraftTab extends StatelessWidget {
                             MaterialPageRoute(builder: (_) => InvoiceDraftDetailScreen(draftId: d['id'])),
                           ).then((_) => onRefresh()),
                           icon: const Icon(Icons.check_circle_outline, size: 16),
-                          label: Text(tr('Onayla'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
+                          label: Text(tr('Bestätigen'), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.success,
                             side: const BorderSide(color: AppTheme.success),
@@ -260,12 +260,12 @@ class _DraftStatusChip extends StatelessWidget {
 
   String get label {
     switch (status) {
-      case 'auto_generated':    return tr('Oluşturuldu');
-      case 'under_review':      return tr('İncelemede');
-      case 'correction_needed': return tr('Düzeltme');
-      case 'approved':          return tr('Onaylandı');
+      case 'auto_generated':    return tr('Erstellt');
+      case 'under_review':      return tr('In Prüfung');
+      case 'correction_needed': return tr('Korrektur');
+      case 'approved':          return tr('Genehmigt');
       case 'invoiced':          return tr('Faturalandı');
-      case 'cancelled':         return tr('İptal');
+      case 'cancelled':         return tr('Abbrechen');
       default:                  return status;
     }
   }
@@ -482,7 +482,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                         Text('€ ${totalExpense.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(tr('Net Kar'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                        Text(tr('Nettogewinn'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
                         Text('€ ${(totalIncome - totalExpense).toStringAsFixed(0)}', style: TextStyle(color: (totalIncome - totalExpense) >= 0 ? Colors.blueAccent : Colors.redAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                       ]),
                     ],
@@ -574,7 +574,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                     _miniStat(tr('Gelir'), '€ ${income.toStringAsFixed(0)}', Colors.green),
                     _miniStat(tr('İşçilik'), '€ ${labor.toStringAsFixed(0)}', Colors.deepOrange),
                     _miniStat(tr('Malzeme'), '€ ${material.toStringAsFixed(0)}', Colors.orange),
-                    _miniStat(tr('Net Kar'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
+                    _miniStat(tr('Nettogewinn'), '€ ${profit.toStringAsFixed(0)}', profit >= 0 ? AppTheme.primary : AppTheme.error),
                   ],
                 ),
                 // Proje listesi (genişletilmiş)
@@ -693,7 +693,7 @@ class _DailyAccountingSummaryTabState extends State<_DailyAccountingSummaryTab> 
                                   icon: isInvoicing
                                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                                       : const Icon(Icons.receipt_long_outlined, size: 14),
-                                  label: Text(tr('Faturalandır'), style: const TextStyle(fontSize: 11, fontFamily: 'Inter')),
+                                  label: Text(tr('Fakturieren'), style: const TextStyle(fontSize: 11, fontFamily: 'Inter')),
                                   style: OutlinedButton.styleFrom(foregroundColor: Colors.teal, side: const BorderSide(color: Colors.teal), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                 ),
                             ],
@@ -934,9 +934,9 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _monthStat(tr('Toplam Gelir'), '€ ${_totalIncome.toStringAsFixed(0)}', Colors.greenAccent),
-                      _monthStat(tr('Toplam Gider'), '€ ${totalExpense.toStringAsFixed(0)}', Colors.orangeAccent),
-                      _monthStat(tr('Net Kar'), '€ ${totalProfit.toStringAsFixed(0)}', totalProfit >= 0 ? Colors.cyanAccent : Colors.redAccent),
+                      _monthStat(tr('Gesamteinnahmen'), '€ ${_totalIncome.toStringAsFixed(0)}', Colors.greenAccent),
+                      _monthStat(tr('Gesamtausgaben'), '€ ${totalExpense.toStringAsFixed(0)}', Colors.orangeAccent),
+                      _monthStat(tr('Nettogewinn'), '€ ${totalProfit.toStringAsFixed(0)}', totalProfit >= 0 ? Colors.cyanAccent : Colors.redAccent),
                     ],
                   ),
                   const Divider(color: Colors.white10, height: 24),
@@ -960,7 +960,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
                 icon: _exporting 
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Icon(Icons.picture_as_pdf),
-                label: Text(_exporting ? tr('Oluşturuluyor...') : tr('Aylık Rapor PDF İndir')),
+                label: Text(_exporting ? tr('Wird generiert...') : tr('Aylık Rapor PDF İndir')),
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
               ),
             ),
@@ -997,7 +997,7 @@ class _MonthlyReportTabState extends State<_MonthlyReportTab> {
                         Text('€${exp.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange)),
                       ]),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(tr('Net Kar'), style: const TextStyle(fontSize: 9, color: AppTheme.textSub)),
+                        Text(tr('Nettogewinn'), style: const TextStyle(fontSize: 9, color: AppTheme.textSub)),
                         Text('€${prof.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: prof >= 0 ? AppTheme.primary : AppTheme.error)),
                       ]),
                     ],
@@ -1162,8 +1162,8 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Text(tr('Toplam Çalışma Saati'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
-              Text('${totalHours.toStringAsFixed(1)} ${tr('saat')}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              Text(tr('Gesamt-Iststunden'), style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Inter')),
+              Text('${totalHours.toStringAsFixed(1)} ${tr('Std.')}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
               Text('${_personnelData.length} ${tr('çalışan')}', style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'Inter')),
             ]),
           ),
@@ -1177,7 +1177,7 @@ class _PersonnelHoursTabState extends State<_PersonnelHoursTab> {
               icon: _exporting 
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : const Icon(Icons.picture_as_pdf),
-              label: Text(_exporting ? tr('Oluşturuluyor...') : tr('Personel Saatleri PDF İndir')),
+              label: Text(_exporting ? tr('Wird generiert...') : tr('Personalstunden PDF herunterladen')),
               style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
             ),
           ),
@@ -1486,7 +1486,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                 const SizedBox(height: 12),
                 Text(tr('Hiç fatura bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                 const SizedBox(height: 8),
-                Text('${tr('Cihaz Saati')}: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                Text('${tr('Gerätezeit')}: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
               ]),
             ),
           )
@@ -1595,7 +1595,7 @@ class _InvoiceHistoryTabState extends State<_InvoiceHistoryTab> {
                                 children: [
                                   Text('€ ${netProfit.toStringAsFixed(2)}', 
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: netProfit >= 0 ? Colors.green[700] : Colors.red[700])),
-                                  Text(tr('Net Kar'), style: const TextStyle(fontSize: 8, color: Colors.grey)),
+                                  Text(tr('Nettogewinn'), style: const TextStyle(fontSize: 8, color: Colors.grey)),
                                 ],
                               ),
                               const SizedBox(width: 8),

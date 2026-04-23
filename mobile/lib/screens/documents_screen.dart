@@ -28,7 +28,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   String? _selectedFolderId; // Null means root/all, otherwise departmentId
 
   final List<_FilterOption> _typeFilters = [
-    _FilterOption('hepsi', tr('Tümü')),
+    _FilterOption('hepsi', tr('Alle')),
     _FilterOption('offer', tr('Teklif')),
     _FilterOption('contract', tr('Sözleşme')),
     _FilterOption('work_order', tr('İş Emri')),
@@ -379,7 +379,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: uploading ? null : () => Navigator.pop(ctx),
-                    child: Text(tr('İptal')),
+                    child: Text(tr('Abbrechen')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -421,7 +421,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                       } catch (e) {
                         if (ctx.mounted) {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('${tr('Hata')}: $e'))
+                            SnackBar(content: Text('${tr('Fehler')}: $e'))
                           );
                         }
                       } finally {
@@ -430,7 +430,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     },
                     child: uploading 
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                      : Text(tr('Kaydet')),
+                      : Text(tr('Speichern')),
                   ),
                 ),
               ]),
@@ -594,10 +594,10 @@ class _ActionButtonsState extends State<_ActionButtons> {
         title: Text(tr('Silme Onayı'), style: const TextStyle(fontFamily: 'Inter')),
         content: Text(tr('Bu belgeyi kalıcı olarak silmek istediğinize emin misiniz? Sistemden ve depolama alanından tamamen kaldırılacaktır.'), style: const TextStyle(fontFamily: 'Inter')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('İptal'))),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('Abbrechen'))),
           TextButton(
             onPressed: () => Navigator.pop(c, true),
-            child: Text(tr('Sil'), style: const TextStyle(color: AppTheme.error)),
+            child: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -668,7 +668,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -695,7 +695,7 @@ class _ActionButtonsState extends State<_ActionButtons> {
         if (context.read<AppState>().canManageDocuments)
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.error),
-            tooltip: tr('Sil'),
+            tooltip: tr('Löschen'),
             onPressed: _deleteDocument,
           ),
       ],

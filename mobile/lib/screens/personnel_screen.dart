@@ -25,13 +25,13 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   Map<String, String> _approvalStatuses = {}; // employee_id -> status
 
     final _roles = {
-      tr('Tümü'): null,
+      tr('Alle'): null,
       'Geschäftsführer': 'geschaeftsfuehrer',
       'Betriebsleiter': 'betriebsleiter',
       'Bereichsleiter': 'bereichsleiter',
       'Vorarbeiter': 'vorarbeiter',
       'Mitarbeiter': 'mitarbeiter',
-      tr('Muhasebe'): 'buchhaltung',
+      tr('Buchhaltung'): 'buchhaltung',
       'Backoffice': 'backoffice',
     };
 
@@ -67,7 +67,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
 
       final data = await SupabaseService.getUsers(
         companyId: (appState.canViewAllPersonnel || appState.isBereichsleiter) ? null : appState.companyId,
-        departmentId: null, // v1.1.3: Relaxed filtering to ensure visibility via Service Areas
+        departmentId: null, // v1.0.0: Relaxed filtering to ensure visibility via Service Areas
         role: _roleFilter,
         status: 'active',
         serviceAreaIds: appState.canViewAllPersonnel ? null : (appState.serviceAreaIds.isEmpty ? null : appState.serviceAreaIds),

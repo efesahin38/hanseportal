@@ -13,7 +13,7 @@ class OrderCalendarScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('İş Takvimi')),
+        title: Text(tr('Auftragskalender')),
       ),
       body: const OrderCalendarWidget(showHeader: true),
     );
@@ -157,7 +157,7 @@ class _OrderCalendarWidgetState extends State<OrderCalendarWidget> {
   }
 
   Widget _buildDayHeaders() {
-    final labels = [tr('Pzt'), tr('Sal'), tr('Çar'), tr('Per'), tr('Cum'), tr('Cmt'), tr('Paz')];
+    final labels = [tr('Mo'), tr('Di'), tr('Mi'), tr('Do'), tr('Fr'), tr('Sa'), tr('So')];
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -280,7 +280,7 @@ class _OrderCalendarWidgetState extends State<OrderCalendarWidget> {
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
             ),
             title: Text(
-              order['title'] ?? tr('İsimsiz Sipariş'), 
+              order['title'] ?? tr('Namensloser Auftrag'), 
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

@@ -97,7 +97,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final entry in {tr('Tümü'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Arşiv'): 'archived', 'Subunternehmen': 'subunternehmen'}.entries)
+                        for (final entry in {tr('Alle'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Archiv'): 'archived', 'Subunternehmen': 'subunternehmen'}.entries)
                           Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
@@ -170,7 +170,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla silindi'))));
                                   } catch (e) {
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
                                     _load(); // Restore list on error
                                   }
                                   _load(); // Ensure local state is consistent with DB

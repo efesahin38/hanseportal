@@ -190,7 +190,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Hata')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
         setState(() => _saving = false);
       }
     }
@@ -256,24 +256,24 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  _section(tr('Adres')),
-                  _textField(tr('Adres'), _address),
+                  _section(tr('Adresse')),
+                  _textField(tr('Adresse'), _address),
                   Wrap(
                     spacing: 12,
                     children: [
                       SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.3 : (constraints.maxWidth - 32 - 12) * 0.3, child: _textField(tr('Posta Kodu'), _postalCode)),
-                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField(tr('Şehir'), _city)),
+                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField(tr('Stadt'), _city)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section(tr('İletişim')),
+                  _section(tr('Kontakt')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
                       SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _phone)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('E-posta'), _email)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('E-Mail'), _email)),
                       SizedBox(width: fieldWidth, child: _textField(tr('Vergi Numarası'), _taxNumber)),
                     ],
                   ),
@@ -348,10 +348,10 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     onPressed: _saving ? null : _save,
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Kaydet')),
+                        : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Speichern')),
                   ),
                   const SizedBox(height: 24),
-                  const Center(child: Text('HansePortal v1.1.3', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
+                  const Center(child: Text('HansePortal v1.0.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
                 ],
               );
             },
@@ -400,7 +400,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               TextField(controller: phoneCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: tr('Telefon'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
               const SizedBox(height: 8),
               TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(
-                labelText: contactType == 'ExtManager' ? tr('E-posta * (Portal girişi için)') : tr('E-posta'),
+                labelText: contactType == 'ExtManager' ? tr('E-posta * (Portal girişi için)') : tr('E-Mail'),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 suffixIcon: contactType == 'ExtManager' ? const Icon(Icons.vpn_key_outlined, color: AppTheme.gwsColor) : null,
               )),
@@ -415,7 +415,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('İptal'))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Abbrechen'))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: contactType == 'ExtManager' ? AppTheme.gwsColor : AppTheme.primary),
               onPressed: () async {
@@ -523,7 +523,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'subunternehmen', child: Text('🔄 Subunternehmen', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Arşiv')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Archiv')}', style: const TextStyle(fontFamily: 'Inter'))),
       ],
       onChanged: canEditStatus ? (v) => setState(() => _status = v!) : null,
     );
