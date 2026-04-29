@@ -7,6 +7,7 @@ import '../theme/web_utils.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_service.dart';
 import '../services/localization_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Interne PQ – Firmenunterlagen-Ablage
 class InternePqScreen extends StatefulWidget {
@@ -237,13 +238,21 @@ class _InternePqScreenState extends State<InternePqScreen> {
                                         subtitle: Text('${d['category'] ?? ''} • ${d['file_name'] ?? ''}', style: const TextStyle(fontSize: 11, color: AppTheme.textSub)),
                                         trailing: PopupMenuButton<String>(
                                           onSelected: (v) async {
-                                            if (v == 'delete') {
+                                            if (v == 'view' || v == 'download') {
+                                              final url = d['file_url'];
+                                              if (url != null && url.isNotEmpty) {
+                                                await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                                              }
+                                            } else if (v == 'delete') {
                                               await SupabaseService.deletePqDocument(d['id'], d['file_url'] ?? '');
                                               _load();
                                             }
                                           },
                                           itemBuilder: (_) => [
-                                            PopupMenuItem(value: 'delete', child: Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error))),
+                                            PopupMenuItem(value: 'view', child: Row(children: [const Icon(Icons.visibility, size: 20, color: AppTheme.primary), const SizedBox(width: 8), Text(tr('Anzeigen'), style: const TextStyle(fontFamily: 'Inter'))])),
+                                            PopupMenuItem(value: 'download', child: Row(children: [const Icon(Icons.download, size: 20, color: AppTheme.primary), const SizedBox(width: 8), Text(tr('Herunterladen'), style: const TextStyle(fontFamily: 'Inter'))])),
+                                            const PopupMenuDivider(),
+                                            PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, size: 20, color: AppTheme.error), const SizedBox(width: 8), Text(tr('Löschen'), style: const TextStyle(color: AppTheme.error, fontFamily: 'Inter'))])),
                                           ],
                                         ),
                                       );

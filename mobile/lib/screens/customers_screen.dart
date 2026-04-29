@@ -64,8 +64,6 @@ class _CustomersScreenState extends State<CustomersScreen> {
       appBar: AppBar(
         title: Text(tr('Kundenverwaltung'), style: const TextStyle(fontFamily: 'Inter', fontSize: 18)),
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.textMain,
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
