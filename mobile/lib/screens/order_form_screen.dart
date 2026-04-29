@@ -600,7 +600,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       isExpanded: true,
       items: uniqueItems.map((i) => DropdownMenuItem<String>(
         value: i['id'].toString(),
-        child: Text(i[nameKey] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14), overflow: TextOverflow.ellipsis),
+        child: Text(i['display_name'] ?? i[nameKey] ?? '', style: const TextStyle(fontFamily: 'Inter', fontSize: 14), overflow: TextOverflow.ellipsis),
       )).toList(),
       onChanged: onChanged,
     );

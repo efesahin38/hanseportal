@@ -39,11 +39,10 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
 
       var companies = await SupabaseService.getCompanies(serviceAreaIds: null);
 
-      // v17.2: İstenen 3 şirket filtrelemesi
+      // v17.2: İstenen şirket filtrelemesi
       final targetUuids = [
         'aaaaaaaa-0000-0000-0000-000000000003', // HANSE KOLLEKTIV GMBH
         '88888888-0000-0000-0000-000000000001', // hako gastwirtschaftsservice
-        '88888888-0000-0000-0000-000000000002', // Safari Dienstleistungen Gmbh
       ];
       
       companies = companies.where((c) => targetUuids.contains(c['id'].toString())).toList();
@@ -147,8 +146,6 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                                             name = 'Hanse Kollektiv GmbH';
                                           } else if (name.toLowerCase().contains('hako')) {
                                             name = 'Hako Gastwirtschaftsservice';
-                                          } else if (name.toLowerCase().contains('safari')) {
-                                            name = 'Safari Dienstleistungen GmbH';
                                           }
                                           return DropdownMenuItem<String>(
                                             value: c['id'].toString(),
