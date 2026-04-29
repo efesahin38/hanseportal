@@ -62,7 +62,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('Müşteri Yönetimi'), style: const TextStyle(fontFamily: 'Inter', fontSize: 18)),
+        title: Text(tr('Kundenverwaltung'), style: const TextStyle(fontFamily: 'Inter', fontSize: 18)),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textMain,
@@ -71,7 +71,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerFormScreen())).then((_) => _load()),
               icon: const Icon(Icons.add),
-              label: Text(tr('Yeni Müşteri'), style: const TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Neuer Kunde'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -86,7 +86,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   TextField(
                     onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
                     decoration: InputDecoration(
-                      hintText: tr('Müşteri adı, şehir, e-posta ara...'),
+                      hintText: tr('Kundenname, Stadt, E-Mail suchen...'),
                       prefixIcon: const Icon(Icons.search),
                       contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                     ),
@@ -97,7 +97,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final entry in {tr('Alle'): null, tr('Aktif'): 'active', tr('Pasif'): 'inactive', tr('Potansiyel'): 'potential', tr('Archiv'): 'archived', 'Subunternehmen': 'subunternehmen'}.entries)
+                        for (final entry in {tr('Alle'): null, tr('Aktiv'): 'active', tr('Passiv'): 'inactive', tr('Potentiell'): 'potential', tr('Archiv'): 'archived', 'Subunternehmen': 'subunternehmen'}.entries)
                           Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(
@@ -125,7 +125,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.business_outlined, size: 56, color: AppTheme.textSub),
                           SizedBox(height: 12),
-                          Text(tr('Müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          Text(tr('Kein Kunde gefunden'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ]))
                       : RefreshIndicator(
                           onRefresh: _load,
@@ -153,11 +153,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   return await showDialog(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: Text(tr('Müşteriyi Kalıcı Olarak Sil?')),
-                                      content: Text(tr('Bu müşteriyi sistemden silmek istediğinize emin misiniz? (Geçmiş işler ve faturalar saklı kalacaktır.)')),
+                                      title: Text(tr('Kunden dauerhaft löschen?')),
+                                      content: Text(tr('Möchten Sie diesen Kunden wirklich aus dem System löschen? (Vergangene Aufträge und Rechnungen bleiben gespeichert.)')),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Abbrechen'))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Ja, löschen'), style: const TextStyle(color: AppTheme.error))),
                                       ],
                                     ),
                                   );
@@ -167,7 +167,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   try {
                                     await SupabaseService.deleteCustomer(customerId);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Müşteri başarıyla silindi'))));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Kunde erfolgreich gelöscht'))));
                                   } catch (e) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));

@@ -112,7 +112,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
       case 'correction_needed': return tr('Düzeltme Gerekli');
       case 'approved':         return tr('Genehmigt');
       case 'invoiced':         return tr('Faturalandı');
-      case 'cancelled':        return tr('İptal Edildi');
+      case 'cancelled':        return tr('Storniert');
       default:                 return s;
     }
   }
@@ -138,7 +138,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_draft == null) return Scaffold(appBar: AppBar(title: Text(tr('Ön Fatura'))), body: Center(child: Text(tr('Keine Daten gefunden'))));
+    if (_draft == null) return Scaffold(appBar: AppBar(title: Text(tr('Vorrechnung'))), body: Center(child: Text(tr('Keine Daten gefunden'))));
 
     final d = _draft!;
     final status = d['status'] ?? '';
@@ -154,7 +154,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(d['draft_number'] ?? tr('Ön Fatura')),
+        title: Text(d['draft_number'] ?? tr('Vorrechnung')),
         actions: [
           // PDF Export
           IconButton(
@@ -231,8 +231,8 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                 if (customer['vat_number'] != null) _row('USt-IdNr.', customer['vat_number']),
                 if (customer['secondary_contact_name'] != null) ...[
                   const Divider(),
-                  _row(tr('İkinci Muhatap'), customer['secondary_contact_name']),
-                  if (customer['secondary_contact_phone'] != null) _row(tr('İkinci Tel'), customer['secondary_contact_phone']),
+                  _row(tr('Zweiter Ansprechpartner'), customer['secondary_contact_name']),
+                  if (customer['secondary_contact_phone'] != null) _row(tr('Zweite Telefonnummer'), customer['secondary_contact_phone']),
                 ],
               ]),
               const SizedBox(height: 12),
@@ -272,7 +272,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                   if (wr['actual_labor_cost'] != null || wr['actual_material_cost'] != null) {
                     source = tr('Tahmini Gelir ve Gider iş sonu raporundan alınmıştır');
                   } else if (wr['actual_labor_cost'] != null) {
-                    source = tr('İş sonu raporundan gider verileri çekilmiştir');
+                    source = tr('Kostendaten aus dem Abschlussprotokoll entnommen');
                   }
                 }
   
@@ -292,7 +292,7 @@ class _InvoiceDraftDetailScreenState extends State<InvoiceDraftDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _financialSummaryItem(tr('İşçilik Gideri'), '€ ${realLaborCost.toStringAsFixed(2)}', Colors.deepOrange),
+                      _financialSummaryItem(tr('Lohnkosten'), '€ ${realLaborCost.toStringAsFixed(2)}', Colors.deepOrange),
                       _financialSummaryItem(tr('Malzeme Gideri'), '€ ${realMaterialCost.toStringAsFixed(2)}', Colors.amber),
                     ],
                   ),

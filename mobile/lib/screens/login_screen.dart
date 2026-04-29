@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: const Icon(Icons.email_outlined),
                             ),
                             validator: (v) => (v == null || !v.contains('@'))
-                                ? tr('Ültige E-Mail eingeben')
+                                ? tr('Gültige E-Mail eingeben')
                                 : null,
                           ),
                           const SizedBox(height: 16),

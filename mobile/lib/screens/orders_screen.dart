@@ -27,7 +27,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String? _statusFilter;
 
     final _statuses = ['', 'draft', 'planning', 'in_progress', 'completed', 'invoiced', 'archived'];
-    final _statusLabels = [tr('Alle'), tr('Taslak'), tr('Planlamada'), tr('Devam Ediyor'), tr('Tamamlandı'), tr('Faturalandı'), tr('Arşivlendi')];
+    final _statusLabels = [tr('Alle'), tr('Entwurf'), tr('In Planung'), tr('In Bearbeitung'), tr('Abgeschlossen'), tr('Fakturiert'), tr('Archiviert')];
 
   @override
   void initState() {
@@ -106,7 +106,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 initialDepartmentId: widget.departmentId,
               ))).then((_) => _load()),
               icon: const Icon(Icons.add),
-              label: Text(tr('Yeni İş'), style: const TextStyle(fontFamily: 'Inter')),
+              label: Text(tr('Neuer Auftrag'), style: const TextStyle(fontFamily: 'Inter')),
             )
           : null,
       body: WebContentWrapper(
@@ -122,7 +122,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 TextField(
                   onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
                     decoration: InputDecoration(
-                      hintText: tr('İş adı, numara, müşteri ara...'),
+                      hintText: tr('Auftragsname, Nummer, Kunde suchen...'),
                     prefixIcon: Icon(Icons.search),
                     contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   ),
@@ -209,11 +209,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 return await showDialog(
                                   context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: Text(tr('İşi Kalıcı Olarak Sil?')),
-                                      content: Text(tr('Bu iş kaydını silmek istediğinize emin misiniz? (Bağlı çalışma saatleri ve faturalar muhasebe için saklı kalacaktır.)')),
+                                      title: Text(tr('Auftrag dauerhaft löschen?')),
+                                      content: Text(tr('Möchten Sie diesen Auftrag wirklich löschen? (Verknüpfte Arbeitsstunden und Rechnungen bleiben für die Buchhaltung erhalten.)')),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Vazgeç'))),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Evet, Sil'), style: const TextStyle(color: AppTheme.error))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Abbrechen'))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Ja, löschen'), style: const TextStyle(color: AppTheme.error))),
                                       ],
                                     ),
                                 );
@@ -223,7 +223,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   try {
                                     await SupabaseService.deleteOrder(orderId);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('İş başarıyla silindi'))));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Auftrag erfolgreich gelöscht'))));
                                   } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler')}: $e')));
                                 }
@@ -250,11 +250,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   String _getTitle() {
     if (widget.customTitle != null) return widget.customTitle!;
-    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000001') return tr('Temizlik İşleri');
-    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000002') return tr('Ray Servis İşleri');
-    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000005') return tr('Otel Servis İşleri');
-    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000004') return tr('Personel İşleri');
-    return tr('Tüm İşler');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000001') return tr('Reinigungsaufträge');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000002') return tr('Gleisbausicherung-Aufträge');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000005') return tr('Hotelservice-Aufträge');
+    if (widget.serviceAreaId == '11112222-0000-0000-0000-000000000004') return tr('Personalüberlassung-Aufträge');
+    return tr('Alle Aufträge');
   }
 }
 

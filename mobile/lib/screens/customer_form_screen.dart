@@ -91,7 +91,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
         });
       }
     } catch (e) {
-      debugPrint('${tr('Hizmet alanları yüklenemedi')}: $e');
+      debugPrint('Leistungsbereiche konnten nicht geladen werden: $e');
     }
     if (widget.customerId != null) {
       await _loadCustomer();
@@ -142,7 +142,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final companyId = context.read<AppState>().currentUser?['company_id'];
     if (companyId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Hata: Kullanıcı şirket bilgisi bulunamadı.'))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Fehler: Firmeninformationen des Benutzers nicht gefunden.'))));
         setState(() => _saving = false);
       }
       return;
@@ -199,7 +199,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.customerId == null ? tr('Yeni Müşteri') : tr('Müşteri Düzenle'))),
+      appBar: AppBar(title: Text(widget.customerId == null ? tr('Neuer Kunde') : tr('Kunde bearbeiten'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
@@ -211,23 +211,23 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section(tr('Temel Bilgiler')),
+                  _section(tr('Grunddaten')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('Müşteri / Şirket Adı *'), _name, required: true)),
-                      SizedBox(
-                        width: fieldWidth,
-                        child: DropdownButtonFormField<String>(
-                          value: _type,
-                          decoration: InputDecoration(labelText: tr('Müşteri Tipi')),
-                          items: [
-                            DropdownMenuItem(value: 'company', child: Text(tr('Firma / Şirket'), style: const TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'public_institution', child: Text(tr('Kamu Kurumu'), style: const TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'individual', child: Text(tr('Şahıs / Bireysel'), style: const TextStyle(fontFamily: 'Inter'))),
-                            DropdownMenuItem(value: 'other', child: Text(tr('Diğer'), style: const TextStyle(fontFamily: 'Inter'))),
-                          ],
+                       SizedBox(width: fieldWidth, child: _textField(tr('Kundenname / Firmenname *'), _name, required: true)),
+                       SizedBox(
+                         width: fieldWidth,
+                         child: DropdownButtonFormField<String>(
+                           value: _type,
+                           decoration: InputDecoration(labelText: tr('Kundentyp')),
+                           items: [
+                             DropdownMenuItem(value: 'company', child: Text(tr('Firma / Unternehmen'), style: const TextStyle(fontFamily: 'Inter'))),
+                             DropdownMenuItem(value: 'public_institution', child: Text(tr('Behörde / öffentl. Einrichtung'), style: const TextStyle(fontFamily: 'Inter'))),
+                             DropdownMenuItem(value: 'individual', child: Text(tr('Einzelperson / Privat'), style: const TextStyle(fontFamily: 'Inter'))),
+                             DropdownMenuItem(value: 'other', child: Text(tr('Sonstiges'), style: const TextStyle(fontFamily: 'Inter'))),
+                           ],
                           onChanged: (v) => setState(() => _type = v!),
                         ),
                       ),
@@ -235,7 +235,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _selectedServiceAreaId,
-                          decoration: InputDecoration(labelText: tr('Zuständige Bereiche (Hizmet Alanları)')),
+                          decoration: InputDecoration(labelText: tr('Zuständige Bereiche')),
                           items: _serviceAreas.map((s) => DropdownMenuItem(
                             value: s['id'].toString(),
                             child: Text(s['display_name'] ?? s['name'] ?? '', style: const TextStyle(fontFamily: 'Inter')),
@@ -247,7 +247,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  _section(tr('Müşteri Durumu')),
+                  _section(tr('Kundenstatus')),
                   Wrap(
                     spacing: 16,
                     children: [
@@ -261,8 +261,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   Wrap(
                     spacing: 12,
                     children: [
-                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.3 : (constraints.maxWidth - 32 - 12) * 0.3, child: _textField(tr('Posta Kodu'), _postalCode)),
-                      SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField(tr('Stadt'), _city)),
+                       SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.3 : (constraints.maxWidth - 32 - 12) * 0.3, child: _textField(tr('Postleitzahl'), _postalCode)),
+                       SizedBox(width: isWide ? (constraints.maxWidth - 32 - 12) * 0.7 : (constraints.maxWidth - 32 - 12) * 0.7, child: _textField(tr('Stadt'), _city)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -272,39 +272,39 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _phone)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('E-Mail'), _email)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('Vergi Numarası'), _taxNumber)),
+                       SizedBox(width: fieldWidth, child: _textField(tr('Telefon'), _phone)),
+                       SizedBox(width: fieldWidth, child: _textField(tr('E-Mail'), _email)),
+                       SizedBox(width: fieldWidth, child: _textField(tr('Steuernummer'), _taxNumber)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section(tr('Ek Bilgiler')),
+                  _section(tr('Zusatzinformationen')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('Notlar'), _notes, maxLines: 3)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('Saha Erişim Bilgisi'), _specialAccess, maxLines: 2)),
+                       SizedBox(width: fieldWidth, child: _textField(tr('Notizen'), _notes, maxLines: 3)),
+                       SizedBox(width: fieldWidth, child: _textField(tr('Zugangsinfo / Schlüssel'), _specialAccess, maxLines: 2)),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
-                  _section(tr('Fatura Adresi')),
-                  _textField(tr('Fatura Adresi (Boşsa İş Adresi kullanılır)'), _billingAddress, maxLines: 2),
+                  _section(tr('Rechnungsadresse')),
+                  _textField(tr('Rechnungsadresse (leer = Geschäftsadresse wird verwendet)'), _billingAddress, maxLines: 2),
                   const SizedBox(height: 16),
                   
                   // Finansal Bilgiler
                   if (context.read<AppState>().canSeeFinancialDetails) ...[
-                    _section(tr('Finansal Bilgiler (Yetkili)')),
+                    _section(tr('Finanzdaten (Autorisiert)')),
                     Wrap(
                       spacing: 16,
                       runSpacing: 0,
                       children: [
-                        SizedBox(width: fieldWidth, child: _textField(tr('USt-IdNr. (KDV No)'), _vatNumber)),
-                        SizedBox(width: fieldWidth, child: _textField(tr('Banka Adı'), _bankName)),
-                        SizedBox(width: fieldWidth, child: _textField(tr('IBAN'), _iban)),
-                        SizedBox(width: fieldWidth, child: _textField(tr('BIC / SWIFT'), _bic)),
+                         SizedBox(width: fieldWidth, child: _textField(tr('USt-IdNr. (MwSt.-Nr.)'), _vatNumber)),
+                         SizedBox(width: fieldWidth, child: _textField(tr('Bankname'), _bankName)),
+                         SizedBox(width: fieldWidth, child: _textField(tr('IBAN'), _iban)),
+                         SizedBox(width: fieldWidth, child: _textField(tr('BIC / SWIFT'), _bic)),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -323,7 +323,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   if (_sachbearbeiters.isEmpty)
                     Padding(
                       padding: EdgeInsets.only(bottom: 16.0),
-                      child: Text(tr('Henüz eklenmemiş'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                      child: Text(tr('Noch nicht hinzugefügt'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                     ),
                   ..._sachbearbeiters.map((s) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -348,7 +348,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                     onPressed: _saving ? null : _save,
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.customerId == null ? tr('Müşteri Oluştur') : tr('Speichern')),
+                        : Text(widget.customerId == null ? tr('Kunden anlegen') : tr('Speichern')),
                   ),
                   const SizedBox(height: 24),
                   const Center(child: Text('HansePortal v1.0.0', style: TextStyle(color: AppTheme.textSub, fontSize: 10))),
@@ -380,7 +380,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(tr('Ansprechpartner Ekle')),
+          title: Text(tr('Ansprechpartner hinzufügen')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -388,19 +388,19 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                 value: contactType,
                 decoration: InputDecoration(labelText: tr('Typ'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                 items: [
-                  const DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Sachbearbeiter')),
+                  const DropdownMenuItem(value: 'Sachbearbeiter', child: Text('Kaufmännischer Ansprechpartner')),
                   if (isPortalEnabled)
-                    const DropdownMenuItem(value: 'ExtManager', child: Text('🏨 Externer Manager (Kundenportal)')),
+                    const DropdownMenuItem(value: 'ExtManager', child: Text('🏨 AG Ansprechpartner (Kundenportal)')),
                 ],
                 onChanged: (v) => setLocal(() => contactType = v!),
               ),
               const SizedBox(height: 12),
-              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: tr('İsim Soyisim *'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: tr('Vor- und Nachname *'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
               const SizedBox(height: 8),
               TextField(controller: phoneCtrl, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: tr('Telefon'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
               const SizedBox(height: 8),
               TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(
-                labelText: contactType == 'ExtManager' ? tr('E-posta * (Portal girişi için)') : tr('E-Mail'),
+                labelText: contactType == 'ExtManager' ? tr('E-Mail * (für Portal-Zugang)') : tr('E-Mail'),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 suffixIcon: contactType == 'ExtManager' ? const Icon(Icons.vpn_key_outlined, color: AppTheme.gwsColor) : null,
               )),
@@ -409,7 +409,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   child: Row(children: [
                     Icon(Icons.info_outline, color: AppTheme.gwsColor, size: 16),
                     SizedBox(width: 8),
-                    Expanded(child: Text(tr('E-posta girilirse otomatik portal hesabı oluşturulur.'), style: TextStyle(fontSize: 12, color: AppTheme.gwsColor, fontFamily: 'Inter'))),
+                    Expanded(child: Text(tr('Bei Angabe der E-Mail wird automatisch ein Portal-Konto erstellt.'), style: TextStyle(fontSize: 12, color: AppTheme.gwsColor, fontFamily: 'Inter'))),
                   ]),
                 )],
             ],
@@ -447,12 +447,12 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         context: context,
                         builder: (_) => AlertDialog(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: Row(children: [const Icon(Icons.check_circle, color: AppTheme.success), const SizedBox(width: 8), Text(tr('Portal Hesabı Oluşturuldu'), style: const TextStyle(fontFamily: 'Inter', fontSize: 15))]),
+                          title: Row(children: [const Icon(Icons.check_circle, color: AppTheme.success), const SizedBox(width: 8), Text(tr('Portal-Konto erstellt'), style: const TextStyle(fontFamily: 'Inter', fontSize: 15))]),
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(tr('Externer Manager bu bilgilerle giriş yapabilir:'), style: const TextStyle(fontFamily: 'Inter')),
+                              Text(tr('Der AG Ansprechpartner kann sich mit diesen Daten anmelden:'), style: const TextStyle(fontFamily: 'Inter')),
                               const SizedBox(height: 12),
                               Container(
                                 padding: const EdgeInsets.all(14),
@@ -467,7 +467,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text('Bitte das Passwort dem Externer Manager mitteilen!', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                              const Text('Bitte das Passwort dem AG Ansprechpartner mitteilen!', style: TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                             ],
                           ),
                           actions: [ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppTheme.gwsColor), onPressed: () => Navigator.pop(context), child: const Text('OK'))],
@@ -475,7 +475,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                       );
                     }
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Portal hesabı hatası:')} $e'), backgroundColor: AppTheme.error));
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Fehler beim Erstellen des Portal-Kontos:')} $e'), backgroundColor: AppTheme.error));
                   }
                 }
 
@@ -490,7 +490,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   });
                 });
               },
-              child: Text(contactType == 'ExtManager' ? tr('Ekle + Hesap Oluştur') : tr('Ekle')),
+              child: Text(contactType == 'ExtManager' ? tr('Hinzufügen + Konto erstellen') : tr('Hinzufügen')),
             ),
           ],
         ),
@@ -509,7 +509,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.trim().isEmpty) ? tr('Zorunlu alan') : null : null,
+      validator: required ? (v) => (v == null || v.trim().isEmpty) ? tr('Pflichtfeld') : null : null,
     ),
   );
 
@@ -517,11 +517,11 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
     final canEditStatus = context.read<AppState>().canManageCustomers;
     return DropdownButtonFormField<String>(
       value: _status,
-      decoration: InputDecoration(labelText: tr('Müşteri Durumu')),
+      decoration: InputDecoration(labelText: tr('Kundenstatus')),
       items: [
-        DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktif')}', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Pasif')}', style: const TextStyle(fontFamily: 'Inter'))),
-        DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potansiyel')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'active', child: Text('✅ ${tr('Aktiv')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'passive', child: Text('⚠️ ${tr('Passiv')}', style: const TextStyle(fontFamily: 'Inter'))),
+        DropdownMenuItem(value: 'potential', child: Text('✨ ${tr('Potentiell')}', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'subunternehmen', child: Text('🔄 Subunternehmen', style: const TextStyle(fontFamily: 'Inter'))),
         DropdownMenuItem(value: 'archived', child: Text('📁 ${tr('Archiv')}', style: const TextStyle(fontFamily: 'Inter'))),
       ],

@@ -220,14 +220,14 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order?['title'] ?? tr('İsimsiz Proje'),
+                      Text(order?['title'] ?? tr('Unbenanntes Projekt'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(Icons.business, size: 12, color: AppTheme.textSub.withOpacity(0.7)),
                           const SizedBox(width: 4),
-                          Text('${order?['customer']?['name'] ?? tr('Bilinmeyen Müşteri')} • ',
+                          Text('${order?['customer']?['name'] ?? tr('Unbekannter Kunde')} \u2022 ',
                               style: const TextStyle(fontSize: 11, color: AppTheme.textSub, fontWeight: FontWeight.w500)),
                           Icon(Icons.apartment, size: 12, color: AppTheme.textSub.withOpacity(0.7)),
                           const SizedBox(width: 4),
@@ -275,7 +275,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text('${user?['first_name'] ?? tr('Bilinmeyen')} ${user?['last_name'] ?? ''}',
+                            child: Text('${user?['first_name'] ?? tr('Unbekannt')} ${user?['last_name'] ?? ''}',
                                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                           ),
                           if (isSessionApproved)
@@ -436,7 +436,7 @@ class _ProjectApprovalCardState extends State<_ProjectApprovalCard> {
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(tr('Çalışma Saatini Düzenle')),
+        title: Text(tr('Arbeitsstunden bearbeiten')),
         content: TextField(
           controller: ctrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),

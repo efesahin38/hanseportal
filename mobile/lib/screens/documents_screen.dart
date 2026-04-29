@@ -31,11 +31,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     _FilterOption('hepsi', tr('Alle')),
     _FilterOption('offer', tr('Teklif')),
     _FilterOption('contract', tr('Sözleşme')),
-    _FilterOption('work_order', tr('İş Emri')),
+    _FilterOption('work_order', tr('Arbeitsauftrag')),
     _FilterOption('photo', tr('Fotoğraf')),
-    _FilterOption('pre_invoice', tr('Ön Fatura')),
+    _FilterOption('pre_invoice', tr('Vorrechnung')),
     _FilterOption('final_invoice', tr('Fatura')),
-    _FilterOption('other', tr('Diğer')),
+    _FilterOption('other', tr('Andere')),
   ];
 
   @override
@@ -175,7 +175,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
 
     if (visibleDepts.isEmpty) {
-        return const Center(child: Text('Klasör bulunamadı'));
+        return const Center(child: Text('Kein Ordner gefunden'));
     }
 
     return GridView.builder(
@@ -220,7 +220,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$docCount Belge',
+                  '$docCount Dokumente',
                   style: const TextStyle(fontSize: 11, color: Colors.black54),
                 ),
               ],
@@ -237,7 +237,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.folder_open_outlined, size: 56, color: AppTheme.textSub.withOpacity(0.5)),
           const SizedBox(height: 12),
-          Text(tr('Bu klasörde belge bulunamadı'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+          Text(tr('Keine Dokumente in diesem Ordner'), style: TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
         ]),
       );
     }
@@ -282,7 +282,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(tr('Yeni Belge Kaydı'),
+                  Text(tr('Neues Dokument hochladen'),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                   if (uploading)
                     const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -292,24 +292,24 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               TextField(
                 controller: titleCtrl,
                 enabled: !uploading,
-                decoration: InputDecoration(labelText: tr('Belge Başlığı'), border: const OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Dokumenttitel'), border: const OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: selectedType,
-                decoration: InputDecoration(labelText: tr('Belge Türü'), border: const OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Dokumenttyp'), border: const OutlineInputBorder()),
                 items: [
                   DropdownMenuItem(value: 'offer', child: Text(tr('Teklif'))),
                   DropdownMenuItem(value: 'approved_offer', child: Text(tr('Onaylı Teklif'))),
                   DropdownMenuItem(value: 'contract', child: Text(tr('Sözleşme'))),
                   DropdownMenuItem(value: 'addendum', child: Text(tr('Ek Protokol'))),
                   DropdownMenuItem(value: 'technical_spec', child: Text(tr('Teknik Şartname'))),
-                  DropdownMenuItem(value: 'work_order', child: Text(tr('İş Emri'))),
-                  DropdownMenuItem(value: 'work_report', child: Text(tr('İş Raporu'))),
-                  DropdownMenuItem(value: 'photo', child: Text(tr('Fotoğraf'))),
-                  DropdownMenuItem(value: 'pre_invoice', child: Text(tr('Ön Fatura'))),
-                  DropdownMenuItem(value: 'final_invoice', child: Text(tr('Nihai Fatura'))),
-                  DropdownMenuItem(value: 'other', child: Text(tr('Diğer'))),
+                  DropdownMenuItem(value: 'work_order', child: Text(tr('Arbeitsauftrag'))),
+                  DropdownMenuItem(value: 'work_report', child: Text(tr('Arbeitsbericht'))),
+                  
+                  DropdownMenuItem(value: 'pre_invoice', child: Text(tr('Vorrechnung'))),
+                  DropdownMenuItem(value: 'final_invoice', child: Text(tr('Schlussrechnung'))),
+                  DropdownMenuItem(value: 'other', child: Text(tr('Andere'))),
                 ],
                 onChanged: uploading ? null : (v) => setM(() => selectedType = v!),
               ),
@@ -317,7 +317,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               DropdownButtonFormField<String>(
                 value: appState.isBereichsleiter ? appState.departmentId : (appState.canManageDocuments ? _selectedFolderId : null),
                 decoration: InputDecoration(labelText: tr('Abteilung / Bereich selection *'), border: const OutlineInputBorder()),
-                hint: Text(tr('Bölüm Seçin')),
+                hint: Text(tr('Abteilung auswählen')),
                 items: _departments.map((d) => DropdownMenuItem(
                   value: d['id'].toString(),
                   child: Text(d['name'] ?? ''),
@@ -357,7 +357,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          selectedFile != null ? selectedFile!.name : tr('Dosya Seçin'),
+                          selectedFile != null ? selectedFile!.name : tr('Datei auswählen'),
                           style: TextStyle(
                             fontFamily: 'Inter',
                             color: selectedFile != null ? AppTheme.textMain : AppTheme.textSub,
@@ -454,15 +454,16 @@ class _DocumentCard extends StatelessWidget {
       case 'contract':       return tr('Sözleşme');
       case 'addendum':       return tr('Ek Protokol');
       case 'technical_spec': return tr('Teknik Şartname');
-      case 'work_order':     return tr('İş Emri');
+      case 'work_order':     return tr('Arbeitsauftrag');
       case 'scope_list':     return tr('Kapsam Listesi');
       case 'excel':          return tr('Excel');
       case 'photo':          return tr('Fotoğraf');
       case 'video':          return tr('Video');
-      case 'client_note':    return tr('Müşteri Notu');
+      case 'client_note':    return tr('Kundennotiz');
       case 'delivery_form':  return tr('Teslim Formu');
-      case 'work_report':     return tr('İş Raporu');
-      case 'pre_invoice':    return tr('Ön Fatura');
+      case 'work_order':     return tr('Arbeitsauftrag');
+      case 'work_report':     return tr('Arbeitsbericht');
+      case 'pre_invoice':    return tr('Vorrechnung');
       case 'final_invoice':  return tr('Nihai Fatura');
       default:               return tr('Diğer');
     }
@@ -591,8 +592,8 @@ class _ActionButtonsState extends State<_ActionButtons> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text(tr('Silme Onayı'), style: const TextStyle(fontFamily: 'Inter')),
-        content: Text(tr('Bu belgeyi kalıcı olarak silmek istediğinize emin misiniz? Sistemden ve depolama alanından tamamen kaldırılacaktır.'), style: const TextStyle(fontFamily: 'Inter')),
+        title: Text(tr('Löschbestätigung'), style: const TextStyle(fontFamily: 'Inter')),
+        content: Text(tr('Möchten Sie dieses Dokument dauerhaft löschen? Es wird vollständig aus dem System und dem Speicher entfernt.'), style: const TextStyle(fontFamily: 'Inter')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('Abbrechen'))),
           TextButton(
@@ -612,12 +613,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
       await SupabaseService.deleteDocument(docId, fileUrl);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Belge başarıyla silindi'))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Dokument erfolgreich gelöscht'))));
         widget.onDeleted();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silme işlemi başarısız: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Löschvorgang fehlgeschlagen: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -630,13 +631,13 @@ class _ActionButtonsState extends State<_ActionButtons> {
     
     if (url == null || url.isEmpty || url == 'placeholder') {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('Geçersiz dosya bağlantısı.')))
+        SnackBar(content: Text(tr('Ungültiger Dateilink.')))
       );
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(isShare ? tr('Paylaşım hazırlanıyor...') : tr('Belge indiriliyor...')), duration: const Duration(seconds: 2))
+      SnackBar(content: Text(isShare ? tr('Teilen wird vorbereitet...') : tr('Dokument wird heruntergeladen...')), duration: const Duration(seconds: 2))
     );
 
     setState(() => _loading = true);

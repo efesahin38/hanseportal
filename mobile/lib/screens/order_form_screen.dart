@@ -247,20 +247,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCustomerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen bir müşteri seçin'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Bitte einen Kunden auswählen'))));
       return;
     }
     if (_selectedServiceAreaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Lütfen bir hizmet alanı seçin'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Bitte einen Leistungsbereich auswählen'))));
       return;
     }
     
-    // Sorumlu departmanı otomatik bul
+    // Zuständige Abteilung automatisch ermitteln
     final selectedSA = _serviceAreas.firstWhere((s) => s['id'].toString() == _selectedServiceAreaId, orElse: () => <String, dynamic>{});
     final autoDeptId = selectedSA['department_id'];
     
     if (autoDeptId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Hata: Seçilen hizmet alanı için departman tanımlanmamış'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Fehler: Für den gewählten Leistungsbereich ist keine Abteilung definiert'))));
       return;
     }
 
@@ -319,7 +319,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.orderId == null ? tr('Yeni İş') : tr('İş Düzenle'))),
+      appBar: AppBar(title: Text(widget.orderId == null ? tr('Neuer Auftrag') : tr('Auftrag bearbeiten'))),
       body: WebContentWrapper(
         child: _loading 
           ? const Center(child: CircularProgressIndicator())
@@ -333,7 +333,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _section(tr('Müşteri & Hizmet Bilgileri')),
+                  _section(tr('Kunden- & Dienstleistungsinformationen')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -344,7 +344,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       ),
                       SizedBox(
                         width: fieldWidth,
-                        child: _dropdown(tr('Hizmet Alanı *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) async {
+                        child: _dropdown(tr('Leistungsbereich *'), _serviceAreas, _selectedServiceAreaId, 'name', (v) async {
                           setState(() {
                             _selectedServiceAreaId = v;
                             _loading = true;
@@ -375,7 +375,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       SizedBox(
                         width: fieldWidth,
                         child: _contactDropdown(
-                          tr('External Management'),
+                          tr('AG Ansprechpartner'),
                           _muhattapContacts,
                           _selectedContactId,
                           Icons.person_pin_outlined,
@@ -385,7 +385,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       SizedBox(
                         width: fieldWidth,
                         child: _contactDropdown(
-                          tr('Sachbearbeiter (Kunde)'),
+                          tr('Kaufmännischer Ansprechpartner'),
                           _sachbearbeiterContacts,
                           _selectedSachbearbeiterContactId,
                           Icons.manage_accounts_outlined,
@@ -397,20 +397,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
                   const SizedBox(height: 24),
 
-                  _section(tr('Temel Bilgiler')),
+                  _section(tr('Basisinformationen')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('İş Başlığı *'), _title, required: true)),
-                      SizedBox(width: fieldWidth, child: _textField(tr('Kısa Açıklama'), _shortDesc, maxLines: 2)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Auftragstitel *'), _title, required: true)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Kurzbeschreibung'), _shortDesc, maxLines: 2)),
                     ],
                   ),
                   Wrap(
                     spacing: 16,
                     runSpacing: 0,
                     children: [
-                      SizedBox(width: fieldWidth, child: _textField(tr('Müşteri Sipariş No'), _customerRef)),
+                      SizedBox(width: fieldWidth, child: _textField(tr('Kunden-Bestellnummer'), _customerRef)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -447,7 +447,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _section(tr('Saha & Operasyon Detayları')),
+                  _section(tr('Einsatz- & Operative Details')),
 
                   Wrap(spacing: 16, runSpacing: 0, children: [
                     SizedBox(width: fieldWidth, child: _textField(tr('Straße'), _streetCtrl)),
@@ -455,8 +455,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     SizedBox(width: fieldWidth * 0.35, child: _textField(tr('PLZ'), _plzCtrl)),
                     SizedBox(width: fieldWidth * 0.6, child: _textField(tr('Ort'), _cityCtrl)),
                   ]),
-                  _textField(tr('Detaylı İş Açıklaması'), _detailedDesc, maxLines: 4),
-                  _textField(tr('Malzeme/Ekipman Gereksinimi'), _materialNotes, maxLines: 3),
+                  _textField(tr('Detaillierte Auftragsbeschreibung'), _detailedDesc, maxLines: 4),
+                  _textField(tr('Material-/Gerätebedarf'), _materialNotes, maxLines: 3),
                   const SizedBox(height: 16),
 
                   // ── Finansal alanlar: sadece GF, BL, Muhasebe, Backoffice görebilir ──
@@ -487,9 +487,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     SizedBox(width: fieldWidth, child: _textField(tr('Personalbedarf (Anzahl)'), _personnelNeedCtrl)),
                     SizedBox(width: fieldWidth, child: _textField(tr('Materialbedarf'), _materialNeedCtrl, maxLines: 2)),
                   ]),
+
                   const SizedBox(height: 16),
   
-                  _section(tr('Planlama & Öncelik')),
+                  _section(tr('Planung & Priorität')),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -498,12 +499,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         width: fieldWidth,
                         child: DropdownButtonFormField<String>(
                           value: _priority,
-                          decoration: InputDecoration(labelText: tr('Öncelik')),
+                          decoration: InputDecoration(labelText: tr('Priorität')),
                           items: [
-                            DropdownMenuItem(value: 'low', child: Text(tr('Düşük'))),
+                            DropdownMenuItem(value: 'low', child: Text(tr('Niedrig'))),
                             DropdownMenuItem(value: 'normal', child: Text(tr('Normal'))),
-                            DropdownMenuItem(value: 'high', child: Text(tr('Yüksek'))),
-                            DropdownMenuItem(value: 'urgent', child: Text('🔴 ${tr('Acil')}')),
+                            DropdownMenuItem(value: 'high', child: Text(tr('Hoch'))),
+                            DropdownMenuItem(value: 'urgent', child: Text('🔴 ${tr('Dringend')}')),
+
                           ],
                           onChanged: (v) => setState(() => _priority = v!),
                         ),
@@ -514,7 +516,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                           width: fieldWidth,
                           child: TextFormField(
                             initialValue: _minBillableHours.toString(),
-                            decoration: InputDecoration(labelText: tr('Min. Faturalanacak Saat'), hintText: '${tr('Varsayılan')}: 4.0'),
+                            decoration: InputDecoration(labelText: tr('Min. Abrechnungsstunden'), hintText: 'Standard: 4.0'),
                             keyboardType: TextInputType.number,
                             onChanged: (v) => _minBillableHours = double.tryParse(v) ?? 4.0,
                           ),
@@ -523,14 +525,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(children: [
-                    Expanded(child: _dateTile(tr('Başlangıç'), _startDate, () => _pickDate(true), onClear: () => setState(() => _startDate = null))),
+                    Expanded(child: _dateTile(tr('Startdatum'), _startDate, () => _pickDate(true), onClear: () => setState(() => _startDate = null))),
                     const SizedBox(width: 12),
-                    Expanded(child: _dateTile(tr('Bitiş'), _endDate, () => _pickDate(false), onClear: () => setState(() => _endDate = null))),
+                    Expanded(child: _dateTile(tr('Enddatum'), _endDate, () => _pickDate(false), onClear: () => setState(() => _endDate = null))),
                   ]),
                   const SizedBox(height: 24),
   
-                  _section(tr('Ek Notlar')),
-                  _textField(tr('Notlar'), _notes, maxLines: 4),
+                  _section(tr('Zusätzliche Hinweise')),
+                  _textField(tr('Notizen'), _notes, maxLines: 4),
                   const SizedBox(height: 32),
                   
                   ElevatedButton(
@@ -540,7 +542,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     ),
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(widget.orderId == null ? tr('İş Oluştur') : tr('Değişiklikleri Kaydet'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : Text(widget.orderId == null ? tr('Auftrag erstellen') : tr('Änderungen speichern'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -563,7 +565,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       controller: ctrl,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label),
-      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Zorunlu alan') : null : null,
+      validator: required ? (v) => (v == null || v.isEmpty) ? tr('Pflichtfeld') : null : null,
     ),
   );
 
@@ -573,7 +575,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         enabled: false,
         decoration: InputDecoration(
           labelText: label,
-          hintText: tr('Sistemde kayıtlı veri yok (Önce ekleme yapın)'),
+          hintText: tr('Keine Daten verfügbar (Bitte zuerst anlegen)'),
           hintStyle: const TextStyle(color: Colors.redAccent, fontSize: 13),
         ),
       );
@@ -630,7 +632,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                hasCustomer ? (selectedCustomer['name'] ?? '') : tr('Müşteri seç veya ara...'),
+                hasCustomer ? (selectedCustomer['name'] ?? '') : tr('Kunde auswählen oder suchen...'),
                 style: TextStyle(
                   fontSize: 14,
                   fontFamily: 'Inter',
@@ -696,7 +698,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         const Icon(Icons.business, color: Colors.white, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(tr('Müşteri Seç'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                          child: Text(tr('Kunde auswählen'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white, size: 20),
@@ -715,7 +717,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       autofocus: true,
                       onChanged: filterList,
                       decoration: InputDecoration(
-                        hintText: tr('İsim, şehir veya e-posta ile ara...'),
+                        hintText: tr('Nach Name, Stadt oder E-Mail suchen...'),
                         prefixIcon: const Icon(Icons.search, size: 20),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         suffixIcon: searchCtrl.text.isNotEmpty
@@ -740,7 +742,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                               children: [
                                 const Icon(Icons.business_outlined, size: 40, color: AppTheme.textSub),
                                 const SizedBox(height: 8),
-                                Text(tr('Müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                                Text(tr('Kein Kunde gefunden'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                               ],
                             ),
                           )
@@ -838,7 +840,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Text('${filteredList.length} ${tr('müşteri')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                        Text('${filteredList.length} ${tr('Kunden')}', style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                         const Spacer(),
                         TextButton.icon(
                           onPressed: () {
@@ -846,7 +848,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                             // TODO: CustomerFormScreen push eklenebilir
                           },
                           icon: const Icon(Icons.add, size: 16),
-                          label: Text(tr('Yeni Müşteri Ekle'), style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                          label: Text(tr('Neuen Kunden anlegen'), style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
                         ),
                       ],
                     ),

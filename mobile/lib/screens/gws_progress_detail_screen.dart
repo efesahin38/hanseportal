@@ -99,7 +99,7 @@ class _GwsProgressDetailScreenState extends State<GwsProgressDetailScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Canlı İş Takibi / Fortschritt', style: TextStyle(fontSize: 16)),
+            const Text('Live-Auftragsfortschritt', style: TextStyle(fontSize: 16)),
             Text(widget.objectName, style: const TextStyle(fontSize: 12, color: Colors.white70)),
           ],
         ),

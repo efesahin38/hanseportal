@@ -95,7 +95,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                   onChanged: (v) => setState(() => _searchQuery = v),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: tr('İş no, müşteri veya başlık ara...'),
+                    hintText: tr('Auftragsnr., Kunde oder Titel suchen...'),
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
                     prefixIcon: const Icon(Icons.search, color: Colors.white70),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -123,8 +123,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
                 isScrollable: true,
                 tabs: [
                   Tab(text: tr('Abgeschlossene Aufträge')),
-                  Tab(text: tr('Faturalanan İşler')),
-                  Tab(text: tr('Arşivlenen Müşteriler')),
+                  Tab(text: tr('Fakturierte Aufträge')),
+                  Tab(text: tr('Archivierte Kunden')),
                 ],
               ),
             ],
@@ -138,8 +138,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
             : TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildList(filteredCompleted, tr('Tamamlanan iş bulunamadı'), 'completed'),
-                  _buildList(filteredInvoiced, tr('Faturalanan iş bulunamadı'), 'invoiced'),
+                  _buildList(filteredCompleted, tr('Kein abgeschlossener Auftrag gefunden'), 'completed'),
+                  _buildList(filteredInvoiced, tr('Kein fakturierter Auftrag gefunden'), 'invoiced'),
                   _buildCustomerList(filteredCustomers),
                 ],
               ),
@@ -183,7 +183,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.business_center_outlined, size: 64, color: AppTheme.textSub.withOpacity(0.4)),
                 const SizedBox(height: 16),
-                Text(tr('Arşivlenen müşteri bulunamadı'), style: const TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
+                Text(tr('Kein archivierter Kunde gefunden'), style: const TextStyle(color: AppTheme.textSub, fontSize: 16, fontFamily: 'Inter')),
               ]),
             )
           : ListView.builder(
@@ -234,7 +234,7 @@ class _CustomerArchiveCard extends StatelessWidget {
                 Text(customer['name'] ?? '',
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(customer['city'] ?? tr('Şehir belirtilmemiş'),
+                Text(customer['city'] ?? tr('Stadt nicht angegeben'),
                     style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
               ]),
             ),
@@ -273,7 +273,7 @@ class _ArchiveCard extends StatelessWidget {
 
     final isCompleted = type == 'completed';
     final actualBadgeColor = isCompleted ? AppTheme.success : AppTheme.primary;
-    final badgeText = isCompleted ? tr('Tamamlandı') : tr('Faturalandı');
+    final badgeText = isCompleted ? tr('Abgeschlossen') : tr('Fakturiert');
     final iconData = isCompleted ? Icons.check_circle : Icons.receipt_long;
 
     return Card(

@@ -262,7 +262,7 @@ class _OrdersHubScreenState extends State<OrdersHubScreen> {
                 Text(
                   appState.isBereichsleiter
                       ? tr('Ihre Bereichsaufträge')
-                      : tr('Hizmetler ve İş Planı'),
+                      : 'Dienstleistungen & Auftragsübersicht',
                   style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontFamily: 'Inter'),
                 ),
               ],
@@ -370,22 +370,6 @@ class _GmbhCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (!compact) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.person_outline, size: 14, color: def.color.withOpacity(0.7)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Bereichsleiter: ${def.responsible}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: def.color.withOpacity(0.8),
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
                       if (def.hasSubSections) ...[
                         const SizedBox(height: 4),
                         Text(

@@ -243,7 +243,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                   child: Text(initial, style: TextStyle(color: saColor, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                                 ),
                                 title: Text(
-                                  name.isEmpty ? tr('İsimsiz Personel') : name,
+                                  name.isEmpty ? tr('Unbekanntes Personal') : name,
                                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'Inter'),
                                 ),
                                 subtitle: Column(

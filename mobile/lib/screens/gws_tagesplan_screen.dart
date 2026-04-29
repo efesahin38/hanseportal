@@ -203,9 +203,9 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.info, padding: const EdgeInsets.symmetric(vertical: 16)),
-                        onPressed: () => _updateWorkflowStatus('vom_kunden_gemeldet', 'External Manager\'a Gönderildi'),
+                        onPressed: () => _updateWorkflowStatus('vom_kunden_gemeldet', 'An AG Ansprechpartner gesendet'),
                         icon: const Icon(Icons.send_outlined),
-                        label: const Text('An External Manager Senden', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        label: const Text('An AG Ansprechpartner senden', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                 ],
@@ -339,22 +339,22 @@ class _GwsTagesplanScreenState extends State<GwsTagesplanScreen> {
           // Auftrag / Sipariş
           !appState.canPlanOperations
             ? InputDecorator(
-                decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
+                decoration: const InputDecoration(labelText: 'Auftrag *', prefixIcon: Icon(Icons.assignment)),
                 child: Text(
                   _selectedOrderId != null && _gwsOrders.any((o) => o['id'].toString() == _selectedOrderId)
-                      ? '${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['customer']?['name'] ?? 'Müşteri Yok'}: ${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['title']}'
-                      : 'Aktif iş seçilmemiş',
+                      ? '${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['customer']?['name'] ?? 'Kein Kunde'}: ${_gwsOrders.firstWhere((o) => o['id'].toString() == _selectedOrderId)['title']}'
+                      : 'Kein Auftrag ausgewählt',
                   style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis,
                 ),
               )
             : DropdownButtonFormField<String>(
             value: _selectedOrderId,
-            decoration: const InputDecoration(labelText: 'Sipariş (Auftrag) *', prefixIcon: Icon(Icons.assignment)),
+            decoration: const InputDecoration(labelText: 'Auftrag *', prefixIcon: Icon(Icons.assignment)),
             items: _gwsOrders.isEmpty 
-              ? [const DropdownMenuItem<String>(value: null, child: Text('⚠️ Aktif iş bulunamadı', style: TextStyle(color: Colors.red)))]
+              ? [const DropdownMenuItem<String>(value: null, child: Text('⚠️ Kein aktiver Auftrag gefunden', style: TextStyle(color: Colors.red)))]
               : _gwsOrders.map((ord) => DropdownMenuItem<String>(
                   value: ord['id'].toString(),
-                  child: Text('${ord['customer']?['name'] ?? 'Müşteri Yok'}: ${ord['title']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis),
+                  child: Text('${ord['customer']?['name'] ?? 'Kein Kunde'}: ${ord['title']}', style: const TextStyle(fontFamily: 'Inter', fontSize: 13), overflow: TextOverflow.ellipsis),
                 )).toList(),
             onChanged: (v) {
               final ord = _gwsOrders.firstWhere((element) => element['id'] == v);

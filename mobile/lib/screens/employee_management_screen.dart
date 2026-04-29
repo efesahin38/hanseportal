@@ -201,7 +201,7 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> wit
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _sectionHeader(tr('Mitarbeiter löschen'), Icons.person_remove, Colors.red),
       const SizedBox(height: 20),
-      _infoBox(tr('Silmek istediğiniz çalışanın ID\'sini girin. Doğrulama için isim gösterilecektir.'), Colors.orange),
+      _infoBox(tr('Geben Sie die ID des zu löschenden Mitarbeiters ein. Zur Bestätigung wird der Name angezeigt.'), Colors.orange),
       const SizedBox(height: 20),
       Row(children: [
         Expanded(child: _field(controller: _delIdCtrl, label: tr('Mitarbeiter-ID'), hint: tr('Z.B. 1005'), icon: Icons.search)),

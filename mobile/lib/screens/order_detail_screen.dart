@@ -107,8 +107,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_order == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(tr('İş Detayı'))),
-        body: Center(child: Text(tr('İş bulunamadı'), style: const TextStyle(fontFamily: 'Inter'))),
+        appBar: AppBar(title: Text(tr('Auftragsdetail'))),
+        body: Center(child: Text(tr('Auftrag nicht gefunden'), style: const TextStyle(fontFamily: 'Inter'))),
       );
     }
 
@@ -176,7 +176,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
         ],
       ) : null,
       appBar: AppBar(
-        title: Text(o['order_number'] ?? tr('İş Detayı')),
+        title: Text(o['order_number'] ?? tr('Auftragsdetail')),
         actions: [
           // 🏠 Ana sayfaya git
           IconButton(
@@ -252,9 +252,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> with TickerProvid
                     padding: const EdgeInsets.all(16),
                     child: Column(children: [
                       // v19.7.4: Muhattap & Sachbearbeiter bilgileri artık ana kartta (Daha görünür olması için)
-                      _InfoCard(tr('İş Bilgileri'), [
+                      _InfoCard(tr('Auftragsinformationen'), [
                         _InfoRow(tr('Auftragsnummer'), o['order_number']),
-                        _InfoRow(tr('Öncelik'), o['priority']),
+                        _InfoRow(tr('Priorität'), o['priority']),
                         _InfoRow(tr('Başlangıç'), o['planned_start_date']),
                         _InfoRow(tr('Bitiş'), o['planned_end_date']),
                         _InfoRow(tr('Saha Adresi'), [

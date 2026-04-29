@@ -133,7 +133,7 @@ class _StammdatenScreenState extends State<StammdatenScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _authorizedCompanies.isEmpty
-                                  ? const Text('Şirket Bulunamadı', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter'))
+                                  ? const Text('Unternehmen nicht gefunden', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter'))
                                   : DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
                                         isExpanded: true,

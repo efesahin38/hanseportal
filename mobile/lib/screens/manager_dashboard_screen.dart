@@ -96,9 +96,9 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                     children: [
                       Icon(Icons.calendar_today, size: 64, color: Colors.green.shade200),
                       const SizedBox(height: 16),
-                      const Text('Henüz plan oluşturulmadı.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                      const Text('Noch kein Plan erstellt.', style: TextStyle(color: Colors.grey, fontSize: 16)),
                       const SizedBox(height: 8),
-                      const Text('Sağ alttaki + butonuna basın.', style: TextStyle(color: Colors.grey)),
+                      const Text('Tippen Sie auf das + Symbol unten rechts.', style: TextStyle(color: Colors.grey)),
                     ],
                   ))
                 : ListView.builder(
@@ -165,7 +165,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                                       const SizedBox(width: 6),
                                       Text(a['worker_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
                                       const SizedBox(width: 6),
-                                      Text(a['role_in_shift'] == 'leader' ? 'LİDER' : 'ÇALIŞAN', style: TextStyle(fontSize: 11, color: a['role_in_shift'] == 'leader' ? Colors.amber.shade700 : Colors.grey)),
+                                      Text(a['role_in_shift'] == 'leader' ? 'LEITER' : 'MITARBEITER', style: TextStyle(fontSize: 11, color: a['role_in_shift'] == 'leader' ? Colors.amber.shade700 : Colors.grey)),
                                     ]),
                                   )).toList(),
                                 ],

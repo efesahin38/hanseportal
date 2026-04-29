@@ -170,7 +170,7 @@ class _UsersTab extends StatelessWidget {
                 onTap: () => onFilterChange('inactive'),
               ),
               const SizedBox(width: 8),
-              Text(tr('{count} kullanıcı', args: {'count': users.length.toString()}),
+              Text(tr('{count} Benutzer', args: {'count': users.length.toString()}),
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
             ],
           ),

@@ -85,7 +85,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ ${tr('İşe başladınız!')}'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('Arbeit begonnen!')}'), backgroundColor: AppTheme.success),
         );
         _load();
       }
@@ -98,17 +98,17 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(tr('İşi Tamamla'), style: const TextStyle(fontFamily: 'Inter')),
+        title: Text(tr('Arbeit abschließen'), style: const TextStyle(fontFamily: 'Inter')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(tr('İşi tamamladığınızı onaylıyor musunuz?'), style: const TextStyle(fontFamily: 'Inter')),
+            Text(tr('Möchten Sie die Arbeit als erledigt markieren?'), style: const TextStyle(fontFamily: 'Inter')),
             const SizedBox(height: 12),
             TextField(
               controller: noteCtrl,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: tr('Saha notu (opsiyonel)...'),
+                hintText: tr('Feldnotiz (optional)...'),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -116,7 +116,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Abbrechen'))),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Tamamla'))),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Abschließen'))),
         ],
       ),
     );
@@ -125,7 +125,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       await SupabaseService.endWorkSession(_activeSession!['id'], note: noteCtrl.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ ${tr('Çalışma tamamlandı! Onay bekliyor.')}'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('Arbeit abgeschlossen! Warte auf Freigabe.')}'), backgroundColor: AppTheme.success),
         );
         _load();
       }
@@ -140,12 +140,12 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
       final tomorrow = today.add(const Duration(days: 1));
       
       if (dt.year == today.year && dt.month == today.month && dt.day == today.day) {
-        return tr('Bugünkü Görevlerim');
+        return tr('Heutige Aufgaben');
       }
       if (dt.year == tomorrow.year && dt.month == tomorrow.month && dt.day == tomorrow.day) {
-        return tr('Yarınki Görevlerim');
+        return tr('Morgige Aufgaben');
       }
-      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${tr('Görevleri')}';
+      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${tr('Aufgaben')}';
     } catch (_) {
       return dateStr;
     }
@@ -190,7 +190,7 @@ class _FieldMyTasksScreenState extends State<FieldMyTasksScreen> {
                         child: Center(child: Column(children: [
                           const Icon(Icons.event_available, size: 48, color: AppTheme.textSub),
                           const SizedBox(height: 8),
-                          Text(tr('Planlanmış görev yok'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                          Text(tr('Keine geplanten Aufgaben'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                         ])),
                       )
                     else
@@ -278,7 +278,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
     final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
     final h = safeElapsed.inHours;
     final m = safeElapsed.inMinutes % 60;
-    final elapsedText = h > 0 ? '$h ${tr('s')} $m ${tr('dk çalışılıyor')}' : '$m ${tr('dk çalışılıyor')}';
+    final elapsedText = h > 0 ? '$h ${tr('Std.')} $m ${tr('min in Arbeit')}' : '$m ${tr('min in Arbeit')}';
 
     // Delay at start (saved in DB)
     String? delayText;
@@ -287,7 +287,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
       if (dm > 0) {
         final dh = dm ~/ 60;
         final dmin = dm % 60;
-        delayText = dh > 0 ? '$dh ${tr('s')} $dmin ${tr('dk geç başlandı')}' : '$dmin ${tr('dk geç başlandı')}';
+        delayText = dh > 0 ? '$dh ${tr('Std.')} $dmin ${tr('min verspätet')}' : '$dmin ${tr('min verspätet')}';
       }
     } else if (op != null && op['plan_date'] != null && op['start_time'] != null && _startTime != null) {
       final plannedStart = DateTime.tryParse('${op['plan_date']}T${op['start_time']}');
@@ -296,7 +296,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
         if (!delay.isNegative && delay.inMinutes > 0) {
           final dh = delay.inHours;
           final dmin = delay.inMinutes % 60;
-          delayText = dh > 0 ? '$dh ${tr('s')} $dmin ${tr('dk geç başlandı')}' : '$dmin ${tr('dk geç başlandı')}';
+          delayText = dh > 0 ? '$dh ${tr('Std.')} $dmin ${tr('min verspätet')}' : '$dmin ${tr('min verspätet')}';
         }
       }
     }
@@ -313,7 +313,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
           const Row(children: [
             Icon(Icons.play_circle_filled, color: Colors.white, size: 20),
             SizedBox(width: 8),
-            Text('Aktif Çalışma', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+            Text('Aktive Arbeit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
           ]),
           const SizedBox(height: 8),
           Text(order?['title'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
@@ -361,7 +361,7 @@ class _ActiveSessionBannerState extends State<_ActiveSessionBanner> {
                 ),
                 onPressed: widget.onEnd,
                 icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                label: Text(tr('Tamamla'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                label: Text(tr('Abschließen'), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -427,7 +427,7 @@ class _TaskCardState extends State<_TaskCard> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ ${tr('Rapor başarıyla gönderildi')}'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('✅ ${tr('Bericht erfolgreich gesendet')}'), backgroundColor: AppTheme.success),
         );
         setState(() {
           _descCtrl.clear();
@@ -496,7 +496,7 @@ class _TaskCardState extends State<_TaskCard> {
     final delayH = delayMinutes ~/ 60;
     final delayM = delayMinutes % 60;
     final delayText = delayMinutes > 0
-        ? (delayH > 0 ? '$delayH ${tr('s')} $delayM ${tr('dk gecikti')}' : '$delayM ${tr('dk gecikti')}')
+        ? (delayH > 0 ? '$delayH ${tr('Std.')} $delayM ${tr('min verspätet')}' : '$delayM ${tr('min verspätet')}')
         : null;
     
     // Check if user is the supervisor
@@ -566,7 +566,7 @@ class _TaskCardState extends State<_TaskCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Text(tr('SAHA LİDERİ'), style: const TextStyle(color: AppTheme.success, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                      child: Text(tr('BAULEITER'), style: const TextStyle(color: AppTheme.success, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                     ),
                 ],
               ),
@@ -609,7 +609,7 @@ class _TaskCardState extends State<_TaskCard> {
                       final dur = en.difference(st);
                       final dh = dur.inHours;
                       final dm = dur.inMinutes % 60;
-                      durText = dh > 0 ? ' ($dh ${tr('s')} $dm ${tr('dk')})' : ' ($dm ${tr('dk')})';
+                      durText = dh > 0 ? ' ($dh ${tr('Std.')} $dm ${tr('min')})' : ' ($dm ${tr('min')})';
                     }
                   }
                   return Container(
@@ -623,7 +623,7 @@ class _TaskCardState extends State<_TaskCard> {
                       const Icon(Icons.check_circle_outline, size: 14, color: AppTheme.success),
                       const SizedBox(width: 6),
                       Text(
-                        '${tr('Başladı')}: $actualStart  →  ${tr('Bitti')}: $actualEnd$durText',
+                        '${tr('Begonnen')}: $actualStart  →  ${tr('Beendet')}: $actualEnd$durText',
                         style: const TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
                       ),
                     ]),
@@ -633,7 +633,7 @@ class _TaskCardState extends State<_TaskCard> {
               
               if (isSupervisor) ...[
                 const Divider(height: 24),
-                Text('${tr('Lider Paneli')}: ${tr('Saha Durum Bildir')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+                Text('${tr('Leiterpanel')}: ${tr('Feldstatus melden')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,7 +660,7 @@ class _TaskCardState extends State<_TaskCard> {
                         maxLines: 2,
                         style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
                         decoration: InputDecoration(
-                          hintText: tr('Sahadan not yazın...'),
+                          hintText: tr('Feldnotiz eingeben...'),
                           hintStyle: const TextStyle(fontSize: 12),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           suffixIcon: _sending 
@@ -689,7 +689,7 @@ class _TaskCardState extends State<_TaskCard> {
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.check_circle, color: AppTheme.success, size: 20),
                         const SizedBox(width: 8),
-                        Text(tr('Tamamlandı'), style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                        Text(tr('Abgeschlossen'), style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -704,7 +704,7 @@ class _TaskCardState extends State<_TaskCard> {
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.cancel, color: Colors.red, size: 20),
                         const SizedBox(width: 8),
-                        Text(tr('Çalışılmadı'), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                        Text(tr('Nicht gearbeitet'), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -719,7 +719,7 @@ class _TaskCardState extends State<_TaskCard> {
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.upcoming, color: AppTheme.textSub, size: 20),
                         const SizedBox(width: 8),
-                        Text(tr('Planlanan Görev'), style: const TextStyle(color: AppTheme.textSub, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
+                        Text(tr('Geplante Aufgabe'), style: const TextStyle(color: AppTheme.textSub, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: 'Inter')),
                       ]),
                     );
                   }
@@ -731,7 +731,7 @@ class _TaskCardState extends State<_TaskCard> {
                       onPressed: widget.hasActiveSession ? null : widget.onStartWork,
                       icon: const Icon(Icons.play_arrow, size: 20),
                       label: Text(
-                        widget.hasActiveSession ? tr('Başka aktif görev var') : tr('İşe Başla'),
+                        widget.hasActiveSession ? tr('Andere aktive Aufgabe vorhanden') : tr('Arbeit beginnen'),
                         style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(

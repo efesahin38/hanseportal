@@ -31,8 +31,8 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   List<String> _selectedPersonnelIds = [];
   bool _saving = false;
   bool _loadingPersonnel = true;
-  String _selectedFilter = 'Tümü'; // Yeni filtre
-  String _orderTitle = 'İş'; 
+  String _selectedFilter = 'Alle'; // Neuer Filter
+  String _orderTitle = 'Auftrag'; 
   String _status = 'draft';
 
   List<Map<String, dynamic>> _personnel = [];
@@ -55,7 +55,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
       final order = await SupabaseService.getOrder(widget.orderId);
       if (order != null && mounted) {
         setState(() {
-          _orderTitle = order['title'] ?? tr('İş');
+          _orderTitle = order['title'] ?? tr('Auftrag');
           _orderDepartmentId = order['department_id']?.toString();
         });
       }
@@ -95,7 +95,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
 
   /// Chip filtresinin verdiği etiketle user'ın hizmet alanları eşleşiyor mu?
   bool _userMatchesFilter(Map<String, dynamic> user, String filter) {
-    if (filter == 'Tümü' || filter == 'Alle') return true;
+    if (filter == 'Alle') return true;
     final filterLower = filter.toLowerCase();
 
     // 1. user_service_areas üzerinden bak (en güvenilir)
@@ -277,23 +277,23 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.planId == null ? tr('Yeni Operasyon Planı') : tr('Planı Düzenle'))),
+      appBar: AppBar(title: Text(widget.planId == null ? tr('Neuer Einsatzplan') : tr('Plan bearbeiten'))),
       body: WebContentWrapper(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _section(tr('Durum, Tarih & Saat')),
+              _section(tr('Status, Datum & Uhrzeit')),
               DropdownButtonFormField<String>(
                 value: _status,
-                decoration: InputDecoration(labelText: tr('Plan Durumu')),
+                decoration: InputDecoration(labelText: tr('Planstatus')),
                 items: [
-                  DropdownMenuItem(value: 'draft', child: Text(tr('Taslak'))),
-                  DropdownMenuItem(value: 'sent', child: Text(tr('Gönderildi'))),
+                  DropdownMenuItem(value: 'draft', child: Text(tr('Entwurf'))),
+                  DropdownMenuItem(value: 'sent', child: Text(tr('Gesendet'))),
                   DropdownMenuItem(value: 'confirmed', child: Text(tr('Genehmigt'))),
-                  DropdownMenuItem(value: 'updated', child: Text(tr('Güncellendi'))),
-                  DropdownMenuItem(value: 'cancelled', child: Text(tr('İptal Edildi'))),
+                  DropdownMenuItem(value: 'updated', child: Text(tr('Aktualisiert'))),
+                  DropdownMenuItem(value: 'cancelled', child: Text(tr('Storniert'))),
                 ],
                 onChanged: (v) {
                   if (v != null) setState(() => _status = v);
@@ -315,7 +315,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(tr('Plan Tarihi'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
+                        Text(tr('Planungsdatum'), style: const TextStyle(fontSize: 12, color: AppTheme.textSub, fontFamily: 'Inter')),
                         Text(
                           '${_planDate.day.toString().padLeft(2, '0')}.${_planDate.month.toString().padLeft(2, '0')}.${_planDate.year}',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
@@ -331,14 +331,14 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               ),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: _timeTile(tr('Başlangıç Saati *'), _startTime.format(context), () => _pickTime(true))),
+                Expanded(child: _timeTile(tr('Startzeit *'), _startTime.format(context), () => _pickTime(true))),
                 const SizedBox(width: 12),
                 Expanded(child: _timeTile(tr('Ende'), _endTime?.format(context) ?? tr('Auswählen'), () => _pickTime(false))),
               ]),
               const SizedBox(height: 20),
   
               // Personel Atama
-              _section(tr('Personel Atama')),
+              _section(tr('Personalplanung')),
   
               // Filtre Barı
               SingleChildScrollView(
@@ -346,7 +346,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Row(
                   children: ['Alle', 'DB-Gleisbausicherung', 'Gebäudedienstleistungen', 'Personalüberlassung', 'Gastwirtschaftsservice'].map((filter) {
-                    final isSelected = _selectedFilter == filter || (_selectedFilter == 'Tümü' && filter == 'Alle');
+                    final isSelected = _selectedFilter == filter;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
@@ -361,7 +361,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                       side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.border),
                       onSelected: (selected) {
                         if (selected) {
-                          setState(() => _selectedFilter = filter == 'Alle' ? 'Tümü' : filter);
+                          setState(() => _selectedFilter = filter);
                         }
                       },
                       ),
@@ -373,7 +373,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               if (_loadingPersonnel)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(tr('Personel listesi yükleniyor...'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
+                  child: Text(tr('Personaliste wird geladen...'), style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter')),
                 )
               else if (_personnel.isEmpty)
                 Container(
@@ -386,7 +386,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    tr('Atanabilecek hiçbir "Çalışan" veya "İş Lideri" bulunamadı.\n(Lütfen ana menüdeki Personeller ekranından Yeni Personel ekleyin)'),
+                    tr('Keine zuweisbaren "Mitarbeiter" oder "Vorarbeiter" gefunden.\n(Bitte fügen Sie neues Personal über den Personalbereich hinzu)'),
                     style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter', fontSize: 13, height: 1.4),
                   ),
                 )
@@ -408,7 +408,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '${tr('Bu bölümde kayıtlı personel bulunamadı.')} ($_selectedFilter)',
+                          '${tr('In diesem Bereich kein Personal gefunden.')} ($_selectedFilter)',
                           style: const TextStyle(color: AppTheme.textSub, fontFamily: 'Inter'),
                         ),
                       );
@@ -479,7 +479,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                                   child: Row(children: [
                                     const Icon(Icons.info_outline, color: AppTheme.warning, size: 14),
                                     const SizedBox(width: 8),
-                                    Expanded(child: Text(tr('Bu personelin seçili tarihte başka bir departman / proje de mesaisi var!'), style: const TextStyle(fontSize: 11, color: AppTheme.warning))),
+                                    Expanded(child: Text(tr('Dieses Personal hat am gewählten Datum bereits eine Schicht in einer anderen Abteilung / einem anderen Projekt!'), style: const TextStyle(fontSize: 11, color: AppTheme.warning))),
                                   ]),
                                 ),
                               )
@@ -504,7 +504,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          tr('İlgili personelin yanındaki yıldıza tıklayarak bu işin Saha Sorumlusunu (İş Lideri) atayabilirsiniz.'),
+                          tr('Klicken Sie auf den Stern neben dem Personal, um den Bauleiter (Schichtleiter) für diesen Auftrag festzulegen.'),
                           style: TextStyle(fontSize: 12, color: AppTheme.textMain, fontWeight: FontWeight.w500, fontFamily: 'Inter'),
                         ),
                       ),
@@ -526,7 +526,7 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
                     const Icon(Icons.star, color: AppTheme.warning, size: 18),
                     const SizedBox(width: 8),
                     Expanded(child: Text(
-                      '${tr('Saha Sorumlusu')}: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
+                      '${tr('Bauleiter')}: ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['first_name'] ?? ''} ${_personnel.firstWhere((u) => u['id'] == _supervisorId, orElse: () => {})['last_name'] ?? ''}',
                       style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500),
                     )),
                   ]),
@@ -535,39 +535,39 @@ class _OperationPlanFormScreenState extends State<OperationPlanFormScreen> {
               ],
   
               // Talimatlar
-              _section(tr('Saha Talimatları & Notlar')),
+              _section(tr('Feldinstruktionen & Notizen')),
               TextFormField(
                 controller: _siteInstructions,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  labelText: tr('Saha Talimatları'),
-                  hintText: tr('Giriş bilgisi, özel kurallar, dikkat edilmesi gerekenler...'),
+                  labelText: tr('Feldinstruktionen'),
+                  hintText: tr('Zugangsinformationen, Sonderregeln, Besonderheiten...'),
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _equipmentNotes,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: tr('Ekipman / Araç Notları'), hintText: tr('Gerekli ekipmanlar...')),
+                decoration: InputDecoration(labelText: tr('Ausrüstungsnotizen'), hintText: tr('Erforderliche Ausrüstung...')),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _materialNotes,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: tr('Malzeme Notları'), hintText: tr('Gerekli malzemeler...')),
+                decoration: InputDecoration(labelText: tr('Materialnotizen'), hintText: tr('Erforderliches Material...')),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
                 maxLines: 2,
-                decoration: InputDecoration(labelText: tr('İç Notlar')),
+                decoration: InputDecoration(labelText: tr('Interne Notizen')),
               ),
               const SizedBox(height: 28),
               ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(widget.planId == null ? tr('Planı Oluştur') : tr('Güncelle')),
+                    : Text(widget.planId == null ? tr('Plan erstellen') : tr('Aktualisieren')),
               ),
               const SizedBox(height: 28),
             ],

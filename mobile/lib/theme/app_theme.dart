@@ -175,15 +175,15 @@ class AppTheme {
 
   static String statusLabel(String status) {
     switch (status) {
-      case 'draft':            return tr('Taslak');
-      case 'planning':         return tr('Planlamada');
-      case 'in_progress':      return tr('Devam Ediyor');
-      case 'completed':        return tr('Tamamlandı');
-      case 'invoiced':         return tr('Faturalandı');
-      case 'archived':         return tr('Arşivlendi');
-      case 'active':           return tr('Aktif');
-      case 'inactive':         return tr('Pasif');
-      case 'potential':        return tr('Potansiyel');
+      case 'draft':            return 'Entwurf';
+      case 'planning':         return 'In Planung';
+      case 'in_progress':      return 'In Bearbeitung';
+      case 'completed':        return 'Abgeschlossen';
+      case 'invoiced':         return 'Fakturiert';
+      case 'archived':         return 'Archiviert';
+      case 'active':           return 'Aktiv';
+      case 'inactive':         return 'Passiv';
+      case 'potential':        return 'Potentiell';
       case 'subunternehmen':   return 'Subunternehmen';
       default:                 return status;
     }
@@ -199,7 +199,7 @@ class AppTheme {
       case 'buchhaltung':        return 'Buchhaltung';
       case 'backoffice':         return 'Backoffice';
       case 'system_admin':       return 'System Admin';
-      case 'external_manager':   return 'Externer Manager';
+      case 'external_manager':   return 'AG Ansprechpartner';
       default:                   return role;
     }
   }

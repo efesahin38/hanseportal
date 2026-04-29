@@ -230,7 +230,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
         todayMaterialCost += projectMaterial;
 
         todayProjects.add({
-          'title': order['title'] ?? tr('İsimsiz'),
+          'title': order['title'] ?? tr('Unbekannt'),
           'income': projectIncome,
           'labor': projectLabor,
           'material': projectMaterial,
@@ -299,7 +299,7 @@ class _AccountingOverviewScreenState extends State<AccountingOverviewScreen> {
                 const Icon(Icons.monetization_on_outlined, color: Colors.white38, size: 14),
                 const SizedBox(width: 8),
                 Text(
-                  '${tr('İşçilik')}: €${todayLaborCost.toStringAsFixed(0)} • ${tr('Malzeme')}: €${todayMaterialCost.toStringAsFixed(0)}',
+                  '${tr('Lohnkosten')}: €${todayLaborCost.toStringAsFixed(0)} • ${tr('Materialkosten')}: €${todayMaterialCost.toStringAsFixed(0)}',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'Inter'),
                 ),
               ],
@@ -415,7 +415,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(order['title'] ?? tr('İsimsiz Proje'), 
+                      child: Text(order['title'] ?? tr('Unbenanntes Projekt'), 
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primary)),
                     ),
                     StatefulBuilder(
@@ -503,7 +503,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${tr('İşçilik Gideri')}:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
+                          Text('${tr('Lohnkosten')}:', style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Inter')),
                           Text('€ ${laborCost.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.deepOrange, fontFamily: 'Inter')),
                         ],
                       ),
@@ -521,7 +521,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                           children: [
                             Icon(Icons.verified_outlined, size: 12, color: AppTheme.success.withOpacity(0.7)),
                             const SizedBox(width: 4),
-                            Text(tr('İş sonu raporundan alınmıştır'), style: TextStyle(fontSize: 9, color: AppTheme.success.withOpacity(0.7), fontFamily: 'Inter', fontStyle: FontStyle.italic)),
+                            Text(tr('Aus dem Abschlussprotokoll entnommen'), style: TextStyle(fontSize: 9, color: AppTheme.success.withOpacity(0.7), fontFamily: 'Inter', fontStyle: FontStyle.italic)),
                           ],
                         ),
                       ],
@@ -554,7 +554,7 @@ class _ProjectFinancialCard extends StatelessWidget {
                   const SizedBox(height: 12),
                 ],
                 
-                Text(tr('Çalışan Detayı & Saatleri'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSub)),
+                Text(tr('Mitarbeiterdetail & Stunden'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSub)),
                 const SizedBox(height: 8),
                 ...sessions.map((s) {
                   final user = s['user'];

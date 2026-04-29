@@ -208,7 +208,7 @@ class _SessionCard extends StatelessWidget {
     final start = DateTime.parse(session['actual_start']).toLocal();
     final dateStr = DateFormat('dd.MM.yyyy').format(start);
     final hours = (session['approved_billable_hours'] as num?)?.toDouble() ?? 0.0;
-    final orderTitle = session['order']?['title'] ?? tr('İsimsiz Görev');
+    final orderTitle = session['order']?['title'] ?? tr('Unbenannte Aufgabe');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
